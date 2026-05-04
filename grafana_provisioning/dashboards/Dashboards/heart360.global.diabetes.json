@@ -3077,7 +3077,7 @@
           "type": "grafana-postgresql-datasource",
           "uid": "postgres-hypertension"
         },
-        "definition": "SELECT MAX(ref_month) AS __value FROM heart360_patients_catagory WHERE $__timeFilter(ref_month)",
+        "definition": "SELECT MAX(ref_month) AS __value FROM heart360_patients_category WHERE $__timeFilter(ref_month)",
         "hide": 2,
         "name": "reference_month",
         "options": [],
@@ -3085,7 +3085,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT MAX(ref_month) AS __value FROM heart360_patients_catagory WHERE $__timeFilter(ref_month)",
+          "rawSql": "SELECT MAX(ref_month) AS __value FROM heart360_patients_category WHERE $__timeFilter(ref_month)",
           "refId": "tempvar",
           "sql": {
             "columns": [
