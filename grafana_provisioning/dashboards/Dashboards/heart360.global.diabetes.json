@@ -62,7 +62,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "description": "% Patients with RBS <140, FBS <126 mg/dL, or HbA1c <7%",
       "fieldConfig": {
@@ -200,7 +200,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "description": "% Patients with uncontrolled blood sugar (moderate and high)",
       "fieldConfig": {
@@ -405,7 +405,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "description": "% Patients with no recorded visit",
       "fieldConfig": {
@@ -524,7 +524,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "description": "${Facility:text} - Latest month",
       "fieldConfig": {
@@ -614,7 +614,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "description": "${Facility:text} - Latest month",
       "fieldConfig": {
@@ -696,7 +696,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "description": "${Facility:text} - Latest month",
       "fieldConfig": {
@@ -778,7 +778,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "description": "${Facility:text} - Latest month",
       "fieldConfig": {
@@ -860,7 +860,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "description": "${Facility:text} - Latest month",
       "fieldConfig": {
@@ -942,7 +942,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "description": "${Facility:text} - Latest month",
       "fieldConfig": {
@@ -1024,7 +1024,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "description": "Patients under care for diabetes with controlled BP at their latest visit in the past 3 months",
       "fieldConfig": {
@@ -1176,7 +1176,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "description": "Patients with diabetes with no visit in the past 12 months",
       "fieldConfig": {
@@ -1309,7 +1309,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "description": "Patients with diabetes with at least 1 visit in the past 12 months",
       "fieldConfig": {
@@ -1532,7 +1532,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "description": "$user",
       "fieldConfig": {
@@ -2409,7 +2409,7 @@
           "dataset": "metrics_db",
           "datasource": {
             "type": "grafana-postgresql-datasource",
-            "uid": "postgres-hypertension"
+            "uid": "postgres-hypertension-cached"
           },
           "editorMode": "code",
           "format": "table",

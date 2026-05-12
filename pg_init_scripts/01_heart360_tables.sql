@@ -1403,6 +1403,28 @@ GRANT SELECT ON heart360tk_reporting.matview_refresh_status TO heart360tk;
 GRANT EXECUTE ON FUNCTION heart360tk_reporting.start_async_refresh(text) TO heart360tk;
 GRANT EXECUTE ON FUNCTION heart360tk_reporting.run_refresh_with_status(text) TO heart360tk;
 
+-- Cached Grafana datasource: read-only access with reporting matviews first in
+-- the role search_path (heart360tk_reporting, heart360tk_schema, public).
+--
+-- heart360tk_reporting: full SELECT so every matview is reachable.
+GRANT USAGE ON SCHEMA heart360tk_reporting TO heart360tk_cached;
+GRANT SELECT ON ALL TABLES IN SCHEMA heart360tk_reporting TO heart360tk_cached;
+--
+-- heart360tk_schema: SELECT only on the helper tables/views that dashboard
+-- panel queries (and the SQL-stable functions they call) actually touch.
+-- Raw encounter/BP/BS tables are NOT exposed — panels read from matviews.
+GRANT USAGE ON SCHEMA heart360tk_schema TO heart360tk_cached;
+GRANT SELECT ON heart360tk_schema.org_units        TO heart360tk_cached;
+GRANT SELECT ON heart360tk_schema.hierarchy_config TO heart360tk_cached;
+GRANT SELECT ON heart360tk_schema.org_unit_lineage TO heart360tk_cached;
+GRANT SELECT ON heart360tk_schema.patients         TO heart360tk_cached;
+--
+GRANT EXECUTE ON FUNCTION heart360tk_schema.get_descendant_ids(integer)        TO heart360tk_cached;
+GRANT EXECUTE ON FUNCTION heart360tk_schema.build_drill_url(integer)           TO heart360tk_cached;
+GRANT EXECUTE ON FUNCTION heart360tk_schema.get_child_level_name(integer)      TO heart360tk_cached;
+GRANT EXECUTE ON FUNCTION heart360tk_schema.get_ancestor_name(integer, integer) TO heart360tk_cached;
+GRANT EXECUTE ON FUNCTION heart360tk_schema.get_breadcrumb_path(integer)       TO heart360tk_cached;
+
 -- Grafana datasource user needs to call start_async_refresh as part of an admin-check
 -- query that joins against the grafana user/team tables (which only the grafana role
 -- can read). USAGE on the schema + EXECUTE on the function is enough; no data tables

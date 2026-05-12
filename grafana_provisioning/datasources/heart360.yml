@@ -32,3 +32,30 @@ datasources:
     secureJsonData:
       # Password must be stored securely
       password: YmE4ZTk0OGI0OTNmNGU5YmFjZDY1YTA0
+
+  - name: Hypertension Data Cached (PostgreSQL)
+    uid: postgres-hypertension-cached
+    type: postgres
+    url: postgres:5432
+    user: heart360tk_cached
+    access: proxy
+    isDefault: false
+    version: 4
+    editable: true
+    jsonData:
+      # Use the reporting schema first so unqualified dashboard queries resolve to matviews.
+      host:
+      port: 5432
+      database: heart360tk_database
+      sslmode: disable
+      searchPath: heart360tk_reporting,heart360tk_schema,public
+      timescaledb: false
+      maxOpenConns: 100
+      maxIdleConns: 2
+      maxIdleConnsLifetime: 14400
+      pool: false
+      timeseries: true
+      timeInterval:
+      intVal: true
+    secureJsonData:
+      password: Y2FjaGVkX3JlYWRvbmx5X3VzZXI=

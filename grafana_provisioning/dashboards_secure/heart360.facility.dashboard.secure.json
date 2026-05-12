@@ -22,7 +22,7 @@
   "panels": [
     {
       "datasource": {
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "fieldConfig": {
         "defaults": {
@@ -51,7 +51,7 @@
       "id": 100,
       "options": {
         "afterRender": "",
-        "content": "{{#if (eq isAllowed 0)}}\n  <div style=\"color: #e02424; background: rgba(224, 36, 36, 0.05); border-left: 4px solid #e02424; padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 8px; border-radius: 2px; line-height: 1.4;\">\n    <span>\u26a0\ufe0f</span>\n    <span>\n      <strong>Access Denied:</strong> Ask admin to add to one of these teams: \n      <span style=\"border: 1px solid rgba(224, 36, 36, 0.3); padding: 1px 5px; border-radius: 3px; font-family: monospace; color: #ff7875;\">heart360tk_facility_view_patients_{{FacilityTeamName}}</span> or <span style=\"border: 1px solid rgba(224, 36, 36, 0.3); padding: 1px 5px; border-radius: 3px; font-family: monospace; color: #ff7875;\">heart360tk_facility_view_aggregated_{{FacilityTeamName}}</span>\n    </span>\n  </div>\n{{/if}}",
+        "content": "{{#if (eq isAllowed 0)}}\n  <div style=\"color: #e02424; background: rgba(224, 36, 36, 0.05); border-left: 4px solid #e02424; padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 8px; border-radius: 2px; line-height: 1.4;\">\n    <span>⚠️</span>\n    <span>\n      <strong>Access Denied:</strong> Ask admin to add to one of these teams: \n      <span style=\"border: 1px solid rgba(224, 36, 36, 0.3); padding: 1px 5px; border-radius: 3px; font-family: monospace; color: #ff7875;\">heart360tk_facility_view_patients_{{FacilityTeamName}}</span> or <span style=\"border: 1px solid rgba(224, 36, 36, 0.3); padding: 1px 5px; border-radius: 3px; font-family: monospace; color: #ff7875;\">heart360tk_facility_view_aggregated_{{FacilityTeamName}}</span>\n    </span>\n  </div>\n{{/if}}",
         "contentPartials": [],
         "defaultContent": "The query didn't return any results.",
         "editor": {
@@ -139,7 +139,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "fieldConfig": {
         "defaults": {
@@ -226,7 +226,7 @@
           "dataset": "metrics_db",
           "datasource": {
             "type": "grafana-postgresql-datasource",
-            "uid": "postgres-hypertension"
+            "uid": "postgres-hypertension-cached"
           },
           "editorMode": "code",
           "format": "table",
@@ -271,7 +271,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "fieldConfig": {
         "defaults": {
@@ -387,7 +387,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "fieldConfig": {
         "defaults": {
@@ -429,7 +429,7 @@
             }
           },
           "decimals": 0,
-          "displayName": "% Patients with BP \u2265140/90 at latest visit in the past 3 months",
+          "displayName": "% Patients with BP ≥140/90 at latest visit in the past 3 months",
           "mappings": [],
           "max": 100,
           "min": 0,
@@ -523,7 +523,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "fieldConfig": {
         "defaults": {
@@ -655,7 +655,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "description": "Patients with hypertension with at least 1 visit in the past 12 months\n\n",
       "fieldConfig": {
@@ -835,7 +835,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "description": "Patients with hypertension with no visit in the past 12 months\n\n",
       "fieldConfig": {
@@ -997,7 +997,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "description": "Patients that are overdue at the start of the month",
       "fieldConfig": {
@@ -1119,7 +1119,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "description": "Patients called during the month.",
       "fieldConfig": {
@@ -1225,9 +1225,9 @@
         {
           "dataset": "metrics_db",
           "editorMode": "code",
-          "format": "table",
+          "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT\n  ref_month AS \"time\",\n  overdue_patients_called\nFROM HEART360_OVERDUE_PATIENTS_CALLED\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids($Facility::int)) AND $isAllowed > 0\nORDER BY ref_month;",
+          "rawSql": "SELECT\n  ref_month AS \"time\",\n  SUM(overdue_patients_called) AS overdue_patients_called\nFROM HEART360_OVERDUE_PATIENTS_CALLED\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids($Facility::int)) AND $isAllowed > 0\nGROUP BY ref_month\nORDER BY ref_month;",
           "refId": "A",
           "sql": {
             "columns": [
@@ -1254,7 +1254,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "description": "Patients called during the month.",
       "fieldConfig": {
@@ -1360,9 +1360,9 @@
         {
           "dataset": "metrics_db",
           "editorMode": "code",
-          "format": "table",
+          "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT\n  ref_month AS \"time\",\n  overdue_returned_to_care\nFROM HEART360_OVERDUE_RETURNED_TO_CARE\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids($Facility::int)) AND $isAllowed > 0\nORDER BY ref_month;",
+          "rawSql": "SELECT\n  ref_month AS \"time\",\n  SUM(overdue_returned_to_care) AS overdue_returned_to_care\nFROM HEART360_OVERDUE_RETURNED_TO_CARE\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids($Facility::int)) AND $isAllowed > 0\nGROUP BY ref_month\nORDER BY ref_month;",
           "refId": "A",
           "sql": {
             "columns": [
@@ -1402,7 +1402,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "fieldConfig": {
         "defaults": {
@@ -1542,7 +1542,7 @@
           "dataset": "heart360tk_database",
           "datasource": {
             "type": "grafana-postgresql-datasource",
-            "uid": "postgres-hypertension"
+            "uid": "postgres-hypertension-cached"
           },
           "editorMode": "code",
           "format": "table",
