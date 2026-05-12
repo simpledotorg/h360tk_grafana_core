@@ -1,0 +1,273 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgres-grafana" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 2, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "options": {
+        "afterRender": "",
+        "content": "{{#if (eq UserIsAdmin 0)}}\n  <div style=\"color: #e02424; background: rgba(224, 36, 36, 0.05); border-left: 4px solid #e02424; padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 8px; border-radius: 2px; line-height: 1.4;\">\n    <span>\u26a0\ufe0f</span>\n    <span><strong>Access Denied:</strong> You must be a admin to view this page.</span>\n  </div>\n{{/if}}",
+        "contentPartials": [],
+        "defaultContent": "",
+        "editor": { "format": "auto", "language": "markdown" },
+        "editors": [],
+        "externalStyles": [],
+        "helpers": "",
+        "renderMode": "everyRow",
+        "styles": "",
+        "wrap": true
+      },
+      "pluginVersion": "6.2.0",
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgres-grafana" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT $UserIsAdmin AS \"UserIsAdmin\"",
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "transparent": true,
+      "type": "marcusolsson-dynamictext-panel"
+    },
+    {
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 3, "w": 24, "x": 0, "y": 2 },
+      "id": 10,
+      "options": {
+        "code": { "language": "html", "showLineNumbers": false, "showMiniMap": false },
+        "content": "<div style=\"display:flex;justify-content:space-between;align-items:flex-start;padding:4px 0 8px 0;border-bottom:1px solid #e5e7eb;\"><div><div style=\"font-size:22px;font-weight:700;color:#111827;letter-spacing:-.3px;\">Dashboard Refresh</div><div style=\"font-size:13px;color:#6b7280;margin-top:2px;\">Real-time overview of dashboard refresh and performance</div></div></div>",
+        "mode": "html"
+      },
+      "pluginVersion": "13.0.1",
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgres-hypertension" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "red", "value": 80 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 5, "w": 24, "x": 0, "y": 5 },
+      "id": 11,
+      "options": {
+        "afterRender": "var el = context.element || context.grafana?.element;\nif (!el) return;\nvar root = el.querySelector('#h3-root');\nif (!root) return;\nvar s = root.dataset.status;\nvar cfg = {\n  success:{bg:'#f0fdf4',bd:'#bbf7d0',ib:'#dcfce7',clr:'#16a34a',lbl:'All Good',sub:'All systems operational',svg:'<polyline points=\"8 12 11 15 16 9\"/>'},\n  failed:{bg:'#fef2f2',bd:'#fecaca',ib:'#fee2e2',clr:'#dc2626',lbl:'Failed',sub:'Check error details below',svg:'<line x1=\"15\" y1=\"9\" x2=\"9\" y2=\"15\"/><line x1=\"9\" y1=\"9\" x2=\"15\" y2=\"15\"/>'},\n  in_progress:{bg:'#fffbeb',bd:'#fde68a',ib:'#fef3c7',clr:'#d97706',lbl:'Refreshing\\u2026',sub:'Refresh in progress',svg:'<polyline points=\"12 6 12 12 16 14\"/>'},\n  queued:{bg:'#fffbeb',bd:'#fde68a',ib:'#fef3c7',clr:'#d97706',lbl:'Queued',sub:'Refresh queued, waiting to start',svg:'<polyline points=\"12 6 12 12 16 14\"/>'}\n};\nvar c = cfg[s] || {bg:'#eff6ff',bd:'#bfdbfe',ib:'#dbeafe',clr:'#2563eb',lbl:'Idle',sub:'Waiting for first run',svg:'<polyline points=\"12 6 12 12 16 14\"/>'};\nvar card = el.querySelector('#h3-st-card');\ncard.style.background = c.bg;\ncard.style.border = '1px solid ' + c.bd;\nvar icon = el.querySelector('#h3-st-icon');\nicon.style.background = c.ib;\nicon.innerHTML = '<svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"'+c.clr+'\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"10\"/>'+c.svg+'</svg>';\nvar lbl = el.querySelector('#h3-st-label');\nlbl.style.color = c.clr;\nlbl.textContent = c.lbl;\nel.querySelector('#h3-st-sub').textContent = c.sub;\nvar ms = Number(root.dataset.ms);\nif (ms) {\n  var d = new Date(ms);\n  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];\n  el.querySelector('#h3-date').textContent = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();\n  el.querySelector('#h3-time').textContent = d.toLocaleTimeString('en-GB',{hour12:false});\n}\n",
+        "content": "<style>.h3g{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.h3c{border-radius:12px;padding:20px 24px}.h3t{font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px}.h3r{display:flex;align-items:center;gap:12px}.h3i{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}.h3v{font-size:28px;font-weight:700;color:#1e293b;line-height:1.1}.h3s{font-size:12px;color:#94a3b8;margin-top:4px}</style><div class=\"h3g\" id=\"h3-root\" data-status=\"{{status}}\" data-ms=\"{{last_refreshed_ms}}\"><div class=\"h3c\" id=\"h3-st-card\"><div class=\"h3t\">Overall Status</div><div class=\"h3r\"><div class=\"h3i\" id=\"h3-st-icon\"></div><div><div id=\"h3-st-label\" style=\"font-size:22px;font-weight:700;\"></div><div id=\"h3-st-sub\" class=\"h3s\"></div></div></div></div><div class=\"h3c\" style=\"background:#eff6ff;border:1px solid #bfdbfe;\"><div class=\"h3t\">Last Refreshed</div><div class=\"h3r\"><div class=\"h3i\" style=\"background:#dbeafe;\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#2563eb\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\" ry=\"2\"/><line x1=\"16\" y1=\"2\" x2=\"16\" y2=\"6\"/><line x1=\"8\" y1=\"2\" x2=\"8\" y2=\"6\"/><line x1=\"3\" y1=\"10\" x2=\"21\" y2=\"10\"/></svg></div><div><div id=\"h3-date\" style=\"font-size:15px;font-weight:600;color:#1e293b;\">Loading…</div><div id=\"h3-time\" style=\"font-size:24px;font-weight:700;color:#2563eb;margin-top:2px;\"></div></div></div></div><div class=\"h3c\" style=\"background:#f0fdf4;border:1px solid #bbf7d0;\"><div class=\"h3t\">Last Refresh Duration</div><div class=\"h3r\"><div class=\"h3i\" style=\"background:#dcfce7;\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#16a34a\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><polyline points=\"12 6 12 12 16 14\"/></svg></div><div><div class=\"h3v\">{{duration_secs}} <span style=\"font-size:16px;font-weight:500;color:#64748b;\">s</span></div><div class=\"h3s\">Good performance</div></div></div></div><div class=\"h3c\" style=\"background:#faf5ff;border:1px solid #e9d5ff;\"><div class=\"h3t\">Success Rate</div><div class=\"h3r\"><div class=\"h3i\" style=\"background:#f3e8ff;\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#9333ea\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M22 12h-4l-3 9L9 3l-3 9H2\"/></svg></div><div><div class=\"h3v\">{{success_rate}} <span style=\"font-size:16px;font-weight:500;color:#64748b;\">%</span></div><div class=\"h3s\">All refreshes successful</div></div></div></div></div>",
+        "contentPartials": [],
+        "defaultContent": "",
+        "editor": { "format": "auto", "language": "markdown" },
+        "editors": [],
+        "externalStyles": [],
+        "helpers": "",
+        "renderMode": "everyRow",
+        "styles": "",
+        "wrap": true
+      },
+      "pluginVersion": "6.2.0",
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres-hypertension" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT rs.status, (EXTRACT(EPOCH FROM max(rl.last_refreshed_at)) * 1000)::bigint AS last_refreshed_ms, COALESCE(ROUND(EXTRACT(EPOCH FROM (rs.finished_at - rs.started_at))::numeric, 1), 0) AS duration_secs, COALESCE(ROUND(COUNT(CASE WHEN rl.status = 'success' THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0)), 0)::integer AS success_rate FROM heart360tk_reporting.matview_refresh_status rs LEFT JOIN heart360tk_reporting.matview_refresh_log rl ON true WHERE rs.id = 1 AND $UserIsAdmin = 1 GROUP BY rs.status, rs.finished_at, rs.started_at",
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "transparent": true,
+      "type": "marcusolsson-dynamictext-panel"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgres-hypertension" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "red", "value": 80 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 3, "w": 24, "x": 0, "y": 10 },
+      "id": 4,
+      "options": {
+        "afterRender": "var el = context.element || context.grafana?.element;\nif (!el) return;\nvar btn = el.querySelector('#h360-refresh-btn');\nif (btn && !btn.disabled) {\n  btn.onclick = async function() {\n    if (!confirm('This will refresh all reporting materialized views. The refresh runs in the background and may take a few minutes. Continue?')) return;\n    this.disabled = true;\n    this.innerHTML = '<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"animation:h360spin 1s linear infinite\"><path d=\"M21 12a9 9 0 1 1-6.219-8.56\"/></svg> Refresh in queue\\u2026';\n    this.style.background = '#d97706';\n    this.style.cursor = 'not-allowed';\n    try {\n      await fetch('/api/ds/query', {\n        method: 'POST',\n        headers: { 'Content-Type': 'application/json' },\n        body: JSON.stringify({ queries: [{ refId: 'A', datasource: { uid: 'postgres-grafana', type: 'grafana-postgresql-datasource' }, rawSql: \"SELECT heart360tk_reporting.start_async_refresh('manual') AS result\", format: 'table', rawQuery: true }], from: '0', to: '0' })\n      });\n    } catch(e) {\n      this.disabled = false;\n      this.innerHTML = '\\u27f3 Refresh Dashboard';\n      this.style.background = '#1f62e0';\n      this.style.cursor = 'pointer';\n      alert('Failed to trigger refresh. Please try again.');\n    }\n  };\n}",
+        "content": "<style>@keyframes h360spin{100%{transform:rotate(360deg)}}</style>\n{{#if (eq status 'queued')}}\n<div style=\"display:flex;align-items:center;justify-content:center;padding:20px 0;\">\n  <button id=\"h360-refresh-btn\" disabled style=\"padding:14px 44px;font-size:15px;font-weight:600;border:none;border-radius:8px;background:#d97706;color:#fff;cursor:not-allowed;display:inline-flex;align-items:center;gap:10px;box-shadow:0 2px 6px rgba(217,119,6,.25);letter-spacing:.3px;\">\n    <svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"animation:h360spin 1s linear infinite\"><path d=\"M21 12a9 9 0 1 1-6.219-8.56\"/></svg>\n    Refresh in queue…\n  </button>\n</div>\n{{else if (eq status 'in_progress')}}\n<div style=\"display:flex;align-items:center;justify-content:center;padding:20px 0;\">\n  <button id=\"h360-refresh-btn\" disabled style=\"padding:14px 44px;font-size:15px;font-weight:600;border:none;border-radius:8px;background:#d97706;color:#fff;cursor:not-allowed;display:inline-flex;align-items:center;gap:10px;box-shadow:0 2px 6px rgba(217,119,6,.25);letter-spacing:.3px;\">\n    <svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"animation:h360spin 1s linear infinite\"><path d=\"M21 12a9 9 0 1 1-6.219-8.56\"/></svg>\n    Refresh in progress…\n  </button>\n</div>\n{{else}}\n<div style=\"display:flex;align-items:center;justify-content:center;padding:20px 0;\">\n  <button id=\"h360-refresh-btn\" style=\"padding:14px 44px;font-size:15px;font-weight:600;border:none;border-radius:8px;background:#1f62e0;color:#fff;cursor:pointer;display:inline-flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(31,98,224,.25);letter-spacing:.3px;transition:background .2s,box-shadow .2s;\" onmouseover=\"this.style.background='#1550b8';this.style.boxShadow='0 4px 12px rgba(31,98,224,.35)'\" onmouseout=\"this.style.background='#1f62e0';this.style.boxShadow='0 2px 8px rgba(31,98,224,.25)'\">\n    &#10227; Refresh Dashboard\n  </button>\n</div>\n{{/if}}",
+        "contentPartials": [],
+        "defaultContent": "",
+        "editor": { "format": "auto", "language": "markdown" },
+        "editors": [],
+        "externalStyles": [],
+        "helpers": "",
+        "renderMode": "everyRow",
+        "styles": "",
+        "wrap": true
+      },
+      "pluginVersion": "6.2.0",
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres-hypertension" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT status, CASE WHEN status IN ('queued','in_progress') THEN 1 ELSE 0 END AS is_busy FROM heart360tk_reporting.matview_refresh_status WHERE id = 1 AND $UserIsAdmin = 1",
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "transparent": true,
+      "type": "marcusolsson-dynamictext-panel"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgres-hypertension" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": {
+            "align": "auto",
+            "cellOptions": { "type": "auto" },
+            "filterable": true,
+            "footer": { "reducers": [] },
+            "inspect": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": 0 }]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Status" },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": { "mode": "gradient", "type": "color-background" }
+              },
+              { "id": "custom.width", "value": 110 },
+              { "id": "custom.align", "value": "center" },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "success": { "color": "green", "index": 0, "text": "success" }
+                    }
+                  },
+                  {
+                    "type": "regex",
+                    "options": {
+                      "pattern": "^failed.*",
+                      "result": { "color": "red", "index": 1 }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Last Refreshed" },
+            "properties": [{ "id": "unit", "value": "dateTimeAsLocal" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Duration" },
+            "properties": [
+              { "id": "unit", "value": "ms" },
+              { "id": "decimals", "value": 2 },
+              { "id": "custom.width", "value": 120 },
+              { "id": "custom.align", "value": "center" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Materialized View" },
+            "properties": [{ "id": "custom.width", "value": 340 }]
+          }
+        ]
+      },
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 13 },
+      "id": 5,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": [{ "desc": true, "displayName": "Last Refreshed" }]
+      },
+      "pluginVersion": "13.0.1",
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgres-hypertension" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  matview_name AS \"Materialized View\",\n  (EXTRACT(EPOCH FROM last_refreshed_at) * 1000)::bigint AS \"Last Refreshed\",\n  ROUND((EXTRACT(EPOCH FROM refresh_duration) * 1000)::numeric, 2) AS \"Duration\",\n  status AS \"Status\"\nFROM heart360tk_reporting.matview_refresh_log\nWHERE $UserIsAdmin = 1\nORDER BY last_refreshed_at DESC NULLS LAST",
+          "refId": "A"
+        }
+      ],
+      "title": "Per-view Refresh Detail",
+      "type": "table"
+    }
+  ],
+  "preload": false,
+  "refresh": "5s",
+  "schemaVersion": 42,
+  "tags": ["admin"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgres-grafana" },
+        "definition": "SELECT CASE WHEN (u.is_admin OR EXISTS (\n  SELECT 1 FROM team_member tm\n  JOIN team t ON tm.team_id = t.id\n  WHERE tm.user_id = u.id AND t.name LIKE '%\\_ALL' ESCAPE '\\'\n)) THEN 1 ELSE 0 END\nFROM \"user\" u WHERE u.id = ${__user.id}",
+        "hide": 2,
+        "name": "UserIsAdmin",
+        "options": [],
+        "query": "SELECT CASE WHEN (u.is_admin OR EXISTS (\n  SELECT 1 FROM team_member tm\n  JOIN team t ON tm.team_id = t.id\n  WHERE tm.user_id = u.id AND t.name LIKE '%\\_ALL' ESCAPE '\\'\n)) THEN 1 ELSE 0 END\nFROM \"user\" u WHERE u.id = ${__user.id}",
+        "refresh": 1,
+        "regex": "",
+        "regexApplyTo": "value",
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-24h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Admin · Dashboard Refresh",
+  "uid": "heart360-admin-refresh",
+  "version": 1,
+  "weekStart": ""
+}

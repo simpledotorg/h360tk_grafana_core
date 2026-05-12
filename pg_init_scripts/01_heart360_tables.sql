@@ -1282,10 +1282,138 @@ BEGIN
 END;
 $$;
 
+-- =======================================================================================
+-- Single-row status table for the admin dashboard: tracks the most recent refresh attempt
+-- and serves as the queue gate for manual triggers.
+-- =======================================================================================
+CREATE TABLE IF NOT EXISTS heart360tk_reporting.matview_refresh_status (
+    id smallint PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    status text NOT NULL DEFAULT 'idle',  -- idle | queued | in_progress | success | failed
+    requested_at timestamptz,
+    started_at timestamptz,
+    finished_at timestamptz,
+    last_error text,
+    requested_by text,
+    job_name text
+);
+
+INSERT INTO heart360tk_reporting.matview_refresh_status (id) VALUES (1)
+ON CONFLICT (id) DO NOTHING;
+
+-- =======================================================================================
+-- Status-aware refresh: acquires an advisory lock so manual and scheduled paths cannot
+-- run concurrently, updates the status row, calls refresh_all_matviews(), and records
+-- success / failure. Used by both the hourly pg_cron job and the manual one-shot.
+-- =======================================================================================
+CREATE OR REPLACE FUNCTION heart360tk_reporting.run_refresh_with_status(p_source text DEFAULT 'manual')
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_lock_key bigint := hashtext('heart360tk_reporting.matview_refresh');
+    v_lock_acquired boolean;
+BEGIN
+    SELECT pg_try_advisory_lock(v_lock_key) INTO v_lock_acquired;
+    IF NOT v_lock_acquired THEN
+        RAISE NOTICE 'Matview refresh already running (source=%); skipping.', p_source;
+        RETURN;
+    END IF;
+
+    BEGIN
+        PERFORM heart360tk_reporting.refresh_all_matviews();
+        UPDATE heart360tk_reporting.matview_refresh_status
+        SET status = 'success',
+            finished_at = clock_timestamp(),
+            last_error = NULL
+        WHERE id = 1;
+    EXCEPTION WHEN OTHERS THEN
+        UPDATE heart360tk_reporting.matview_refresh_status
+        SET status = 'failed',
+            finished_at = clock_timestamp(),
+            last_error = SQLERRM
+        WHERE id = 1;
+    END;
+
+    PERFORM pg_advisory_unlock(v_lock_key);
+END;
+$$;
+
+-- =======================================================================================
+-- Manual trigger: atomically claims the queue slot, schedules an ephemeral pg_cron job
+-- that will fire at the next minute boundary, do the work via run_refresh_with_status,
+-- and unschedule itself. Returns 'queued' on success or 'already_running' if another
+-- refresh is queued or in progress.
+-- =======================================================================================
+CREATE OR REPLACE FUNCTION heart360tk_reporting.start_async_refresh(p_user text DEFAULT NULL)
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_job_name text;
+BEGIN
+    UPDATE heart360tk_reporting.matview_refresh_status
+    SET status = 'queued',
+        requested_at = now(),
+        requested_by = p_user,
+        last_error = NULL,
+        finished_at = NULL
+    WHERE id = 1
+      AND status NOT IN ('queued', 'in_progress');
+
+    IF NOT FOUND THEN
+        RETURN 'already_running';
+    END IF;
+
+    v_job_name := 'mv_refresh_oneshot_' || extract(epoch from clock_timestamp())::bigint;
+
+    UPDATE heart360tk_reporting.matview_refresh_status
+    SET job_name = v_job_name
+    WHERE id = 1;
+
+    PERFORM cron.schedule(
+        v_job_name,
+        '* * * * *',
+        format($cmd$
+            DO $body$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM heart360tk_reporting.matview_refresh_status
+                    WHERE id = 1 AND status = 'queued'
+                ) THEN
+                    UPDATE heart360tk_reporting.matview_refresh_status
+                    SET status = 'in_progress', started_at = clock_timestamp()
+                    WHERE id = 1;
+                    COMMIT;
+                    PERFORM heart360tk_reporting.run_refresh_with_status('manual');
+                END IF;
+                IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = %L) THEN
+                    PERFORM cron.unschedule(%L);
+                END IF;
+            END
+            $body$;
+        $cmd$, v_job_name, v_job_name)
+    );
+
+    RETURN 'queued';
+END;
+$$;
+
+GRANT SELECT ON heart360tk_reporting.matview_refresh_status TO heart360tk;
+GRANT EXECUTE ON FUNCTION heart360tk_reporting.start_async_refresh(text) TO heart360tk;
+GRANT EXECUTE ON FUNCTION heart360tk_reporting.run_refresh_with_status(text) TO heart360tk;
+
+-- Grafana datasource user needs to call start_async_refresh as part of an admin-check
+-- query that joins against the grafana user/team tables (which only the grafana role
+-- can read). USAGE on the schema + EXECUTE on the function is enough; no data tables
+-- are exposed.
+GRANT USAGE ON SCHEMA heart360tk_reporting TO grafana;
+GRANT EXECUTE ON FUNCTION heart360tk_reporting.start_async_refresh(text) TO grafana;
+
 -- ============================================================================
 -- pg_cron: Schedule the refresh of all materialized views every hour
 -- ============================================================================
-SELECT cron.schedule('refresh_matviews_every_hour', '0 * * * *', 'SELECT heart360tk_reporting.refresh_all_matviews();');
+SELECT cron.schedule('refresh_matviews_every_hour', '0 * * * *', 'SELECT heart360tk_reporting.run_refresh_with_status(''cron'');');
 
 -- ============================================================================
 -- VIEW 14: HEART360_DM_PATIENTS_CATAGORY
