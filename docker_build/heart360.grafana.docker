@@ -18,7 +18,8 @@ RUN grafana cli plugins install yesoreyeram-infinity-datasource
 RUN grafana cli plugins install marcusolsson-dynamictext-panel
 RUN grafana cli plugins install volkovlabs-echarts-panel
 
-ENV GF_SECURITY_ALLOW_EMBEDDING=true 
+ENV GF_SECURITY_ALLOW_EMBEDDING=true
+ENV GF_PANELS_DISABLE_SANITIZE_HTML=true
 ENV GF_AUTH_ANONYMOUS_ENABLED=false
 ENV GF_USERS_ALLOW_SIGN_UP=false
 ENV GF_USERS_HOME_PAGE=/d/heart360_drilldown?orgId=1&from=now-1y&to=now&timezone=browser
