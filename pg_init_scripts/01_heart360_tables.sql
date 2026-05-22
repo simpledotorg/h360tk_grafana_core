@@ -312,6 +312,7 @@ DROP VIEW IF EXISTS HEART360_BLOOD_SUGAR_SEVERITY CASCADE;
 DROP VIEW IF EXISTS HEART360_BLOOD_SUGAR_MISSED_VISITS CASCADE;
 DROP VIEW IF EXISTS HEART360_COHORT_PATIENT_DETAILS CASCADE;
 DROP VIEW IF EXISTS HEART360_DM_PATIENTS_UNDER_CARE CASCADE;
+DROP VIEW IF EXISTS HEART360_DM_PATIENTS_CATAGORY CASCADE;
 
 
 -- ============================================================================
@@ -323,7 +324,7 @@ KNOWN_MONTHS AS (
   SELECT date_trunc('month', series_date)::date AS REF_MONTH
   FROM generate_series(
       date_trunc('month', (SELECT min(REGISTRATION_DATE) FROM patients)),
-      date_trunc('month', current_date),
+      date_trunc('month', current_date) - interval '1 month',
       '1 month'::interval
   ) AS t(series_date)
 ),
@@ -334,11 +335,6 @@ PATIENTS_BY_MONTH AS (
         count(*) AS NB_NEW_PATIENTS
     FROM patients p
     WHERE LOWER(patient_status) <> 'dead'
-      AND EXISTS (
-          SELECT 1 FROM encounters e
-          JOIN blood_pressures bp ON bp.encounter_id = e.id
-          WHERE e.patient_id = p.patient_id
-      )
     GROUP BY DATE_TRUNC('month', REGISTRATION_DATE), p.org_unit_id
 )
 SELECT
@@ -362,7 +358,7 @@ KNOWN_MONTHS AS (
   SELECT date_trunc('month', series_date)::date AS REF_MONTH
   FROM generate_series(
       date_trunc('month', (SELECT min(REGISTRATION_DATE) FROM patients)),
-      date_trunc('month', current_date),
+      date_trunc('month', current_date) - interval '1 month',
       '1 month'::interval
   ) AS t(series_date)
 ),
@@ -405,7 +401,7 @@ KNOWN_MONTHS AS (
   SELECT date_trunc('month', series_date)::date AS REF_MONTH
   FROM generate_series(
       date_trunc('month', (SELECT min(REGISTRATION_DATE) FROM patients)),
-      date_trunc('month', current_date),
+      date_trunc('month', current_date) - interval '1 month',
       '1 month'::interval
   ) AS t(series_date)
 ),
@@ -450,7 +446,7 @@ LATEST_BP_BY_MONTH_AND_PATIENT AS (
         AND MOST_RECENT_BP_ENCOUNTER.patient_id = BP_ENCOUNTERS.patient_id
     GROUP BY REF_MONTH, MOST_RECENT_BP_ENCOUNTER.patient_id
 ),
--- Encounters relevant for the HTN "no visit" indicator:
+-- Encounters that count as a hypertension visit:
 --   BP encounters + visit-only encounters (no BP AND no BS attached).
 -- BS-only encounters are excluded.
 HTN_RELEVANT_ENCOUNTERS AS (
@@ -472,27 +468,43 @@ SELECT
     KNOWN_MONTHS.REF_MONTH,
     ALIVE_PATIENTS.org_unit_id,
     count(*) AS TOTAL_NUMBER_OF_PATIENTS,
-    SUM(CASE WHEN LATEST_BP_BY_MONTH_AND_PATIENT.BP_ENCOUNTER_MONTH IS NULL THEN 0 WHEN LATEST_BP_BY_MONTH_AND_PATIENT.BP_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 0 ELSE 1 END) AS NB_PATIENTS_UNDER_CARE,
+    -- Under Care = Total Registered - LTFU
+    -- A patient is under care if they are EITHER newly registered (still in
+    -- their grace period) OR have an HTN-relevant visit within the last 12
+    -- months. This guarantees Total = UnderCare + LTFU.
+    SUM(CASE
+        WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 1
+        WHEN LATEST_HTN_BY_MONTH_AND_PATIENT.HTN_ENCOUNTER_MONTH IS NULL THEN 0
+        WHEN LATEST_HTN_BY_MONTH_AND_PATIENT.HTN_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 0
+        ELSE 1 END) AS NB_PATIENTS_UNDER_CARE,
     SUM(CASE WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 1 ELSE 0 END) AS NB_PATIENTS_NEWLY_REGISTERED,
     SUM(CASE
         WHEN LATEST_BP_BY_MONTH_AND_PATIENT.BP_ENCOUNTER_MONTH IS NULL THEN 0
         WHEN LATEST_BP_BY_MONTH_AND_PATIENT.BP_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 0
         WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 0 ELSE 1 END
     ) AS NB_PATIENTS_UNDER_CARE_REGISTERED_BEFORE_THE_PAST_3_MONTHS,
-    SUM(CASE WHEN LATEST_BP_BY_MONTH_AND_PATIENT.BP_ENCOUNTER_MONTH IS NULL THEN 1 WHEN LATEST_BP_BY_MONTH_AND_PATIENT.BP_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 1 ELSE 0 END) AS NB_PATIENTS_LOST_TO_FOLLOW_UP,
-    -- "No visit" counts patients whose latest HTN-relevant encounter
-    -- (BP OR visit-only) is older than 3 months.
+    -- LTFU = NOT newly registered AND latest HTN-relevant visit is older than
+    -- 12 months OR no visit at all. Newly registered patients are excluded so
+    -- that NEWLY, LTFU, MISSED, CONTROLLED, UNCONTROLLED form a partition of
+    -- TOTAL_NUMBER_OF_PATIENTS.
+    SUM(CASE
+        WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 0
+        WHEN LATEST_HTN_BY_MONTH_AND_PATIENT.HTN_ENCOUNTER_MONTH IS NULL THEN 1
+        WHEN LATEST_HTN_BY_MONTH_AND_PATIENT.HTN_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 1
+        ELSE 0 END) AS NB_PATIENTS_LOST_TO_FOLLOW_UP,
+    -- "No visit in past 3 months" = latest VISIT is between 3 and 12 months
+    -- ago (i.e., NOT LTFU and NOT newly registered).
     SUM(CASE
         WHEN LATEST_HTN_BY_MONTH_AND_PATIENT.HTN_ENCOUNTER_MONTH IS NULL THEN 0
         WHEN LATEST_HTN_BY_MONTH_AND_PATIENT.HTN_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 0
         WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 0
         WHEN LATEST_HTN_BY_MONTH_AND_PATIENT.HTN_ENCOUNTER_MONTH + interval '3 month' <= KNOWN_MONTHS.REF_MONTH THEN 1
         ELSE 0 END) AS NB_PATIENTS_NO_VISIT,
-    -- Denominator for the "No visit" graph: includes patients kept under care
-    -- by a visit-only encounter even if they have no BP reading.
+    -- Legacy denominator column kept for backward compatibility with any
+    -- consumer; equivalent to NB_PATIENTS_UNDER_CARE_REGISTERED_BEFORE_THE_PAST_3_MONTHS.
     SUM(CASE
-        WHEN LATEST_HTN_BY_MONTH_AND_PATIENT.HTN_ENCOUNTER_MONTH IS NULL THEN 0
-        WHEN LATEST_HTN_BY_MONTH_AND_PATIENT.HTN_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 0
+        WHEN LATEST_BP_BY_MONTH_AND_PATIENT.BP_ENCOUNTER_MONTH IS NULL THEN 0
+        WHEN LATEST_BP_BY_MONTH_AND_PATIENT.BP_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 0
         WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 0 ELSE 1 END
     ) AS NB_PATIENTS_UNDER_CARE_REGISTERED_BEFORE_3M_INCL_VISITS,
     SUM(CASE
@@ -637,7 +649,7 @@ CREATE OR REPLACE VIEW HEART360_OVERDUE_START_OF_MONTH AS
 WITH REF_MONTHS AS (
   SELECT generate_series(
       date_trunc('month', (SELECT MIN(registration_date) FROM patients)),
-      date_trunc('month', CURRENT_DATE),
+      date_trunc('month', CURRENT_DATE) - interval '1 month',
       interval '1 month'
   )::date AS ref_month
 ),
@@ -758,18 +770,28 @@ ORDER BY r.ref_month;
 
 -- ============================================================================
 -- VIEW 9: HEART360_BLOOD_SUGAR_CONTROLLED
+-- Fixed: uses DM_RELEVANT_ENCOUNTERS (BS encounter OR no-BP encounter) for the
+-- under-care denominator, mirroring HTN_RELEVANT_ENCOUNTERS in HEART360_PATIENTS_CATAGORY.
+-- This ensures missed-follow-up DM patients are counted the same way as HTN.
 -- ============================================================================
 CREATE OR REPLACE VIEW HEART360_BLOOD_SUGAR_CONTROLLED AS
 WITH REF_MONTHS AS (
     SELECT generate_series(
         date_trunc('month', (SELECT MIN(registration_date) FROM patients)),
-        date_trunc('month', CURRENT_DATE),
+        date_trunc('month', CURRENT_DATE) - interval '1 month',
         interval '1 month'
     )::date AS ref_month
 ),
 ALL_PATIENTS AS (
     SELECT p.patient_id, p.org_unit_id, p.registration_date, p.death_date
     FROM patients p
+),
+-- DM-relevant encounters: encounters with a BS reading OR no BP reading (visit-only / missed follow-up)
+DM_RELEVANT_ENCOUNTERS AS (
+    SELECT e.id, e.patient_id, e.encounter_date
+    FROM encounters e
+    WHERE EXISTS (SELECT 1 FROM blood_sugars bs WHERE bs.encounter_id = e.id)
+       OR NOT EXISTS (SELECT 1 FROM blood_pressures bp WHERE bp.encounter_id = e.id)
 ),
 BS_ENCOUNTERS AS (
     SELECT e.patient_id, e.encounter_date, bs.blood_sugar_type, bs.blood_sugar_value
@@ -794,31 +816,27 @@ SELECT
     COUNT(DISTINCT p.patient_id) FILTER (
         WHERE DATE_TRUNC('month', p.registration_date) + interval '3 month' <= rm.ref_month
             AND EXISTS (
-                SELECT 1 FROM encounters e
-                JOIN blood_sugars bs ON bs.encounter_id = e.id
-                WHERE e.patient_id = p.patient_id
+                SELECT 1 FROM DM_RELEVANT_ENCOUNTERS dre
+                WHERE dre.patient_id = p.patient_id
             )
             AND EXISTS (
-                SELECT 1 FROM encounters e
-                JOIN blood_sugars bs ON bs.encounter_id = e.id
-                WHERE e.patient_id = p.patient_id
-                AND DATE_TRUNC('month', e.encounter_date) <= rm.ref_month
-                AND DATE_TRUNC('month', e.encounter_date) + interval '12 month' > rm.ref_month
+                SELECT 1 FROM DM_RELEVANT_ENCOUNTERS dre
+                WHERE dre.patient_id = p.patient_id
+                AND DATE_TRUNC('month', dre.encounter_date) <= rm.ref_month
+                AND DATE_TRUNC('month', dre.encounter_date) + interval '12 month' > rm.ref_month
             )
     ) AS diabetes_patients_under_care,
     COUNT(DISTINCT p.patient_id) FILTER (
         WHERE DATE_TRUNC('month', p.registration_date) + interval '3 month' <= rm.ref_month
             AND EXISTS (
-                SELECT 1 FROM encounters e
-                JOIN blood_sugars bs ON bs.encounter_id = e.id
-                WHERE e.patient_id = p.patient_id
+                SELECT 1 FROM DM_RELEVANT_ENCOUNTERS dre
+                WHERE dre.patient_id = p.patient_id
             )
             AND EXISTS (
-                SELECT 1 FROM encounters e
-                JOIN blood_sugars bs ON bs.encounter_id = e.id
-                WHERE e.patient_id = p.patient_id
-                AND DATE_TRUNC('month', e.encounter_date) <= rm.ref_month
-                AND DATE_TRUNC('month', e.encounter_date) + interval '12 month' > rm.ref_month
+                SELECT 1 FROM DM_RELEVANT_ENCOUNTERS dre
+                WHERE dre.patient_id = p.patient_id
+                AND DATE_TRUNC('month', dre.encounter_date) <= rm.ref_month
+                AND DATE_TRUNC('month', dre.encounter_date) + interval '12 month' > rm.ref_month
             )
             AND DATE_TRUNC('month', lbv.encounter_date) + interval '3 month' > rm.ref_month
             AND (
@@ -839,19 +857,27 @@ ORDER BY rm.ref_month;
 
 -- ============================================================================
 -- VIEW 10: HEART360_BLOOD_SUGAR_SEVERITY
+-- Fixed: uses DM_RELEVANT_ENCOUNTERS for under-care denominator.
 -- ============================================================================
 CREATE OR REPLACE VIEW HEART360_BLOOD_SUGAR_SEVERITY AS
 WITH KNOWN_MONTHS AS (
   SELECT date_trunc('month', series_date)::date AS ref_month
   FROM generate_series(
       date_trunc('month', (SELECT min(registration_date) FROM patients)),
-      date_trunc('month', current_date),
+      date_trunc('month', current_date) - interval '1 month',
       interval '1 month'
   ) AS t(series_date)
 ),
 ALL_PATIENTS AS (
   SELECT p.patient_id, p.org_unit_id, p.registration_date, p.death_date
   FROM patients p
+),
+-- DM-relevant encounters: encounters with a BS reading OR no BP reading
+DM_RELEVANT_ENCOUNTERS AS (
+    SELECT e.id, e.patient_id, e.encounter_date
+    FROM encounters e
+    WHERE EXISTS (SELECT 1 FROM blood_sugars bs WHERE bs.encounter_id = e.id)
+       OR NOT EXISTS (SELECT 1 FROM blood_pressures bp WHERE bp.encounter_id = e.id)
 ),
 BS_ENCOUNTERS AS (
   SELECT e.patient_id, e.encounter_date, bs.blood_sugar_type, bs.blood_sugar_value
@@ -875,31 +901,27 @@ SELECT
   COUNT(DISTINCT p.patient_id) FILTER (
     WHERE DATE_TRUNC('month', p.registration_date) + interval '3 month' <= km.ref_month
       AND EXISTS (
-            SELECT 1 FROM encounters e
-            JOIN blood_sugars bs ON bs.encounter_id = e.id
-            WHERE e.patient_id = p.patient_id
+            SELECT 1 FROM DM_RELEVANT_ENCOUNTERS dre
+            WHERE dre.patient_id = p.patient_id
         )
       AND EXISTS (
-            SELECT 1 FROM encounters e
-            JOIN blood_sugars bs ON bs.encounter_id = e.id
-            WHERE e.patient_id = p.patient_id
-              AND DATE_TRUNC('month', e.encounter_date) <= km.ref_month
-              AND DATE_TRUNC('month', e.encounter_date) + interval '12 month' > km.ref_month
+            SELECT 1 FROM DM_RELEVANT_ENCOUNTERS dre
+            WHERE dre.patient_id = p.patient_id
+              AND DATE_TRUNC('month', dre.encounter_date) <= km.ref_month
+              AND DATE_TRUNC('month', dre.encounter_date) + interval '12 month' > km.ref_month
         )
   ) AS diabetes_patients_under_care,
   COUNT(DISTINCT p.patient_id) FILTER (
     WHERE DATE_TRUNC('month', p.registration_date) + interval '3 month' <= km.ref_month
       AND EXISTS (
-            SELECT 1 FROM encounters e
-            JOIN blood_sugars bs ON bs.encounter_id = e.id
-            WHERE e.patient_id = p.patient_id
+            SELECT 1 FROM DM_RELEVANT_ENCOUNTERS dre
+            WHERE dre.patient_id = p.patient_id
         )
       AND EXISTS (
-            SELECT 1 FROM encounters e
-            JOIN blood_sugars bs ON bs.encounter_id = e.id
-            WHERE e.patient_id = p.patient_id
-              AND DATE_TRUNC('month', e.encounter_date) <= km.ref_month
-              AND DATE_TRUNC('month', e.encounter_date) + interval '12 month' > km.ref_month
+            SELECT 1 FROM DM_RELEVANT_ENCOUNTERS dre
+            WHERE dre.patient_id = p.patient_id
+              AND DATE_TRUNC('month', dre.encounter_date) <= km.ref_month
+              AND DATE_TRUNC('month', dre.encounter_date) + interval '12 month' > km.ref_month
         )
       AND DATE_TRUNC('month', lbv.encounter_date) + interval '3 month' > km.ref_month
       AND (
@@ -911,16 +933,14 @@ SELECT
   COUNT(DISTINCT p.patient_id) FILTER (
     WHERE DATE_TRUNC('month', p.registration_date) + interval '3 month' <= km.ref_month
       AND EXISTS (
-            SELECT 1 FROM encounters e
-            JOIN blood_sugars bs ON bs.encounter_id = e.id
-            WHERE e.patient_id = p.patient_id
+            SELECT 1 FROM DM_RELEVANT_ENCOUNTERS dre
+            WHERE dre.patient_id = p.patient_id
         )
       AND EXISTS (
-            SELECT 1 FROM encounters e
-            JOIN blood_sugars bs ON bs.encounter_id = e.id
-            WHERE e.patient_id = p.patient_id
-              AND DATE_TRUNC('month', e.encounter_date) <= km.ref_month
-              AND DATE_TRUNC('month', e.encounter_date) + interval '12 month' > km.ref_month
+            SELECT 1 FROM DM_RELEVANT_ENCOUNTERS dre
+            WHERE dre.patient_id = p.patient_id
+              AND DATE_TRUNC('month', dre.encounter_date) <= km.ref_month
+              AND DATE_TRUNC('month', dre.encounter_date) + interval '12 month' > km.ref_month
         )
       AND DATE_TRUNC('month', lbv.encounter_date) + interval '3 month' > km.ref_month
       AND (
@@ -947,7 +967,7 @@ WITH KNOWN_MONTHS AS (
   SELECT date_trunc('month', series_date)::date AS ref_month
   FROM generate_series(
       date_trunc('month', (SELECT min(registration_date) FROM patients)),
-      date_trunc('month', current_date),
+      date_trunc('month', current_date) - interval '1 month',
       interval '1 month'
   ) AS t(series_date)
 ),
@@ -1012,7 +1032,9 @@ ORDER BY km.ref_month;
 
 -- ============================================================================
 -- VIEW 12: HEART360_DM_PATIENTS_UNDER_CARE
--- DM patients under care, cumulative registrations, and monthly registrations
+-- DM patients under care, cumulative registrations, and monthly registrations.
+-- Fixed: uses DM_RELEVANT_ENCOUNTERS (BS encounter OR no-BP encounter) so the
+-- under-care window matches the HTN dashboard denominator methodology.
 -- ============================================================================
 CREATE OR REPLACE VIEW HEART360_DM_PATIENTS_UNDER_CARE AS
 WITH
@@ -1020,7 +1042,7 @@ KNOWN_MONTHS AS (
   SELECT date_trunc('month', series_date)::date AS ref_month
   FROM generate_series(
       date_trunc('month', (SELECT MIN(registration_date) FROM patients)),
-      date_trunc('month', CURRENT_DATE),
+      date_trunc('month', CURRENT_DATE) - interval '1 month',
       '1 month'::interval
   ) AS t(series_date)
 ),
@@ -1032,48 +1054,59 @@ ALIVE_PATIENTS AS (
   FROM patients p
   WHERE LOWER(p.patient_status) <> 'dead'
 ),
-ALL_ENCOUNTERS AS (
-  SELECT e.patient_id,
-         DATE_TRUNC('month', e.encounter_date) AS encounter_month
-  FROM encounters e
+-- DM-relevant encounters: encounters with a BS reading OR no BP reading
+DM_RELEVANT_ENCOUNTERS AS (
+    SELECT e.patient_id,
+           DATE_TRUNC('month', e.encounter_date) AS encounter_month
+    FROM encounters e
+    WHERE EXISTS (SELECT 1 FROM blood_sugars bs WHERE bs.encounter_id = e.id)
+       OR NOT EXISTS (SELECT 1 FROM blood_pressures bp WHERE bp.encounter_id = e.id)
 )
 SELECT
     km.ref_month,
     ap.org_unit_id,
     COUNT(DISTINCT CASE
-      WHEN ae.patient_id IS NOT NULL THEN ap.patient_id
+      WHEN dre.patient_id IS NOT NULL THEN ap.patient_id
     END) AS nb_dm_patients_under_care,
     COUNT(DISTINCT ap.patient_id) AS cumulative_dm_patients,
     COUNT(DISTINCT ap.patient_id) FILTER (
       WHERE ap.registration_month = km.ref_month
     ) AS nb_new_dm_patients,
-    SUM(CASE WHEN ae.patient_id IS NULL THEN 1 ELSE NULL END) AS nb_patients_lost_to_follow_up
+    SUM(CASE WHEN dre.patient_id IS NULL THEN 1 ELSE NULL END) AS nb_patients_lost_to_follow_up
 FROM KNOWN_MONTHS km
 LEFT JOIN ALIVE_PATIENTS ap
     ON ap.registration_month <= km.ref_month
-LEFT JOIN ALL_ENCOUNTERS ae
-    ON ae.patient_id = ap.patient_id
-    AND ae.encounter_month <= km.ref_month
-    AND ae.encounter_month + interval '12 month' > km.ref_month
+LEFT JOIN DM_RELEVANT_ENCOUNTERS dre
+    ON dre.patient_id = ap.patient_id
+    AND dre.encounter_month <= km.ref_month
+    AND dre.encounter_month + interval '12 month' > km.ref_month
 GROUP BY km.ref_month, ap.org_unit_id
 ORDER BY km.ref_month DESC;
 
 
 -- ============================================================================
 -- VIEW 13: HEART360_DM_BP_CONTROL
--- DM patients with controlled BP at their latest visit in the past 3 months
+-- DM patients with controlled BP at their latest visit in the past 3 months.
+-- Fixed: uses DM_RELEVANT_ENCOUNTERS for the under-care denominator.
 -- ============================================================================
 CREATE OR REPLACE VIEW HEART360_DM_BP_CONTROL AS
 WITH REF_MONTHS AS (
     SELECT generate_series(
         date_trunc('month', (SELECT MIN(registration_date) FROM patients)),
-        date_trunc('month', CURRENT_DATE),
+        date_trunc('month', CURRENT_DATE) - interval '1 month',
         interval '1 month'
     )::date AS ref_month
 ),
 ALL_PATIENTS AS (
     SELECT p.patient_id, p.org_unit_id, p.registration_date, p.death_date
     FROM patients p
+),
+-- DM-relevant encounters: encounters with a BS reading OR no BP reading
+DM_RELEVANT_ENCOUNTERS AS (
+    SELECT e.id, e.patient_id, e.encounter_date
+    FROM encounters e
+    WHERE EXISTS (SELECT 1 FROM blood_sugars bs WHERE bs.encounter_id = e.id)
+       OR NOT EXISTS (SELECT 1 FROM blood_pressures bp WHERE bp.encounter_id = e.id)
 ),
 LATEST_BP AS (
     SELECT rm.ref_month, e.patient_id, MAX(e.encounter_date) AS latest_bp_date
@@ -1096,31 +1129,27 @@ SELECT
     COUNT(DISTINCT p.patient_id) FILTER (
         WHERE DATE_TRUNC('month', p.registration_date) + interval '3 month' <= rm.ref_month
             AND EXISTS (
-                SELECT 1 FROM encounters e
-                JOIN blood_sugars bs ON bs.encounter_id = e.id
-                WHERE e.patient_id = p.patient_id
+                SELECT 1 FROM DM_RELEVANT_ENCOUNTERS dre
+                WHERE dre.patient_id = p.patient_id
             )
             AND EXISTS (
-                SELECT 1 FROM encounters e
-                JOIN blood_sugars bs ON bs.encounter_id = e.id
-                WHERE e.patient_id = p.patient_id
-                AND DATE_TRUNC('month', e.encounter_date) <= rm.ref_month
-                AND DATE_TRUNC('month', e.encounter_date) + interval '12 month' > rm.ref_month
+                SELECT 1 FROM DM_RELEVANT_ENCOUNTERS dre
+                WHERE dre.patient_id = p.patient_id
+                AND DATE_TRUNC('month', dre.encounter_date) <= rm.ref_month
+                AND DATE_TRUNC('month', dre.encounter_date) + interval '12 month' > rm.ref_month
             )
     ) AS dm_patients_under_care,
     COUNT(DISTINCT p.patient_id) FILTER (
         WHERE DATE_TRUNC('month', p.registration_date) + interval '3 month' <= rm.ref_month
             AND EXISTS (
-                SELECT 1 FROM encounters e
-                JOIN blood_sugars bs ON bs.encounter_id = e.id
-                WHERE e.patient_id = p.patient_id
+                SELECT 1 FROM DM_RELEVANT_ENCOUNTERS dre
+                WHERE dre.patient_id = p.patient_id
             )
             AND EXISTS (
-                SELECT 1 FROM encounters e
-                JOIN blood_sugars bs ON bs.encounter_id = e.id
-                WHERE e.patient_id = p.patient_id
-                AND DATE_TRUNC('month', e.encounter_date) <= rm.ref_month
-                AND DATE_TRUNC('month', e.encounter_date) + interval '12 month' > rm.ref_month
+                SELECT 1 FROM DM_RELEVANT_ENCOUNTERS dre
+                WHERE dre.patient_id = p.patient_id
+                AND DATE_TRUNC('month', dre.encounter_date) <= rm.ref_month
+                AND DATE_TRUNC('month', dre.encounter_date) + interval '12 month' > rm.ref_month
             )
             AND lbp.encounter_date IS NOT NULL
             AND DATE_TRUNC('month', lbp.encounter_date) + interval '3 month' > rm.ref_month
@@ -1129,16 +1158,14 @@ SELECT
     COUNT(DISTINCT p.patient_id) FILTER (
         WHERE DATE_TRUNC('month', p.registration_date) + interval '3 month' <= rm.ref_month
             AND EXISTS (
-                SELECT 1 FROM encounters e
-                JOIN blood_sugars bs ON bs.encounter_id = e.id
-                WHERE e.patient_id = p.patient_id
+                SELECT 1 FROM DM_RELEVANT_ENCOUNTERS dre
+                WHERE dre.patient_id = p.patient_id
             )
             AND EXISTS (
-                SELECT 1 FROM encounters e
-                JOIN blood_sugars bs ON bs.encounter_id = e.id
-                WHERE e.patient_id = p.patient_id
-                AND DATE_TRUNC('month', e.encounter_date) <= rm.ref_month
-                AND DATE_TRUNC('month', e.encounter_date) + interval '12 month' > rm.ref_month
+                SELECT 1 FROM DM_RELEVANT_ENCOUNTERS dre
+                WHERE dre.patient_id = p.patient_id
+                AND DATE_TRUNC('month', dre.encounter_date) <= rm.ref_month
+                AND DATE_TRUNC('month', dre.encounter_date) + interval '12 month' > rm.ref_month
             )
             AND lbp.encounter_date IS NOT NULL
             AND DATE_TRUNC('month', lbp.encounter_date) + interval '3 month' > rm.ref_month
@@ -1152,6 +1179,168 @@ LEFT JOIN LATEST_BP_VALUES lbp
     ON lbp.patient_id = p.patient_id AND lbp.ref_month = rm.ref_month
 GROUP BY rm.ref_month, p.org_unit_id
 ORDER BY rm.ref_month;
+
+
+-- ============================================================================
+-- VIEW 14: HEART360_DM_PATIENTS_CATAGORY
+-- DM equivalent of HEART360_PATIENTS_CATAGORY. Produces identical columns so
+-- the DM dashboard can use the same graph formulas as HTN:
+--   % LTFU         = NB_PATIENTS_LOST_TO_FOLLOW_UP x 100 / TOTAL_NUMBER_OF_PATIENTS
+--   % Missed Visit = NB_PATIENTS_NO_VISIT          x 100 / denom
+--   % Controlled   = NB_PATIENTS_CONTROLLED        x 100 / denom
+--   % Uncontrolled = NB_PATIENTS_UNCONTROLLED      x 100 / denom
+-- where denom = NB_PATIENTS_UNDER_CARE_REGISTERED_BEFORE_THE_PAST_3_MONTHS
+--             = TOTAL - NEWLY - LTFU
+-- ============================================================================
+CREATE OR REPLACE VIEW HEART360_DM_PATIENTS_CATAGORY AS
+WITH
+KNOWN_MONTHS AS (
+  SELECT date_trunc('month', series_date)::date AS REF_MONTH
+  FROM generate_series(
+      date_trunc('month', (SELECT min(REGISTRATION_DATE) FROM patients)),
+      date_trunc('month', current_date) - interval '1 month',
+      '1 month'::interval
+  ) AS t(series_date)
+),
+ALIVE_PATIENTS AS (
+    SELECT
+        DATE_TRUNC('month', REGISTRATION_DATE) AS REGISTRATION_MONTH,
+        p.org_unit_id,
+        p.patient_id AS patient_id
+    FROM patients p
+    WHERE LOWER(patient_status) <> 'dead'
+),
+-- DM-relevant encounters: encounters with a BS reading OR no BP reading (visit-only / missed follow-up).
+-- Mirrors HTN_RELEVANT_ENCOUNTERS from HEART360_PATIENTS_CATAGORY so missed-follow-up
+-- DM patients are captured the same way as missed-follow-up HTN patients.
+DM_RELEVANT_ENCOUNTERS AS (
+    SELECT e.id, e.patient_id, e.encounter_date
+    FROM encounters e
+    WHERE EXISTS (SELECT 1 FROM blood_sugars bs WHERE bs.encounter_id = e.id)
+       OR NOT EXISTS (SELECT 1 FROM blood_pressures bp WHERE bp.encounter_id = e.id)
+),
+BS_ENCOUNTERS AS (
+    SELECT
+        e.id AS id,
+        e.patient_id,
+        bs.blood_sugar_value AS bs_value,
+        bs.blood_sugar_type  AS bs_type,
+        e.encounter_date     AS BS_ENCOUNTER_DATE,
+        DATE_TRUNC('month', e.encounter_date) AS BS_ENCOUNTER_MONTH
+    FROM encounters e
+    LEFT JOIN blood_sugars bs ON e.id = bs.encounter_id
+),
+LATEST_BS_BY_MONTH_AND_PATIENT AS (
+    WITH MOST_RECENT_BS_ENCOUNTER AS (
+        SELECT
+            KNOWN_MONTHS.REF_MONTH,
+            e.patient_id,
+            MAX(e.encounter_date) AS MOST_RECENT_BS_DATE
+        FROM encounters e
+        JOIN blood_sugars bs ON bs.encounter_id = e.id
+        JOIN KNOWN_MONTHS ON DATE_TRUNC('month', e.encounter_date) <= KNOWN_MONTHS.REF_MONTH
+        GROUP BY KNOWN_MONTHS.REF_MONTH, e.patient_id
+    )
+    SELECT
+        REF_MONTH,
+        MOST_RECENT_BS_ENCOUNTER.patient_id,
+        MAX(bse.bs_value)           AS bs_value,
+        MAX(bse.bs_type)            AS bs_type,
+        MAX(bse.BS_ENCOUNTER_MONTH) AS BS_ENCOUNTER_MONTH
+    FROM MOST_RECENT_BS_ENCOUNTER
+    JOIN BS_ENCOUNTERS bse
+        ON MOST_RECENT_BS_ENCOUNTER.MOST_RECENT_BS_DATE = bse.BS_ENCOUNTER_DATE
+       AND MOST_RECENT_BS_ENCOUNTER.patient_id          = bse.patient_id
+    GROUP BY REF_MONTH, MOST_RECENT_BS_ENCOUNTER.patient_id
+),
+LATEST_DM_BY_MONTH_AND_PATIENT AS (
+    SELECT
+        KNOWN_MONTHS.REF_MONTH,
+        dre.patient_id,
+        DATE_TRUNC('month', MAX(dre.encounter_date)) AS DM_ENCOUNTER_MONTH
+    FROM DM_RELEVANT_ENCOUNTERS dre
+    JOIN KNOWN_MONTHS ON DATE_TRUNC('month', dre.encounter_date) <= KNOWN_MONTHS.REF_MONTH
+    GROUP BY KNOWN_MONTHS.REF_MONTH, dre.patient_id
+)
+SELECT
+    KNOWN_MONTHS.REF_MONTH,
+    ALIVE_PATIENTS.org_unit_id,
+    count(*) AS TOTAL_NUMBER_OF_PATIENTS,
+    -- Under care: newly registered (grace period) OR visited within last 12 months
+    SUM(CASE
+        WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 1
+        WHEN LATEST_DM_BY_MONTH_AND_PATIENT.DM_ENCOUNTER_MONTH IS NULL THEN 0
+        WHEN LATEST_DM_BY_MONTH_AND_PATIENT.DM_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 0
+        ELSE 1 END) AS NB_PATIENTS_UNDER_CARE,
+    SUM(CASE WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 1 ELSE 0 END) AS NB_PATIENTS_NEWLY_REGISTERED,
+    -- Denom = registered > 3 months ago AND has a BS reading in last 12 months
+    SUM(CASE
+        WHEN LATEST_BS_BY_MONTH_AND_PATIENT.BS_ENCOUNTER_MONTH IS NULL THEN 0
+        WHEN LATEST_BS_BY_MONTH_AND_PATIENT.BS_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 0
+        WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 0 ELSE 1 END
+    ) AS NB_PATIENTS_UNDER_CARE_REGISTERED_BEFORE_THE_PAST_3_MONTHS,
+    -- LTFU: not newly registered AND no DM-relevant visit in last 12 months
+    SUM(CASE
+        WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 0
+        WHEN LATEST_DM_BY_MONTH_AND_PATIENT.DM_ENCOUNTER_MONTH IS NULL THEN 1
+        WHEN LATEST_DM_BY_MONTH_AND_PATIENT.DM_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 1
+        ELSE 0 END) AS NB_PATIENTS_LOST_TO_FOLLOW_UP,
+    -- No visit: under care but latest DM-relevant visit > 3 months ago
+    SUM(CASE
+        WHEN LATEST_DM_BY_MONTH_AND_PATIENT.DM_ENCOUNTER_MONTH IS NULL THEN 0
+        WHEN LATEST_DM_BY_MONTH_AND_PATIENT.DM_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 0
+        WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 0
+        WHEN LATEST_DM_BY_MONTH_AND_PATIENT.DM_ENCOUNTER_MONTH + interval '3 month' <= KNOWN_MONTHS.REF_MONTH THEN 1
+        ELSE 0 END) AS NB_PATIENTS_NO_VISIT,
+    SUM(CASE
+        WHEN LATEST_BS_BY_MONTH_AND_PATIENT.BS_ENCOUNTER_MONTH IS NULL THEN 0
+        WHEN LATEST_BS_BY_MONTH_AND_PATIENT.BS_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 0
+        WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 0 ELSE 1 END
+    ) AS NB_PATIENTS_UNDER_CARE_REGISTERED_BEFORE_3M_INCL_VISITS,
+    -- Uncontrolled: latest BS within 3 months and above threshold
+    SUM(CASE
+        WHEN LATEST_BS_BY_MONTH_AND_PATIENT.BS_ENCOUNTER_MONTH IS NULL THEN 0
+        WHEN LATEST_BS_BY_MONTH_AND_PATIENT.BS_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 0
+        WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 0
+        WHEN LATEST_BS_BY_MONTH_AND_PATIENT.BS_ENCOUNTER_MONTH + interval '3 month' <= KNOWN_MONTHS.REF_MONTH THEN 0
+        WHEN (
+            (LOWER(COALESCE(LATEST_BS_BY_MONTH_AND_PATIENT.bs_type, '')) IN ('rbs', 'random') AND LATEST_BS_BY_MONTH_AND_PATIENT.bs_value >= 140)
+            OR (LOWER(COALESCE(LATEST_BS_BY_MONTH_AND_PATIENT.bs_type, '')) IN ('fbs', 'fasting') AND LATEST_BS_BY_MONTH_AND_PATIENT.bs_value >= 126)
+            OR (LOWER(COALESCE(LATEST_BS_BY_MONTH_AND_PATIENT.bs_type, '')) = 'hba1c' AND LATEST_BS_BY_MONTH_AND_PATIENT.bs_value >= 7)
+        ) THEN 1
+        ELSE 0 END) AS NB_PATIENTS_UNCONTROLLED,
+    -- Controlled: latest BS within 3 months and below threshold
+    SUM(CASE
+        WHEN LATEST_BS_BY_MONTH_AND_PATIENT.BS_ENCOUNTER_MONTH IS NULL THEN 0
+        WHEN LATEST_BS_BY_MONTH_AND_PATIENT.BS_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 0
+        WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 0
+        WHEN LATEST_BS_BY_MONTH_AND_PATIENT.BS_ENCOUNTER_MONTH + interval '3 month' <= KNOWN_MONTHS.REF_MONTH THEN 0
+        WHEN LATEST_BS_BY_MONTH_AND_PATIENT.bs_value IS NULL OR LATEST_BS_BY_MONTH_AND_PATIENT.bs_type IS NULL THEN 0
+        WHEN (
+            (LOWER(COALESCE(LATEST_BS_BY_MONTH_AND_PATIENT.bs_type, '')) IN ('rbs', 'random') AND LATEST_BS_BY_MONTH_AND_PATIENT.bs_value >= 140)
+            OR (LOWER(COALESCE(LATEST_BS_BY_MONTH_AND_PATIENT.bs_type, '')) IN ('fbs', 'fasting') AND LATEST_BS_BY_MONTH_AND_PATIENT.bs_value >= 126)
+            OR (LOWER(COALESCE(LATEST_BS_BY_MONTH_AND_PATIENT.bs_type, '')) = 'hba1c' AND LATEST_BS_BY_MONTH_AND_PATIENT.bs_value >= 7)
+        ) THEN 0
+        ELSE 1 END) AS NB_PATIENTS_CONTROLLED,
+    -- Visited within 3 months but no BS reading recorded
+    SUM(CASE
+        WHEN LATEST_BS_BY_MONTH_AND_PATIENT.BS_ENCOUNTER_MONTH IS NULL THEN 0
+        WHEN LATEST_BS_BY_MONTH_AND_PATIENT.BS_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 0
+        WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 0
+        WHEN LATEST_BS_BY_MONTH_AND_PATIENT.BS_ENCOUNTER_MONTH + interval '3 month' <= KNOWN_MONTHS.REF_MONTH THEN 0
+        WHEN LATEST_BS_BY_MONTH_AND_PATIENT.bs_value IS NULL OR LATEST_BS_BY_MONTH_AND_PATIENT.bs_type IS NULL THEN 1
+        ELSE 0 END) AS NB_PATIENTS_VISIT_NO_BS
+FROM KNOWN_MONTHS
+LEFT OUTER JOIN ALIVE_PATIENTS
+    ON ALIVE_PATIENTS.REGISTRATION_MONTH <= KNOWN_MONTHS.REF_MONTH
+LEFT OUTER JOIN LATEST_BS_BY_MONTH_AND_PATIENT
+    ON LATEST_BS_BY_MONTH_AND_PATIENT.patient_id = ALIVE_PATIENTS.patient_id
+    AND LATEST_BS_BY_MONTH_AND_PATIENT.REF_MONTH  = KNOWN_MONTHS.REF_MONTH
+LEFT OUTER JOIN LATEST_DM_BY_MONTH_AND_PATIENT
+    ON LATEST_DM_BY_MONTH_AND_PATIENT.patient_id = ALIVE_PATIENTS.patient_id
+    AND LATEST_DM_BY_MONTH_AND_PATIENT.REF_MONTH  = KNOWN_MONTHS.REF_MONTH
+GROUP BY 1, 2
+ORDER BY 1 DESC;
 
 
 -- ============================================================================
