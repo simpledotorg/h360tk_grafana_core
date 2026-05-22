@@ -1318,7 +1318,7 @@ ALIVE_PATIENTS AS (
 ),
 -- DM-relevant encounters: encounters with a BS reading OR no BP reading (visit-only / missed follow-up).
 -- Mirrors HTN_RELEVANT_ENCOUNTERS from HEART360_PATIENTS_CATEGORY so missed-follow-up
-git-- DM patients are captured the same way as missed-follow-up HTN patients.
+-- DM patients are captured the same way as missed-follow-up HTN patients.
 DM_RELEVANT_ENCOUNTERS AS (
     SELECT e.id, e.patient_id, e.encounter_date
     FROM encounters e
