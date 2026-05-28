@@ -5,6 +5,7 @@ from datetime import datetime
 import re
 import os
 import psycopg2
+from dateutil import parser as date_parser
 
 # --- CONFIGURATION (EXPECTED COLUMNS) ---
 EXPECTED_COLUMNS = [
@@ -27,6 +28,8 @@ EXPECTED_COLUMNS = [
     'alasan_dihapus',
     'gula_darah',
     'jenis_gula_darah',
+    'diagnosis_1',
+    'diagnosis_2',
     'wilayah',
     # Optional followup date columns (used when present)
     'tgl_kunjungan_ht',       # HTN_LastFollowup_Completed_Date
@@ -94,17 +97,21 @@ def parse_date_field(value):
         value = value.strip()
         if not value or value.lower() == 'nan':
             return None
+        # Try the original predefined format first for speed
         try:
             return datetime.strptime(value, DATE_FORMAT_IN)
         except ValueError:
             pass
+        
+        # Fall back to dateutil for any other format
         try:
-            parsed = pd.to_datetime(value)
-            return parsed.to_pydatetime() if hasattr(parsed, 'to_pydatetime') else parsed
-        except (ValueError, TypeError):
+            return date_parser.parse(value, dayfirst=True)
+        except (ValueError, TypeError, OverflowError):
             return None
+    
+    # Handle any other type
     try:
-        parsed = pd.to_datetime(value)
+        parsed = pd.to_datetime(value, dayfirst=True)
         return parsed.to_pydatetime() if hasattr(parsed, 'to_pydatetime') else parsed
     except (ValueError, TypeError):
         return None
@@ -228,6 +235,22 @@ VALUES ({encounter_id}, {to_sql_literal(safe_str(blood_sugar_type))}, {to_sql_li
 ON CONFLICT (encounter_id) DO UPDATE SET
     blood_sugar_type = EXCLUDED.blood_sugar_type, blood_sugar_value = EXCLUDED.blood_sugar_value;
 """
+    cur.execute(sql)
+
+def execute_insert_diagnosis(cur, patient_id_sql, diagnosis_code):
+    if diagnosis_code not in ['I10', 'E11']:
+        return
+
+    sql = f"""
+    INSERT INTO patient_diagnoses (patient_id, diagnosis_code)
+    VALUES (
+        {patient_id_sql},
+        {to_sql_literal(diagnosis_code)}
+    )
+    ON CONFLICT (patient_id, diagnosis_code)
+    DO NOTHING;
+    """
+
     cur.execute(sql)
 
 # --- MAIN INGESTION AND EXECUTION FUNCTION ---
@@ -381,6 +404,35 @@ def ingest_and_execute(file_path):
 
                 # 1. Upsert patient
                 execute_upsert_patient(cur, patient_id_sql, record, registration_date_parsed, birth_date_parsed, org_unit_id)
+
+                diagnosis_1 = safe_str(record.get('diagnosis_1'))
+                diagnosis_2 = safe_str(record.get('diagnosis_2'))
+
+                diagnoses = set()
+
+                if diagnosis_1:
+                    diagnoses.add(diagnosis_1.strip().upper())
+
+                if diagnosis_2:
+                    diagnoses.add(diagnosis_2.strip().upper())
+
+                # Fallback logic
+                # Only when diagnosis columns are empty
+
+                if not diagnoses:
+
+                    if has_bp:
+                        diagnoses.add('I10')
+
+                    if has_bs:
+                        diagnoses.add('E11')
+
+                for diagnosis_code in diagnoses:
+                    execute_insert_diagnosis(
+                        cur,
+                        patient_id_sql,
+                        diagnosis_code
+                    )
 
                 # 2. Create encounter(s) and insert clinical data
                 if htn_followup_parsed and dm_followup_parsed:

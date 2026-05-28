@@ -41,6 +41,21 @@ CREATE TABLE IF NOT EXISTS patients (
 
 CREATE INDEX IF NOT EXISTS idx_patients_org_unit_id ON patients(org_unit_id);
 
+CREATE TABLE IF NOT EXISTS patient_diagnoses (
+    id BIGSERIAL PRIMARY KEY,
+    patient_id BIGINT NOT NULL REFERENCES patients(patient_id) ON DELETE CASCADE,
+    diagnosis_code VARCHAR(10) NOT NULL,
+    UNIQUE(patient_id, diagnosis_code),
+
+    CHECK (diagnosis_code IN ('I10', 'E11'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_patient_diagnoses_patient_id
+ON patient_diagnoses(patient_id);
+
+CREATE INDEX IF NOT EXISTS idx_patient_diagnoses_code
+ON patient_diagnoses(diagnosis_code);
+
 -- 2. Drop old BP Encounters Table (if exists)
 DROP TABLE IF EXISTS bp_encounters CASCADE;
 
@@ -335,6 +350,11 @@ PATIENTS_BY_MONTH AS (
         count(*) AS NB_NEW_PATIENTS
     FROM patients p
     WHERE LOWER(patient_status) <> 'dead'
+      AND EXISTS (
+          SELECT 1 FROM patient_diagnoses pd
+          WHERE pd.patient_id = p.patient_id
+            AND pd.diagnosis_code = 'I10'
+      )
     GROUP BY DATE_TRUNC('month', REGISTRATION_DATE), p.org_unit_id
 )
 SELECT
@@ -369,6 +389,11 @@ ALIVE_PATIENTS AS (
         p.patient_id
     FROM patients p
     WHERE LOWER(patient_status) <> 'dead'
+      AND EXISTS (
+          SELECT 1 FROM patient_diagnoses pd
+          WHERE pd.patient_id = p.patient_id
+            AND pd.diagnosis_code = 'I10'
+      )
 ),
 ALL_ENCOUNTERS AS (
     SELECT e.patient_id,
@@ -412,6 +437,11 @@ ALIVE_PATIENTS AS (
         p.patient_id AS patient_id
     FROM patients p
     WHERE LOWER(patient_status) <> 'dead'
+      AND EXISTS (
+          SELECT 1 FROM patient_diagnoses pd
+          WHERE pd.patient_id = p.patient_id
+            AND pd.diagnosis_code = 'I10'
+      )
 ),
 BP_ENCOUNTERS AS (
     SELECT
@@ -603,6 +633,11 @@ WITH patients_quarter AS (
         date_trunc('quarter', registration_date) + interval '6 month' AS cohort_validation_month,
         registration_date
     FROM patients p
+    WHERE EXISTS (
+        SELECT 1 FROM patient_diagnoses pd
+        WHERE pd.patient_id = p.patient_id
+          AND pd.diagnosis_code = 'I10'
+    )
 ),
 LAST_BP_IN_INTERVAL AS (
     SELECT
@@ -785,6 +820,11 @@ WITH REF_MONTHS AS (
 ALL_PATIENTS AS (
     SELECT p.patient_id, p.org_unit_id, p.registration_date, p.death_date
     FROM patients p
+    WHERE EXISTS (
+        SELECT 1 FROM patient_diagnoses pd
+        WHERE pd.patient_id = p.patient_id
+          AND pd.diagnosis_code = 'E11'
+    )
 ),
 -- DM-relevant encounters: encounters with a BS reading OR no BP reading (visit-only / missed follow-up)
 DM_RELEVANT_ENCOUNTERS AS (
@@ -871,6 +911,11 @@ WITH KNOWN_MONTHS AS (
 ALL_PATIENTS AS (
   SELECT p.patient_id, p.org_unit_id, p.registration_date, p.death_date
   FROM patients p
+  WHERE EXISTS (
+      SELECT 1 FROM patient_diagnoses pd
+      WHERE pd.patient_id = p.patient_id
+        AND pd.diagnosis_code = 'E11'
+  )
 ),
 -- DM-relevant encounters: encounters with a BS reading OR no BP reading
 DM_RELEVANT_ENCOUNTERS AS (
@@ -972,8 +1017,13 @@ WITH KNOWN_MONTHS AS (
   ) AS t(series_date)
 ),
 ALL_PATIENTS AS (
-  SELECT patient_id, org_unit_id, registration_date, death_date
-  FROM patients
+  SELECT p.patient_id, p.org_unit_id, p.registration_date, p.death_date
+  FROM patients p
+  WHERE EXISTS (
+      SELECT 1 FROM patient_diagnoses pd
+      WHERE pd.patient_id = p.patient_id
+        AND pd.diagnosis_code = 'E11'
+  )
 ),
 DM_RELEVANT_ENCOUNTERS AS (
   SELECT
@@ -1057,6 +1107,11 @@ ALIVE_PATIENTS AS (
       p.patient_id
   FROM patients p
   WHERE LOWER(p.patient_status) <> 'dead'
+    AND EXISTS (
+        SELECT 1 FROM patient_diagnoses pd
+        WHERE pd.patient_id = p.patient_id
+          AND pd.diagnosis_code = 'E11'
+    )
 ),
 -- DM-relevant encounters: encounters with a BS reading OR no BP reading
 DM_RELEVANT_ENCOUNTERS AS (
@@ -1104,6 +1159,11 @@ WITH REF_MONTHS AS (
 ALL_PATIENTS AS (
     SELECT p.patient_id, p.org_unit_id, p.registration_date, p.death_date
     FROM patients p
+    WHERE EXISTS (
+        SELECT 1 FROM patient_diagnoses pd
+        WHERE pd.patient_id = p.patient_id
+          AND pd.diagnosis_code = 'E11'
+    )
 ),
 -- DM-relevant encounters: encounters with a BS reading OR no BP reading
 DM_RELEVANT_ENCOUNTERS AS (
@@ -1418,6 +1478,8 @@ GRANT SELECT ON heart360tk_schema.org_units        TO heart360tk_cached;
 GRANT SELECT ON heart360tk_schema.hierarchy_config TO heart360tk_cached;
 GRANT SELECT ON heart360tk_schema.org_unit_lineage TO heart360tk_cached;
 GRANT SELECT ON heart360tk_schema.patients         TO heart360tk_cached;
+GRANT SELECT ON heart360tk_schema.patient_diagnoses TO heart360tk_cached;
+GRANT SELECT ON heart360tk_schema.patient_diagnoses TO heart360tk;
 --
 GRANT EXECUTE ON FUNCTION heart360tk_schema.get_descendant_ids(integer)        TO heart360tk_cached;
 GRANT EXECUTE ON FUNCTION heart360tk_schema.build_drill_url(integer)           TO heart360tk_cached;
@@ -1663,3 +1725,6 @@ BEGIN
     RAISE NOTICE 'All data cleared and sequences reset.';
 END;
 $$;
+
+GRANT SELECT ON heart360tk_schema.HEART360_DM_PATIENTS_CATAGORY TO heart360tk_cached;
+GRANT SELECT ON heart360tk_schema.HEART360_DM_PATIENTS_CATAGORY TO heart360tk;
