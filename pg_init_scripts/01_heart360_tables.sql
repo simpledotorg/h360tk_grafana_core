@@ -1293,11 +1293,17 @@ CREATE INDEX IF NOT EXISTS idx_cohort_org_quarter ON heart360tk_reporting.HEART3
 CREATE UNIQUE INDEX IF NOT EXISTS idx_cohort_patient_id ON heart360tk_reporting.HEART360_COHORT_PATIENT_DETAILS (patient_id);
 
 CREATE TABLE IF NOT EXISTS heart360tk_reporting.matview_refresh_log (
-    matview_name text PRIMARY KEY,
-    last_refreshed_at timestamp,
+    id serial PRIMARY KEY,
+    matview_name text NOT NULL,
+    last_refreshed_at timestamp NOT NULL DEFAULT now(),
     refresh_duration interval,
-    status text
+    status text NOT NULL,
+    refresh_batch_id bigint
 );
+
+CREATE INDEX IF NOT EXISTS idx_refresh_log_matview_name ON heart360tk_reporting.matview_refresh_log (matview_name);
+CREATE INDEX IF NOT EXISTS idx_refresh_log_last_refreshed ON heart360tk_reporting.matview_refresh_log (last_refreshed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_refresh_log_batch ON heart360tk_reporting.matview_refresh_log (refresh_batch_id);
 
 -- =======================================================================================
 -- Function to refresh all materialized views and log the refresh status and duration:
@@ -1311,7 +1317,11 @@ DECLARE
     mv RECORD;
     start_time timestamp;
     end_time timestamp;
+    v_batch_id bigint;
 BEGIN
+    -- Generate a unique batch id to group all matview refreshes from this cycle
+    v_batch_id := EXTRACT(EPOCH FROM clock_timestamp())::bigint;
+
     FOR mv IN
         SELECT matviewname FROM pg_matviews WHERE schemaname = 'heart360tk_reporting'
     LOOP
@@ -1321,22 +1331,16 @@ BEGIN
             EXECUTE format('REFRESH MATERIALIZED VIEW CONCURRENTLY heart360tk_reporting.%I', mv.matviewname);
             end_time := clock_timestamp();
 
-            INSERT INTO heart360tk_reporting.matview_refresh_log (matview_name, last_refreshed_at, refresh_duration, status)
-            VALUES (mv.matviewname, end_time, end_time - start_time, 'success')
-            ON CONFLICT (matview_name)
-            DO UPDATE SET
-                last_refreshed_at = EXCLUDED.last_refreshed_at,
-                refresh_duration = EXCLUDED.refresh_duration,
-                status = EXCLUDED.status;
+            INSERT INTO heart360tk_reporting.matview_refresh_log
+                (matview_name, last_refreshed_at, refresh_duration, status, refresh_batch_id)
+            VALUES
+                (mv.matviewname, end_time, end_time - start_time, 'success', v_batch_id);
 
         EXCEPTION WHEN OTHERS THEN
-            INSERT INTO heart360tk_reporting.matview_refresh_log (matview_name, last_refreshed_at, refresh_duration, status)
-            VALUES (mv.matviewname, now(), NULL, 'failed: ' || SQLERRM)
-            ON CONFLICT (matview_name)
-            DO UPDATE SET
-                last_refreshed_at = EXCLUDED.last_refreshed_at,
-                refresh_duration = EXCLUDED.refresh_duration,
-                status = EXCLUDED.status;
+            INSERT INTO heart360tk_reporting.matview_refresh_log
+                (matview_name, last_refreshed_at, refresh_duration, status, refresh_batch_id)
+            VALUES
+                (mv.matviewname, now(), NULL, 'failed: ' || SQLERRM, v_batch_id);
         END;
     END LOOP;
 END;
@@ -1372,6 +1376,7 @@ AS $$
 DECLARE
     v_lock_key bigint := hashtext('heart360tk_reporting.matview_refresh');
     v_lock_acquired boolean;
+    v_start_time timestamptz;
 BEGIN
     SELECT pg_try_advisory_lock(v_lock_key) INTO v_lock_acquired;
     IF NOT v_lock_acquired THEN
@@ -1379,16 +1384,20 @@ BEGIN
         RETURN;
     END IF;
 
+    v_start_time := clock_timestamp();
+
     BEGIN
         PERFORM heart360tk_reporting.refresh_all_matviews();
         UPDATE heart360tk_reporting.matview_refresh_status
         SET status = 'success',
+            started_at = v_start_time,
             finished_at = clock_timestamp(),
             last_error = NULL
         WHERE id = 1;
     EXCEPTION WHEN OTHERS THEN
         UPDATE heart360tk_reporting.matview_refresh_status
         SET status = 'failed',
+            started_at = v_start_time,
             finished_at = clock_timestamp(),
             last_error = SQLERRM
         WHERE id = 1;
