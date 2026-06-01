@@ -7,6 +7,10 @@ CREATE USER heart360tk WITH PASSWORD 'YmE4ZTk0OGI0OTNmNGU5YmFjZDY1YTA0';
 CREATE SCHEMA heart360tk_schema AUTHORIZATION heart360tk;
 CREATE SCHEMA heart360tk_reporting AUTHORIZATION heart360tk;
 ALTER ROLE heart360tk SET search_path TO heart360tk_schema, heart360tk_reporting, public;
+
+CREATE USER heart360tk_cached WITH PASSWORD 'Y2FjaGVkX3JlYWRvbmx5X3VzZXI=';
+ALTER ROLE heart360tk_cached SET search_path TO heart360tk_reporting, heart360tk_schema, public;
+
 -- Grant permission to read files for COPY command (needed for data loading)
 GRANT pg_read_server_files TO heart360tk;
 

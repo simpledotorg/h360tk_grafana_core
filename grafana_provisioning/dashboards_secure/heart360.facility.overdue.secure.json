@@ -23,7 +23,7 @@
   "panels": [
     {
       "datasource": {
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "fieldConfig": {
         "defaults": {
@@ -52,7 +52,7 @@
       "id": 2,
       "options": {
         "afterRender": "",
-        "content": "{{#if (eq isAllowed 0)}}\n  <div style=\"color: #e02424; background: rgba(224, 36, 36, 0.05); border-left: 4px solid #e02424; padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 8px; border-radius: 2px; line-height: 1.4;\">\n    <span>\u26a0\ufe0f</span>\n    <span>\n      <strong>Access Denied:</strong> Ask admin to add to team: \n      <span style=\"border: 1px solid rgba(224, 36, 36, 0.3); padding: 1px 5px; border-radius: 3px; font-family: monospace; color: #ff7875;\">heart360tk_facility_view_patients_{{FacilityTeamName}}</span>\n    </span>\n  </div>\n{{/if}}",
+        "content": "{{#if (eq isAllowed 0)}}\n  <div style=\"color: #e02424; background: rgba(224, 36, 36, 0.05); border-left: 4px solid #e02424; padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 8px; border-radius: 2px; line-height: 1.4;\">\n    <span>⚠️</span>\n    <span>\n      <strong>Access Denied:</strong> Ask admin to add to team: \n      <span style=\"border: 1px solid rgba(224, 36, 36, 0.3); padding: 1px 5px; border-radius: 3px; font-family: monospace; color: #ff7875;\">heart360tk_facility_view_patients_{{FacilityTeamName}}</span>\n    </span>\n  </div>\n{{/if}}",
         "contentPartials": [],
         "defaultContent": "The query didn't return any results.",
         "editor": {
@@ -127,7 +127,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "fieldConfig": {
         "defaults": {
@@ -1403,7 +1403,7 @@
           "dataset": "metrics_db",
           "datasource": {
             "type": "grafana-postgresql-datasource",
-            "uid": "postgres-hypertension"
+            "uid": "postgres-hypertension-cached"
           },
           "editorMode": "code",
           "format": "table",

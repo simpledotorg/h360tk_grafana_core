@@ -41,6 +41,21 @@ CREATE TABLE IF NOT EXISTS patients (
 
 CREATE INDEX IF NOT EXISTS idx_patients_org_unit_id ON patients(org_unit_id);
 
+CREATE TABLE IF NOT EXISTS patient_diagnoses (
+    id BIGSERIAL PRIMARY KEY,
+    patient_id BIGINT NOT NULL REFERENCES patients(patient_id) ON DELETE CASCADE,
+    diagnosis_code VARCHAR(10) NOT NULL,
+    UNIQUE(patient_id, diagnosis_code),
+
+    CHECK (diagnosis_code IN ('I10', 'E11'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_patient_diagnoses_patient_id
+ON patient_diagnoses(patient_id);
+
+CREATE INDEX IF NOT EXISTS idx_patient_diagnoses_code
+ON patient_diagnoses(diagnosis_code);
+
 -- 2. Drop old BP Encounters Table (if exists)
 DROP TABLE IF EXISTS bp_encounters CASCADE;
 
@@ -335,6 +350,11 @@ PATIENTS_BY_MONTH AS (
         count(*) AS NB_NEW_PATIENTS
     FROM patients p
     WHERE LOWER(patient_status) <> 'dead'
+      AND EXISTS (
+          SELECT 1 FROM patient_diagnoses pd
+          WHERE pd.patient_id = p.patient_id
+            AND pd.diagnosis_code = 'I10'
+      )
     GROUP BY DATE_TRUNC('month', REGISTRATION_DATE), p.org_unit_id
 )
 SELECT
@@ -369,6 +389,11 @@ ALIVE_PATIENTS AS (
         p.patient_id
     FROM patients p
     WHERE LOWER(patient_status) <> 'dead'
+      AND EXISTS (
+          SELECT 1 FROM patient_diagnoses pd
+          WHERE pd.patient_id = p.patient_id
+            AND pd.diagnosis_code = 'I10'
+      )
 ),
 ALL_ENCOUNTERS AS (
     SELECT e.patient_id,
@@ -412,6 +437,11 @@ ALIVE_PATIENTS AS (
         p.patient_id AS patient_id
     FROM patients p
     WHERE LOWER(patient_status) <> 'dead'
+      AND EXISTS (
+          SELECT 1 FROM patient_diagnoses pd
+          WHERE pd.patient_id = p.patient_id
+            AND pd.diagnosis_code = 'I10'
+      )
 ),
 BP_ENCOUNTERS AS (
     SELECT
@@ -603,6 +633,11 @@ WITH patients_quarter AS (
         date_trunc('quarter', registration_date) + interval '6 month' AS cohort_validation_month,
         registration_date
     FROM patients p
+    WHERE EXISTS (
+        SELECT 1 FROM patient_diagnoses pd
+        WHERE pd.patient_id = p.patient_id
+          AND pd.diagnosis_code = 'I10'
+    )
 ),
 LAST_BP_IN_INTERVAL AS (
     SELECT
@@ -785,6 +820,11 @@ WITH REF_MONTHS AS (
 ALL_PATIENTS AS (
     SELECT p.patient_id, p.org_unit_id, p.registration_date, p.death_date
     FROM patients p
+    WHERE EXISTS (
+        SELECT 1 FROM patient_diagnoses pd
+        WHERE pd.patient_id = p.patient_id
+          AND pd.diagnosis_code = 'E11'
+    )
 ),
 -- DM-relevant encounters: encounters with a BS reading OR no BP reading (visit-only / missed follow-up)
 DM_RELEVANT_ENCOUNTERS AS (
@@ -871,6 +911,11 @@ WITH KNOWN_MONTHS AS (
 ALL_PATIENTS AS (
   SELECT p.patient_id, p.org_unit_id, p.registration_date, p.death_date
   FROM patients p
+  WHERE EXISTS (
+      SELECT 1 FROM patient_diagnoses pd
+      WHERE pd.patient_id = p.patient_id
+        AND pd.diagnosis_code = 'E11'
+  )
 ),
 -- DM-relevant encounters: encounters with a BS reading OR no BP reading
 DM_RELEVANT_ENCOUNTERS AS (
@@ -972,8 +1017,13 @@ WITH KNOWN_MONTHS AS (
   ) AS t(series_date)
 ),
 ALL_PATIENTS AS (
-  SELECT patient_id, org_unit_id, registration_date, death_date
-  FROM patients
+  SELECT p.patient_id, p.org_unit_id, p.registration_date, p.death_date
+  FROM patients p
+  WHERE EXISTS (
+      SELECT 1 FROM patient_diagnoses pd
+      WHERE pd.patient_id = p.patient_id
+        AND pd.diagnosis_code = 'E11'
+  )
 ),
 DM_RELEVANT_ENCOUNTERS AS (
   SELECT
@@ -1057,6 +1107,11 @@ ALIVE_PATIENTS AS (
       p.patient_id
   FROM patients p
   WHERE LOWER(p.patient_status) <> 'dead'
+    AND EXISTS (
+        SELECT 1 FROM patient_diagnoses pd
+        WHERE pd.patient_id = p.patient_id
+          AND pd.diagnosis_code = 'E11'
+    )
 ),
 -- DM-relevant encounters: encounters with a BS reading OR no BP reading
 DM_RELEVANT_ENCOUNTERS AS (
@@ -1104,6 +1159,11 @@ WITH REF_MONTHS AS (
 ALL_PATIENTS AS (
     SELECT p.patient_id, p.org_unit_id, p.registration_date, p.death_date
     FROM patients p
+    WHERE EXISTS (
+        SELECT 1 FROM patient_diagnoses pd
+        WHERE pd.patient_id = p.patient_id
+          AND pd.diagnosis_code = 'E11'
+    )
 ),
 -- DM-relevant encounters: encounters with a BS reading OR no BP reading
 DM_RELEVANT_ENCOUNTERS AS (
@@ -1233,11 +1293,17 @@ CREATE INDEX IF NOT EXISTS idx_cohort_org_quarter ON heart360tk_reporting.HEART3
 CREATE UNIQUE INDEX IF NOT EXISTS idx_cohort_patient_id ON heart360tk_reporting.HEART360_COHORT_PATIENT_DETAILS (patient_id);
 
 CREATE TABLE IF NOT EXISTS heart360tk_reporting.matview_refresh_log (
-    matview_name text PRIMARY KEY,
-    last_refreshed_at timestamp,
+    id serial PRIMARY KEY,
+    matview_name text NOT NULL,
+    last_refreshed_at timestamp NOT NULL DEFAULT now(),
     refresh_duration interval,
-    status text
+    status text NOT NULL,
+    refresh_batch_id bigint
 );
+
+CREATE INDEX IF NOT EXISTS idx_refresh_log_matview_name ON heart360tk_reporting.matview_refresh_log (matview_name);
+CREATE INDEX IF NOT EXISTS idx_refresh_log_last_refreshed ON heart360tk_reporting.matview_refresh_log (last_refreshed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_refresh_log_batch ON heart360tk_reporting.matview_refresh_log (refresh_batch_id);
 
 -- =======================================================================================
 -- Function to refresh all materialized views and log the refresh status and duration:
@@ -1251,7 +1317,11 @@ DECLARE
     mv RECORD;
     start_time timestamp;
     end_time timestamp;
+    v_batch_id bigint;
 BEGIN
+    -- Generate a unique batch id to group all matview refreshes from this cycle
+    v_batch_id := EXTRACT(EPOCH FROM clock_timestamp())::bigint;
+
     FOR mv IN
         SELECT matviewname FROM pg_matviews WHERE schemaname = 'heart360tk_reporting'
     LOOP
@@ -1261,31 +1331,182 @@ BEGIN
             EXECUTE format('REFRESH MATERIALIZED VIEW CONCURRENTLY heart360tk_reporting.%I', mv.matviewname);
             end_time := clock_timestamp();
 
-            INSERT INTO heart360tk_reporting.matview_refresh_log (matview_name, last_refreshed_at, refresh_duration, status)
-            VALUES (mv.matviewname, end_time, end_time - start_time, 'success')
-            ON CONFLICT (matview_name)
-            DO UPDATE SET
-                last_refreshed_at = EXCLUDED.last_refreshed_at,
-                refresh_duration = EXCLUDED.refresh_duration,
-                status = EXCLUDED.status;
+            INSERT INTO heart360tk_reporting.matview_refresh_log
+                (matview_name, last_refreshed_at, refresh_duration, status, refresh_batch_id)
+            VALUES
+                (mv.matviewname, end_time, end_time - start_time, 'success', v_batch_id);
 
         EXCEPTION WHEN OTHERS THEN
-            INSERT INTO heart360tk_reporting.matview_refresh_log (matview_name, last_refreshed_at, refresh_duration, status)
-            VALUES (mv.matviewname, now(), NULL, 'failed: ' || SQLERRM)
-            ON CONFLICT (matview_name)
-            DO UPDATE SET
-                last_refreshed_at = EXCLUDED.last_refreshed_at,
-                refresh_duration = EXCLUDED.refresh_duration,
-                status = EXCLUDED.status;
+            INSERT INTO heart360tk_reporting.matview_refresh_log
+                (matview_name, last_refreshed_at, refresh_duration, status, refresh_batch_id)
+            VALUES
+                (mv.matviewname, now(), NULL, 'failed: ' || SQLERRM, v_batch_id);
         END;
     END LOOP;
 END;
 $$;
 
+-- =======================================================================================
+-- Single-row status table for the admin dashboard: tracks the most recent refresh attempt
+-- and serves as the queue gate for manual triggers.
+-- =======================================================================================
+CREATE TABLE IF NOT EXISTS heart360tk_reporting.matview_refresh_status (
+    id smallint PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    status text NOT NULL DEFAULT 'idle',  -- idle | queued | in_progress | success | failed
+    requested_at timestamptz,
+    started_at timestamptz,
+    finished_at timestamptz,
+    last_error text,
+    requested_by text,
+    job_name text
+);
+
+INSERT INTO heart360tk_reporting.matview_refresh_status (id) VALUES (1)
+ON CONFLICT (id) DO NOTHING;
+
+-- =======================================================================================
+-- Status-aware refresh: acquires an advisory lock so manual and scheduled paths cannot
+-- run concurrently, updates the status row, calls refresh_all_matviews(), and records
+-- success / failure. Used by both the hourly pg_cron job and the manual one-shot.
+-- =======================================================================================
+CREATE OR REPLACE FUNCTION heart360tk_reporting.run_refresh_with_status(p_source text DEFAULT 'manual')
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_lock_key bigint := hashtext('heart360tk_reporting.matview_refresh');
+    v_lock_acquired boolean;
+    v_start_time timestamptz;
+BEGIN
+    SELECT pg_try_advisory_lock(v_lock_key) INTO v_lock_acquired;
+    IF NOT v_lock_acquired THEN
+        RAISE NOTICE 'Matview refresh already running (source=%); skipping.', p_source;
+        RETURN;
+    END IF;
+
+    v_start_time := clock_timestamp();
+
+    BEGIN
+        PERFORM heart360tk_reporting.refresh_all_matviews();
+        UPDATE heart360tk_reporting.matview_refresh_status
+        SET status = 'success',
+            started_at = v_start_time,
+            finished_at = clock_timestamp(),
+            last_error = NULL
+        WHERE id = 1;
+    EXCEPTION WHEN OTHERS THEN
+        UPDATE heart360tk_reporting.matview_refresh_status
+        SET status = 'failed',
+            started_at = v_start_time,
+            finished_at = clock_timestamp(),
+            last_error = SQLERRM
+        WHERE id = 1;
+    END;
+
+    PERFORM pg_advisory_unlock(v_lock_key);
+END;
+$$;
+
+-- =======================================================================================
+-- Manual trigger: atomically claims the queue slot, schedules an ephemeral pg_cron job
+-- that will fire at the next minute boundary, do the work via run_refresh_with_status,
+-- and unschedule itself. Returns 'queued' on success or 'already_running' if another
+-- refresh is queued or in progress.
+-- =======================================================================================
+CREATE OR REPLACE FUNCTION heart360tk_reporting.start_async_refresh(p_user text DEFAULT NULL)
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_job_name text;
+BEGIN
+    UPDATE heart360tk_reporting.matview_refresh_status
+    SET status = 'queued',
+        requested_at = now(),
+        requested_by = p_user,
+        last_error = NULL,
+        finished_at = NULL
+    WHERE id = 1
+      AND status NOT IN ('queued', 'in_progress');
+
+    IF NOT FOUND THEN
+        RETURN 'already_running';
+    END IF;
+
+    v_job_name := 'mv_refresh_oneshot_' || extract(epoch from clock_timestamp())::bigint;
+
+    UPDATE heart360tk_reporting.matview_refresh_status
+    SET job_name = v_job_name
+    WHERE id = 1;
+
+    PERFORM cron.schedule(
+        v_job_name,
+        '* * * * *',
+        format($cmd$
+            DO $body$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM heart360tk_reporting.matview_refresh_status
+                    WHERE id = 1 AND status = 'queued'
+                ) THEN
+                    UPDATE heart360tk_reporting.matview_refresh_status
+                    SET status = 'in_progress', started_at = clock_timestamp()
+                    WHERE id = 1;
+                    COMMIT;
+                    PERFORM heart360tk_reporting.run_refresh_with_status('manual');
+                END IF;
+                IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = %L) THEN
+                    PERFORM cron.unschedule(%L);
+                END IF;
+            END
+            $body$;
+        $cmd$, v_job_name, v_job_name)
+    );
+
+    RETURN 'queued';
+END;
+$$;
+
+GRANT SELECT ON heart360tk_reporting.matview_refresh_status TO heart360tk;
+GRANT EXECUTE ON FUNCTION heart360tk_reporting.start_async_refresh(text) TO heart360tk;
+GRANT EXECUTE ON FUNCTION heart360tk_reporting.run_refresh_with_status(text) TO heart360tk;
+
+-- Cached Grafana datasource: read-only access with reporting matviews first in
+-- the role search_path (heart360tk_reporting, heart360tk_schema, public).
+--
+-- heart360tk_reporting: full SELECT so every matview is reachable.
+GRANT USAGE ON SCHEMA heart360tk_reporting TO heart360tk_cached;
+GRANT SELECT ON ALL TABLES IN SCHEMA heart360tk_reporting TO heart360tk_cached;
+--
+-- heart360tk_schema: SELECT only on the helper tables/views that dashboard
+-- panel queries (and the SQL-stable functions they call) actually touch.
+-- Raw encounter/BP/BS tables are NOT exposed — panels read from matviews.
+GRANT USAGE ON SCHEMA heart360tk_schema TO heart360tk_cached;
+GRANT SELECT ON heart360tk_schema.org_units        TO heart360tk_cached;
+GRANT SELECT ON heart360tk_schema.hierarchy_config TO heart360tk_cached;
+GRANT SELECT ON heart360tk_schema.org_unit_lineage TO heart360tk_cached;
+GRANT SELECT ON heart360tk_schema.patients         TO heart360tk_cached;
+GRANT SELECT ON heart360tk_schema.patient_diagnoses TO heart360tk_cached;
+GRANT SELECT ON heart360tk_schema.patient_diagnoses TO heart360tk;
+--
+GRANT EXECUTE ON FUNCTION heart360tk_schema.get_descendant_ids(integer)        TO heart360tk_cached;
+GRANT EXECUTE ON FUNCTION heart360tk_schema.build_drill_url(integer)           TO heart360tk_cached;
+GRANT EXECUTE ON FUNCTION heart360tk_schema.get_child_level_name(integer)      TO heart360tk_cached;
+GRANT EXECUTE ON FUNCTION heart360tk_schema.get_ancestor_name(integer, integer) TO heart360tk_cached;
+GRANT EXECUTE ON FUNCTION heart360tk_schema.get_breadcrumb_path(integer)       TO heart360tk_cached;
+
+-- Grafana datasource user needs to call start_async_refresh as part of an admin-check
+-- query that joins against the grafana user/team tables (which only the grafana role
+-- can read). USAGE on the schema + EXECUTE on the function is enough; no data tables
+-- are exposed.
+GRANT USAGE ON SCHEMA heart360tk_reporting TO grafana;
+GRANT EXECUTE ON FUNCTION heart360tk_reporting.start_async_refresh(text) TO grafana;
+
 -- ============================================================================
 -- pg_cron: Schedule the refresh of all materialized views every hour
 -- ============================================================================
-SELECT cron.schedule('refresh_matviews_every_hour', '0 * * * *', 'SELECT heart360tk_reporting.refresh_all_matviews();');
+SELECT cron.schedule('refresh_matviews_every_hour', '0 * * * *', 'SELECT heart360tk_reporting.run_refresh_with_status(''cron'');');
 
 -- ============================================================================
 -- VIEW 14: HEART360_DM_PATIENTS_CATAGORY
@@ -1513,3 +1734,6 @@ BEGIN
     RAISE NOTICE 'All data cleared and sequences reset.';
 END;
 $$;
+
+GRANT SELECT ON heart360tk_schema.HEART360_DM_PATIENTS_CATAGORY TO heart360tk_cached;
+GRANT SELECT ON heart360tk_schema.HEART360_DM_PATIENTS_CATAGORY TO heart360tk;

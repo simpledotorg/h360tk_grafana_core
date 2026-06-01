@@ -62,7 +62,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "fieldConfig": {
         "defaults": {
@@ -147,7 +147,7 @@
           "dataset": "metrics_db",
           "datasource": {
             "type": "grafana-postgresql-datasource",
-            "uid": "postgres-hypertension"
+            "uid": "postgres-hypertension-cached"
           },
           "editorMode": "code",
           "format": "table",
@@ -192,7 +192,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "fieldConfig": {
         "defaults": {
@@ -308,7 +308,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "fieldConfig": {
         "defaults": {
@@ -350,7 +350,7 @@
             }
           },
           "decimals": 0,
-          "displayName": "% Patients with BP ≥140/90 at latest visit in the past 3 months",
+          "displayName": "% Patients with BP \u2265140/90 at latest visit in the past 3 months",
           "mappings": [],
           "max": 100,
           "min": 0,
@@ -444,7 +444,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "fieldConfig": {
         "defaults": {
@@ -576,7 +576,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "description": "Patients with hypertension with at least 1 visit in the past 12 months",
       "fieldConfig": {
@@ -729,7 +729,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "WITH selected_org AS (\n  SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1)))\n),\nknown_months AS (\n  SELECT DATE_TRUNC('month', series_date)::date AS ref_month\n  FROM generate_series(\n    DATE_TRUNC('month', (SELECT MIN(registration_date) FROM patients)),\n    DATE_TRUNC('month', CURRENT_DATE),\n    '1 month'::interval\n  ) AS t(series_date)\n),\nmonthly_registrations AS (\n  SELECT\n    DATE_TRUNC('month', p.registration_date)::date AS ref_month,\n    COUNT(*) AS nb_new_patients\n  FROM patients p\n  WHERE LOWER(p.patient_status) <> 'dead'\n    AND p.org_unit_id IN (SELECT id FROM selected_org)\n  GROUP BY DATE_TRUNC('month', p.registration_date)\n),\nhtn_under_care AS (\n  SELECT\n    uc.ref_month,\n    SUM(uc.nb_patients_under_care) AS nb_patients_under_care\n  FROM HEART360_PATIENTS_UNDER_CARE uc\n  WHERE uc.org_unit_id IN (SELECT id FROM selected_org)\n  GROUP BY uc.ref_month\n)\nSELECT\n  km.ref_month,\n  SUM(COALESCE(mr.nb_new_patients, 0)) OVER (ORDER BY km.ref_month) AS cumulative_number_of_patients,\n  c.nb_patients_under_care,\n  COALESCE(mr.nb_new_patients, 0) AS nb_new_patients\nFROM known_months km\nLEFT JOIN monthly_registrations mr ON mr.ref_month = km.ref_month\nLEFT JOIN htn_under_care c ON c.ref_month = km.ref_month\nORDER BY km.ref_month;\n",
+          "rawSql": "WITH selected_org AS (\n  SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1)))\n),\nknown_months AS (\n  SELECT DATE_TRUNC('month', series_date)::date AS ref_month\n  FROM generate_series(\n    DATE_TRUNC('month', (SELECT MIN(registration_date) FROM patients)),\n    DATE_TRUNC('month', CURRENT_DATE),\n    '1 month'::interval\n  ) AS t(series_date)\n),\nmonthly_registrations AS (\n  SELECT\n    DATE_TRUNC('month', p.registration_date)::date AS ref_month,\n    COUNT(*) AS nb_new_patients\n  FROM patients p\n  WHERE LOWER(p.patient_status) <> 'dead'\n    AND EXISTS (SELECT 1 FROM patient_diagnoses pd WHERE pd.patient_id = p.patient_id AND pd.diagnosis_code = 'I10')\n    AND p.org_unit_id IN (SELECT id FROM selected_org)\n  GROUP BY DATE_TRUNC('month', p.registration_date)\n),\nhtn_under_care AS (\n  SELECT\n    uc.ref_month,\n    SUM(uc.nb_patients_under_care) AS nb_patients_under_care\n  FROM HEART360_PATIENTS_UNDER_CARE uc\n  WHERE uc.org_unit_id IN (SELECT id FROM selected_org)\n  GROUP BY uc.ref_month\n)\nSELECT\n  km.ref_month,\n  SUM(COALESCE(mr.nb_new_patients, 0)) OVER (ORDER BY km.ref_month) AS cumulative_number_of_patients,\n  c.nb_patients_under_care,\n  COALESCE(mr.nb_new_patients, 0) AS nb_new_patients\nFROM known_months km\nLEFT JOIN monthly_registrations mr ON mr.ref_month = km.ref_month\nLEFT JOIN htn_under_care c ON c.ref_month = km.ref_month\nORDER BY km.ref_month;\n",
           "refId": "A",
           "sql": {
             "columns": [
@@ -756,7 +756,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "description": "Patients with hypertension with no visit in the past 12 months",
       "fieldConfig": {
@@ -860,7 +860,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "select \n  heart360_patients_under_care.ref_month,\n  (100.0 * sum(COALESCE(heart360_patients_under_care.nb_patients_lost_to_follow_up, 0))) / \n  NULLIF(sum(heart360_patients_under_care.cumulative_number_of_patients), 0) as lost_to_follow_up_pct\nfrom heart360_patients_under_care\nwhere heart360_patients_under_care.org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\ngroup by 1",
+          "rawSql": "select \n  HEART360_PATIENTS_CATEGORY.ref_month,\n  (100.0 * sum(COALESCE(HEART360_PATIENTS_CATEGORY.nb_patients_lost_to_follow_up, 0))) / \n  NULLIF(sum(HEART360_PATIENTS_CATEGORY.TOTAL_NUMBER_OF_PATIENTS), 0) as lost_to_follow_up_pct\nfrom HEART360_PATIENTS_CATEGORY\nwhere HEART360_PATIENTS_CATEGORY.org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\ngroup by 1",
           "refId": "A",
           "sql": {
             "columns": [
@@ -926,7 +926,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension"
+        "uid": "postgres-hypertension-cached"
       },
       "description": "$user",
       "fieldConfig": {
@@ -1803,7 +1803,7 @@
           "dataset": "metrics_db",
           "datasource": {
             "type": "grafana-postgresql-datasource",
-            "uid": "postgres-hypertension"
+            "uid": "postgres-hypertension-cached"
           },
           "editorMode": "code",
           "format": "table",
