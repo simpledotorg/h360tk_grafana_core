@@ -313,6 +313,35 @@ $$;
 
 
 -- ============================================================================
+-- get_access_groups(org_unit_id, access_type)
+-- Returns the Grafana group/team names corresponding to a given hierarchy node
+-- and all of its descendants recursively.
+-- ============================================================================
+CREATE OR REPLACE FUNCTION get_access_groups(p_org_unit_id INTEGER, p_access_type VARCHAR)
+RETURNS TABLE(group_name VARCHAR)
+LANGUAGE sql STABLE
+AS $$
+    WITH RECURSIVE descendants AS (
+        SELECT ou.id, ou.name, ou.level
+        FROM heart360tk_schema.org_units ou
+        WHERE ou.id = p_org_unit_id
+        
+        UNION ALL
+        
+        SELECT o.id, o.name, o.level
+        FROM heart360tk_schema.org_units o
+        JOIN descendants d ON o.parent_id = d.id
+    )
+    SELECT CAST(
+        'heart360tk_' || COALESCE(hc.var_name, 'level_' || d.level) || '_view_' || p_access_type || '_' || replace(lower(trim(d.name)), ' ', '_')
+        AS VARCHAR
+    ) AS group_name
+    FROM descendants d
+    LEFT JOIN heart360tk_schema.hierarchy_config hc ON d.level = hc.level;
+$$;
+
+
+-- ============================================================================
 -- DROP OLD VIEWS
 -- ============================================================================
 DROP VIEW IF EXISTS HEART360_PATIENTS_REGISTERED CASCADE;
@@ -1495,6 +1524,7 @@ GRANT EXECUTE ON FUNCTION heart360tk_schema.build_drill_url(integer)           T
 GRANT EXECUTE ON FUNCTION heart360tk_schema.get_child_level_name(integer)      TO heart360tk_cached;
 GRANT EXECUTE ON FUNCTION heart360tk_schema.get_ancestor_name(integer, integer) TO heart360tk_cached;
 GRANT EXECUTE ON FUNCTION heart360tk_schema.get_breadcrumb_path(integer)       TO heart360tk_cached;
+GRANT EXECUTE ON FUNCTION heart360tk_schema.get_access_groups(integer, varchar) TO heart360tk_cached;
 
 -- Grafana datasource user needs to call start_async_refresh as part of an admin-check
 -- query that joins against the grafana user/team tables (which only the grafana role
@@ -1502,6 +1532,13 @@ GRANT EXECUTE ON FUNCTION heart360tk_schema.get_breadcrumb_path(integer)       T
 -- are exposed.
 GRANT USAGE ON SCHEMA heart360tk_reporting TO grafana;
 GRANT EXECUTE ON FUNCTION heart360tk_reporting.start_async_refresh(text) TO grafana;
+
+-- Grants for grafana to perform hierarchy checks directly
+GRANT USAGE ON SCHEMA heart360tk_schema TO grafana;
+GRANT SELECT ON heart360tk_schema.org_units TO grafana;
+GRANT SELECT ON heart360tk_schema.hierarchy_config TO grafana;
+GRANT SELECT ON heart360tk_schema.org_unit_lineage TO grafana;
+GRANT EXECUTE ON FUNCTION heart360tk_schema.get_access_groups(integer, varchar) TO grafana;
 
 -- ============================================================================
 -- pg_cron: Schedule the refresh of all materialized views every hour
