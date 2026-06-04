@@ -1219,8 +1219,7 @@ SELECT
     rm.ref_month,
     p.org_unit_id,
     COUNT(DISTINCT p.patient_id) FILTER (
-        WHERE DATE_TRUNC('month', p.registration_date) + interval '3 month' <= rm.ref_month
-            AND EXISTS (
+        WHERE EXISTS (
                 SELECT 1 FROM DM_RELEVANT_ENCOUNTERS dre
                 WHERE dre.patient_id = p.patient_id
             )
@@ -1232,8 +1231,7 @@ SELECT
             )
     ) AS dm_patients_under_care,
     COUNT(DISTINCT p.patient_id) FILTER (
-        WHERE DATE_TRUNC('month', p.registration_date) + interval '3 month' <= rm.ref_month
-            AND EXISTS (
+        WHERE EXISTS (
                 SELECT 1 FROM DM_RELEVANT_ENCOUNTERS dre
                 WHERE dre.patient_id = p.patient_id
             )
@@ -1246,10 +1244,10 @@ SELECT
             AND lbp.encounter_date IS NOT NULL
             AND DATE_TRUNC('month', lbp.encounter_date) + interval '3 month' > rm.ref_month
             AND lbp.systolic_bp < 140 AND lbp.diastolic_bp < 90
+            AND NOT (lbp.systolic_bp < 130 AND lbp.diastolic_bp < 80)
     ) AS bp_controlled_140_90,
     COUNT(DISTINCT p.patient_id) FILTER (
-        WHERE DATE_TRUNC('month', p.registration_date) + interval '3 month' <= rm.ref_month
-            AND EXISTS (
+        WHERE EXISTS (
                 SELECT 1 FROM DM_RELEVANT_ENCOUNTERS dre
                 WHERE dre.patient_id = p.patient_id
             )
