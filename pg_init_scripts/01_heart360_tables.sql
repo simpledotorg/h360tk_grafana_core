@@ -1192,6 +1192,11 @@ ALL_PATIENTS AS (
         WHERE pd.patient_id = p.patient_id
           AND pd.diagnosis_code = 'E11'
     )
+    AND EXISTS (
+        SELECT 1 FROM patient_diagnoses pd
+        WHERE pd.patient_id = p.patient_id
+          AND pd.diagnosis_code = 'I10'
+    )
 ),
 -- DM-relevant encounters: encounters with a BS reading OR no BP reading
 DM_RELEVANT_ENCOUNTERS AS (
