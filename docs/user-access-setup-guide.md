@@ -29,7 +29,7 @@ HEARTS360
     └── Overdue Patients (Secure)
 ```
 
-| User type | Sees Global dashboard? | Sees Secure Dashboard? |
+| User type | Sees Hypertension dashboard? | Sees Secure Dashboard? |
 |---|---|---|
 | Not logged in | ✗ | ✗ |
 | Logged in, no team | ✔ | ⚠ Access Denied |
@@ -113,17 +113,17 @@ Same as Step 2, but use `heart360tk_facility_view_patients_ALL`.
    ┌─────────┴────────┐
    │ YES              │ NO
    ▼                  ▼
-┌───────────────┐   ┌──────────────────────┐
-│ Facility      │   │ Global Hypertension  │
-│ Secure        │   │ (admin / no-team)    │
-│ (their        │   │                      │
-│  facility)    │   │                      │
-└───────────────┘   └──────────────────────┘
+┌───────────────┐   ┌────────────────────────┐
+│ Facility      │   │ Hypertension Dashboard │
+│ Secure        │   │ (admin / no-team)      │
+│ (their        │   │                        │
+│  facility)    │   │                        │
+└───────────────┘   └────────────────────────┘
 ```
 
-- **Admin** → Global Hypertension dashboard
+- **Admin** → Hypertension Dashboard
 - **Facility user** → Their facility's secure dashboard, facility pre-selected
-- **No team** → Global Hypertension dashboard (read-only fallback)
+- **No team** → Hypertension Dashboard (read-only fallback)
 
 ---
 

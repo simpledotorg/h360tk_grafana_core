@@ -8,7 +8,7 @@ docker compose up -d
 
 Then just go to this url:
 
-http://localhost:3000/d/heart360demo/heart-360-global-dashboard
+http://localhost:3000/d/heart360_drilldown/hearts360-hypertension-dashboard
 
 to upload file:
 
@@ -87,7 +87,7 @@ Wait 30-60 seconds for all services to initialize.
 1. **Check Grafana Dashboard:**
    - Open browser: `http://localhost:3000`
    - Login with: `admin` / `admin`
-   - You should see the "HEARTS360 Global Dashboard"
+   - You should see the "HEARTS360 Hypertension Dashboard"
 
 2. **Check File Upload:**
    - Open browser: `http://localhost:8080`
