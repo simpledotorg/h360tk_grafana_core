@@ -52,7 +52,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 2
+        "y": 8
       },
       "id": 6,
       "panels": [],
@@ -150,7 +150,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 3
+        "y": 9
       },
       "id": 2,
       "options": {
@@ -173,7 +173,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT\n  ref_month AS \"time\",\n  SUM(100.0 * diabetes_controlled) /\n  (0.00000001 + SUM(diabetes_patients_under_care)) AS blood_sugar_control_rate\nFROM HEART360_BLOOD_SUGAR_CONTROLLED\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\nGROUP BY ref_month\nORDER BY ref_month;",
+          "rawSql": "SELECT * FROM (\nSELECT\n  ref_month AS \"time\",\n  SUM(100.0 * diabetes_controlled) /\n  (0.00000001 + SUM(diabetes_patients_under_care)) AS blood_sugar_control_rate\nFROM HEART360_BLOOD_SUGAR_CONTROLLED\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\nGROUP BY ref_month\nORDER BY ref_month\n) AS master_access_control WHERE '${isAllowed}' = '1'",
           "refId": "A",
           "sql": {
             "columns": [
@@ -265,7 +265,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "% Patients with RBS 140\u2013199, FBS 126\u2013199 mg/dL, or HbA1c 7\u20138.9%"
+              "options": "% Patients with RBS 140–199, FBS 126–199 mg/dL, or HbA1c 7–8.9%"
             },
             "properties": [
               {
@@ -280,7 +280,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "% Patients with RBS \u2265200, FBS \u2265200 mg/dL, or HbA1c \u22659%"
+              "options": "% Patients with RBS ≥200, FBS ≥200 mg/dL, or HbA1c ≥9%"
             },
             "properties": [
               {
@@ -295,7 +295,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "% Patients with RBS 140\u2013199, FBS 126\u2013199 mg/dL, or HbA1c 7"
+              "options": "% Patients with RBS 140–199, FBS 126–199 mg/dL, or HbA1c 7"
             },
             "properties": [
               {
@@ -355,7 +355,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 3
+        "y": 9
       },
       "id": 3,
       "options": {
@@ -378,7 +378,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "WITH months AS (\n  SELECT generate_series(\n    date_trunc('month', $__timeFrom()::timestamp),\n    date_trunc('month', $__timeTo()::timestamp),\n    '1 month'::interval\n  )::date AS ref_month\n)\nSELECT\n  months.ref_month AS \"time\",\n\n  COALESCE(SUM(100.0 * s.uncontrolled_moderate) / NULLIF(SUM(s.diabetes_patients_under_care), 0), 0)\n  AS \"% Patients with RBS 140\u2013199, FBS 126\u2013199 mg/dL, or HbA1c 7\u20138.9%\",\n\n  COALESCE(SUM(100.0 * s.uncontrolled_high) / NULLIF(SUM(s.diabetes_patients_under_care), 0), 0)\n  AS \"% Patients with RBS \u2265200, FBS \u2265200 mg/dL, or HbA1c \u22659%\",\n\n  COALESCE(SUM(100.0 * (s.uncontrolled_moderate + s.uncontrolled_high)) / NULLIF(SUM(s.diabetes_patients_under_care), 0), 0)\n  AS \"% Total Uncontrolled\"\n\nFROM months\nLEFT JOIN HEART360_BLOOD_SUGAR_SEVERITY s\n  ON s.ref_month = months.ref_month\n  AND s.org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\nGROUP BY months.ref_month\nORDER BY months.ref_month;",
+          "rawSql": "SELECT * FROM (\nWITH months AS (\n  SELECT generate_series(\n    date_trunc('month', $__timeFrom()::timestamp),\n    date_trunc('month', $__timeTo()::timestamp),\n    '1 month'::interval\n  )::date AS ref_month\n)\nSELECT\n  months.ref_month AS \"time\",\n\n  COALESCE(SUM(100.0 * s.uncontrolled_moderate) / NULLIF(SUM(s.diabetes_patients_under_care), 0), 0)\n  AS \"% Patients with RBS 140–199, FBS 126–199 mg/dL, or HbA1c 7–8.9%\",\n\n  COALESCE(SUM(100.0 * s.uncontrolled_high) / NULLIF(SUM(s.diabetes_patients_under_care), 0), 0)\n  AS \"% Patients with RBS ≥200, FBS ≥200 mg/dL, or HbA1c ≥9%\",\n\n  COALESCE(SUM(100.0 * (s.uncontrolled_moderate + s.uncontrolled_high)) / NULLIF(SUM(s.diabetes_patients_under_care), 0), 0)\n  AS \"% Total Uncontrolled\"\n\nFROM months\nLEFT JOIN HEART360_BLOOD_SUGAR_SEVERITY s\n  ON s.ref_month = months.ref_month\n  AND s.org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\nGROUP BY months.ref_month\nORDER BY months.ref_month\n) AS master_access_control WHERE '${isAllowed}' = '1'",
           "refId": "A",
           "sql": {
             "columns": [
@@ -474,7 +474,7 @@
         "h": 8,
         "w": 7,
         "x": 16,
-        "y": 3
+        "y": 9
       },
       "id": 4,
       "options": {
@@ -497,7 +497,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT\n    ref_month AS \"time\",\n    SUM(100.0 * missed_visit) /\n    (0.00000001 + SUM(diabetes_patients_under_care)) AS missed_visit_rate\nFROM HEART360_BLOOD_SUGAR_MISSED_VISITS\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\nGROUP BY ref_month\nORDER BY ref_month;",
+          "rawSql": "SELECT * FROM (\nSELECT\n    ref_month AS \"time\",\n    SUM(100.0 * missed_visit) /\n    (0.00000001 + SUM(diabetes_patients_under_care)) AS missed_visit_rate\nFROM HEART360_BLOOD_SUGAR_MISSED_VISITS\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\nGROUP BY ref_month\nORDER BY ref_month\n) AS master_access_control WHERE '${isAllowed}' = '1'",
           "refId": "A",
           "sql": {
             "columns": [
@@ -560,7 +560,7 @@
         "h": 3,
         "w": 4,
         "x": 0,
-        "y": 11
+        "y": 17
       },
       "id": 7,
       "options": {
@@ -587,7 +587,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  (SUM(diabetes_controlled) * 100.0 / NULLIF(SUM(diabetes_patients_under_care), 0)) AS value\nFROM HEART360_BLOOD_SUGAR_CONTROLLED\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_BLOOD_SUGAR_CONTROLLED\n    WHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  );",
+          "rawSql": "SELECT * FROM (\nSELECT\n  (SUM(diabetes_controlled) * 100.0 / NULLIF(SUM(diabetes_patients_under_care), 0)) AS value\nFROM HEART360_BLOOD_SUGAR_CONTROLLED\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_BLOOD_SUGAR_CONTROLLED\n    WHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  )\n) AS master_access_control WHERE '${isAllowed}' = '1'",
           "refId": "A",
           "sql": {
             "columns": [
@@ -642,7 +642,7 @@
         "h": 3,
         "w": 4,
         "x": 4,
-        "y": 11
+        "y": 17
       },
       "id": 8,
       "options": {
@@ -669,7 +669,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  SUM(diabetes_controlled) AS value\nFROM HEART360_BLOOD_SUGAR_CONTROLLED\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_BLOOD_SUGAR_CONTROLLED\n    WHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  );",
+          "rawSql": "SELECT * FROM (\nSELECT\n  SUM(diabetes_controlled) AS value\nFROM HEART360_BLOOD_SUGAR_CONTROLLED\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_BLOOD_SUGAR_CONTROLLED\n    WHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  )\n) AS master_access_control WHERE '${isAllowed}' = '1'",
           "refId": "A",
           "sql": {
             "columns": [
@@ -724,7 +724,7 @@
         "h": 3,
         "w": 4,
         "x": 8,
-        "y": 11
+        "y": 17
       },
       "id": 9,
       "options": {
@@ -751,7 +751,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  (SUM(uncontrolled_moderate + uncontrolled_high) * 100.0 / NULLIF(SUM(diabetes_patients_under_care), 0)) AS value\nFROM HEART360_BLOOD_SUGAR_SEVERITY\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_BLOOD_SUGAR_SEVERITY\n    WHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  );",
+          "rawSql": "SELECT * FROM (\nSELECT\n  (SUM(uncontrolled_moderate + uncontrolled_high) * 100.0 / NULLIF(SUM(diabetes_patients_under_care), 0)) AS value\nFROM HEART360_BLOOD_SUGAR_SEVERITY\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_BLOOD_SUGAR_SEVERITY\n    WHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  )\n) AS master_access_control WHERE '${isAllowed}' = '1'",
           "refId": "A",
           "sql": {
             "columns": [
@@ -806,7 +806,7 @@
         "h": 3,
         "w": 4,
         "x": 12,
-        "y": 11
+        "y": 17
       },
       "id": 10,
       "options": {
@@ -833,7 +833,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  SUM(uncontrolled_moderate + uncontrolled_high) AS value\nFROM HEART360_BLOOD_SUGAR_SEVERITY\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_BLOOD_SUGAR_SEVERITY\n    WHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  );",
+          "rawSql": "SELECT * FROM (\nSELECT\n  SUM(uncontrolled_moderate + uncontrolled_high) AS value\nFROM HEART360_BLOOD_SUGAR_SEVERITY\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_BLOOD_SUGAR_SEVERITY\n    WHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  )\n) AS master_access_control WHERE '${isAllowed}' = '1'",
           "refId": "A",
           "sql": {
             "columns": [
@@ -888,7 +888,7 @@
         "h": 3,
         "w": 4,
         "x": 16,
-        "y": 11
+        "y": 17
       },
       "id": 11,
       "options": {
@@ -915,7 +915,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  (SUM(missed_visit) * 100.0 / NULLIF(SUM(diabetes_patients_under_care), 0)) AS value\nFROM HEART360_BLOOD_SUGAR_MISSED_VISITS\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_BLOOD_SUGAR_MISSED_VISITS\n    WHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  );",
+          "rawSql": "SELECT * FROM (\nSELECT\n  (SUM(missed_visit) * 100.0 / NULLIF(SUM(diabetes_patients_under_care), 0)) AS value\nFROM HEART360_BLOOD_SUGAR_MISSED_VISITS\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_BLOOD_SUGAR_MISSED_VISITS\n    WHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  )\n) AS master_access_control WHERE '${isAllowed}' = '1'",
           "refId": "A",
           "sql": {
             "columns": [
@@ -970,7 +970,7 @@
         "h": 3,
         "w": 3,
         "x": 20,
-        "y": 11
+        "y": 17
       },
       "id": 12,
       "options": {
@@ -997,7 +997,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  SUM(missed_visit) AS value\nFROM HEART360_BLOOD_SUGAR_MISSED_VISITS\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_BLOOD_SUGAR_MISSED_VISITS\n    WHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  );",
+          "rawSql": "SELECT * FROM (\nSELECT\n  SUM(missed_visit) AS value\nFROM HEART360_BLOOD_SUGAR_MISSED_VISITS\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_BLOOD_SUGAR_MISSED_VISITS\n    WHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  )\n) AS master_access_control WHERE '${isAllowed}' = '1'",
           "refId": "A",
           "sql": {
             "columns": [
@@ -1126,7 +1126,7 @@
         "h": 8,
         "w": 16,
         "x": 0,
-        "y": 14
+        "y": 20
       },
       "id": 13,
       "options": {
@@ -1149,7 +1149,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT\n  ref_month AS \"time\",\n  SUM(100.0 * bp_controlled_140_90) /\n  (0.00000001 + SUM(dm_patients_under_care)) AS \"Patients with BP <140/90\",\n  SUM(100.0 * bp_controlled_130_80) /\n  (0.00000001 + SUM(dm_patients_under_care)) AS \"Patients with BP <130/80\"\nFROM HEART360_DM_BP_CONTROL\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\nGROUP BY ref_month\nORDER BY ref_month;",
+          "rawSql": "SELECT * FROM (\nSELECT\n  ref_month AS \"time\",\n  SUM(100.0 * bp_controlled_140_90) /\n  (0.00000001 + SUM(dm_patients_under_care)) AS \"Patients with BP <140/90\",\n  SUM(100.0 * bp_controlled_130_80) /\n  (0.00000001 + SUM(dm_patients_under_care)) AS \"Patients with BP <130/80\"\nFROM HEART360_DM_BP_CONTROL\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\nGROUP BY ref_month\nORDER BY ref_month\n) AS master_access_control WHERE '${isAllowed}' = '1'",
           "refId": "A",
           "sql": {
             "columns": [
@@ -1259,7 +1259,7 @@
         "h": 8,
         "w": 7,
         "x": 16,
-        "y": 14
+        "y": 20
       },
       "id": 15,
       "options": {
@@ -1282,7 +1282,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  ref_month,\n  (100.0 * SUM(COALESCE(nb_patients_lost_to_follow_up, 0))) /\n  NULLIF(SUM(TOTAL_NUMBER_OF_PATIENTS), 0) AS lost_to_follow_up_pct\nFROM HEART360_DM_PATIENTS_CATAGORY\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\nGROUP BY ref_month\nORDER BY ref_month;",
+          "rawSql": "SELECT * FROM (\nSELECT\n  ref_month,\n  (100.0 * SUM(COALESCE(nb_patients_lost_to_follow_up, 0))) /\n  NULLIF(SUM(TOTAL_NUMBER_OF_PATIENTS), 0) AS lost_to_follow_up_pct\nFROM HEART360_DM_PATIENTS_CATAGORY\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\nGROUP BY ref_month\nORDER BY ref_month\n) AS master_access_control WHERE '${isAllowed}' = '1'",
           "refId": "A",
           "sql": {
             "columns": [
@@ -1443,7 +1443,7 @@
         "h": 9,
         "w": 16,
         "x": 0,
-        "y": 22
+        "y": 28
       },
       "id": 14,
       "options": {
@@ -1466,7 +1466,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "WITH selected_org AS (\n  SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1)))\n),\nknown_months AS (\n  SELECT DATE_TRUNC('month', series_date)::date AS ref_month\n  FROM generate_series(\n    DATE_TRUNC('month', (SELECT MIN(registration_date) FROM patients)),\n    DATE_TRUNC('month', CURRENT_DATE),\n    '1 month'::interval\n  ) AS t(series_date)\n),\nmonthly_registrations AS (\n  SELECT\n    DATE_TRUNC('month', p.registration_date)::date AS ref_month,\n    COUNT(*) AS nb_new_dm_patients\n  FROM patients p\n  WHERE LOWER(p.patient_status) <> 'dead'\n    AND EXISTS (SELECT 1 FROM patient_diagnoses pd WHERE pd.patient_id = p.patient_id AND pd.diagnosis_code = 'E11')\n    AND p.org_unit_id IN (SELECT id FROM selected_org)\n  GROUP BY DATE_TRUNC('month', p.registration_date)\n),\ndm_under_care AS (\n  SELECT\n    uc.ref_month,\n    SUM(COALESCE(uc.nb_patients_controlled, 0) + COALESCE(uc.nb_patients_uncontrolled, 0) + COALESCE(uc.nb_patients_no_visit, 0)) AS nb_dm_patients_under_care\n  FROM HEART360_DM_PATIENTS_CATAGORY uc\n  WHERE uc.org_unit_id IN (SELECT id FROM selected_org)\n  GROUP BY uc.ref_month\n)\nSELECT\n  km.ref_month,\n  SUM(COALESCE(mr.nb_new_dm_patients, 0)) OVER (ORDER BY km.ref_month) AS cumulative_dm_patients,\n  c.nb_dm_patients_under_care,\n  COALESCE(mr.nb_new_dm_patients, 0) AS nb_new_dm_patients\nFROM known_months km\nLEFT JOIN monthly_registrations mr ON mr.ref_month = km.ref_month\nLEFT JOIN dm_under_care c ON c.ref_month = km.ref_month\nORDER BY km.ref_month;",
+          "rawSql": "SELECT * FROM (\nWITH selected_org AS (\n  SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1)))\n),\nknown_months AS (\n  SELECT DATE_TRUNC('month', series_date)::date AS ref_month\n  FROM generate_series(\n    DATE_TRUNC('month', (SELECT MIN(registration_date) FROM patients)),\n    DATE_TRUNC('month', CURRENT_DATE),\n    '1 month'::interval\n  ) AS t(series_date)\n),\nmonthly_registrations AS (\n  SELECT\n    DATE_TRUNC('month', p.registration_date)::date AS ref_month,\n    COUNT(*) AS nb_new_dm_patients\n  FROM patients p\n  WHERE LOWER(p.patient_status) <> 'dead'\n    AND EXISTS (SELECT 1 FROM patient_diagnoses pd WHERE pd.patient_id = p.patient_id AND pd.diagnosis_code = 'E11')\n    AND p.org_unit_id IN (SELECT id FROM selected_org)\n  GROUP BY DATE_TRUNC('month', p.registration_date)\n),\ndm_under_care AS (\n  SELECT\n    uc.ref_month,\n    SUM(COALESCE(uc.nb_patients_controlled, 0) + COALESCE(uc.nb_patients_uncontrolled, 0) + COALESCE(uc.nb_patients_no_visit, 0)) AS nb_dm_patients_under_care\n  FROM HEART360_DM_PATIENTS_CATAGORY uc\n  WHERE uc.org_unit_id IN (SELECT id FROM selected_org)\n  GROUP BY uc.ref_month\n)\nSELECT\n  km.ref_month,\n  SUM(COALESCE(mr.nb_new_dm_patients, 0)) OVER (ORDER BY km.ref_month) AS cumulative_dm_patients,\n  c.nb_dm_patients_under_care,\n  COALESCE(mr.nb_new_dm_patients, 0) AS nb_new_dm_patients\nFROM known_months km\nLEFT JOIN monthly_registrations mr ON mr.ref_month = km.ref_month\nLEFT JOIN dm_under_care c ON c.ref_month = km.ref_month\nORDER BY km.ref_month\n) AS master_access_control WHERE '${isAllowed}' = '1'",
           "refId": "A",
           "sql": {
             "columns": [
@@ -1496,7 +1496,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 37
       },
       "id": 100,
       "panels": [],
@@ -1512,7 +1512,7 @@
         "h": 2,
         "w": 24,
         "x": 0,
-        "y": 32
+        "y": 38
       },
       "id": 101,
       "options": {
@@ -1704,7 +1704,7 @@
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 34
+        "y": 40
       },
       "id": 102,
       "options": {
@@ -2414,7 +2414,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "WITH latest_month AS (\n    SELECT MAX(ref_month) AS ref_month FROM HEART360_BLOOD_SUGAR_CONTROLLED\n    WHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n    AND $__timeFilter(ref_month)\n)\nSELECT\n    child_ou.id AS child_id,\n    child_ou.name AS child_name,\n    REPLACE(build_drill_url(child_ou.id), '/d/heart360_drilldown?', '/d/heart360_drilldown_diabetes?') AS drill_url,\n    SUM(COALESCE(uc.nb_dm_patients_under_care, 0)) AS nb_patients_under_care,\n    SUM(COALESCE(uc.nb_new_dm_patients, 0)) AS nb_patients_newly_registered,\n    SUM(COALESCE(bsc.diabetes_controlled, 0)) AS nb_patients_controlled,\n    ROUND(100.0 * SUM(COALESCE(bsc.diabetes_controlled, 0)) / NULLIF(SUM(COALESCE(bsc.diabetes_patients_under_care, 0)), 0)) AS per_patients_controlled,\n    SUM(COALESCE(bss.uncontrolled_moderate, 0) + COALESCE(bss.uncontrolled_high, 0)) AS nb_patients_uncontrolled,\n    ROUND(100.0 * SUM(COALESCE(bss.uncontrolled_moderate, 0) + COALESCE(bss.uncontrolled_high, 0)) / NULLIF(SUM(COALESCE(bss.diabetes_patients_under_care, 0)), 0)) AS per_patients_uncontrolled,\n    SUM(COALESCE(bsm.missed_visit, 0)) AS nb_patients_no_visit,\n    ROUND(100.0 * SUM(COALESCE(bsm.missed_visit, 0)) / NULLIF(SUM(COALESCE(bsm.diabetes_patients_under_care, 0)), 0)) AS per_patients_no_visit\nFROM org_unit_lineage lin\nJOIN org_units child_ou ON lin.ancestor_id = child_ou.id AND child_ou.parent_id = ((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))\nLEFT JOIN HEART360_DM_PATIENTS_UNDER_CARE uc ON uc.org_unit_id = lin.org_unit_id AND uc.ref_month = (SELECT ref_month FROM latest_month)\nLEFT JOIN HEART360_BLOOD_SUGAR_CONTROLLED bsc ON bsc.org_unit_id = lin.org_unit_id AND bsc.ref_month = (SELECT ref_month FROM latest_month)\nLEFT JOIN HEART360_BLOOD_SUGAR_SEVERITY bss ON bss.org_unit_id = lin.org_unit_id AND bss.ref_month = (SELECT ref_month FROM latest_month)\nLEFT JOIN HEART360_BLOOD_SUGAR_MISSED_VISITS bsm ON bsm.org_unit_id = lin.org_unit_id AND bsm.ref_month = (SELECT ref_month FROM latest_month)\nGROUP BY child_ou.id, child_ou.name\nORDER BY child_ou.name;",
+          "rawSql": "SELECT * FROM (\nWITH latest_month AS (\n    SELECT MAX(ref_month) AS ref_month FROM HEART360_BLOOD_SUGAR_CONTROLLED\n    WHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n    AND $__timeFilter(ref_month)\n)\nSELECT\n    child_ou.id AS child_id,\n    child_ou.name AS child_name,\n    REPLACE(build_drill_url(child_ou.id), '/d/heart360_drilldown?', '/d/heart360_drilldown_diabetes?') AS drill_url,\n    SUM(COALESCE(uc.nb_dm_patients_under_care, 0)) AS nb_patients_under_care,\n    SUM(COALESCE(uc.nb_new_dm_patients, 0)) AS nb_patients_newly_registered,\n    SUM(COALESCE(bsc.diabetes_controlled, 0)) AS nb_patients_controlled,\n    ROUND(100.0 * SUM(COALESCE(bsc.diabetes_controlled, 0)) / NULLIF(SUM(COALESCE(bsc.diabetes_patients_under_care, 0)), 0)) AS per_patients_controlled,\n    SUM(COALESCE(bss.uncontrolled_moderate, 0) + COALESCE(bss.uncontrolled_high, 0)) AS nb_patients_uncontrolled,\n    ROUND(100.0 * SUM(COALESCE(bss.uncontrolled_moderate, 0) + COALESCE(bss.uncontrolled_high, 0)) / NULLIF(SUM(COALESCE(bss.diabetes_patients_under_care, 0)), 0)) AS per_patients_uncontrolled,\n    SUM(COALESCE(bsm.missed_visit, 0)) AS nb_patients_no_visit,\n    ROUND(100.0 * SUM(COALESCE(bsm.missed_visit, 0)) / NULLIF(SUM(COALESCE(bsm.diabetes_patients_under_care, 0)), 0)) AS per_patients_no_visit\nFROM org_unit_lineage lin\nJOIN org_units child_ou ON lin.ancestor_id = child_ou.id AND child_ou.parent_id = ((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))\nLEFT JOIN HEART360_DM_PATIENTS_UNDER_CARE uc ON uc.org_unit_id = lin.org_unit_id AND uc.ref_month = (SELECT ref_month FROM latest_month)\nLEFT JOIN HEART360_BLOOD_SUGAR_CONTROLLED bsc ON bsc.org_unit_id = lin.org_unit_id AND bsc.ref_month = (SELECT ref_month FROM latest_month)\nLEFT JOIN HEART360_BLOOD_SUGAR_SEVERITY bss ON bss.org_unit_id = lin.org_unit_id AND bss.ref_month = (SELECT ref_month FROM latest_month)\nLEFT JOIN HEART360_BLOOD_SUGAR_MISSED_VISITS bsm ON bsm.org_unit_id = lin.org_unit_id AND bsm.ref_month = (SELECT ref_month FROM latest_month)\nGROUP BY child_ou.id, child_ou.name\nORDER BY child_ou.name\n) AS master_access_control WHERE '${isAllowed}' = '1'",
           "refId": "A",
           "sql": {
             "columns": [
@@ -2437,6 +2437,88 @@
       ],
       "title": "${child_level_name} Details",
       "type": "volkovlabs-table-panel"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "postgres-hypertension-cached"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 24,
+        "x": 0,
+        "y": 2
+      },
+      "id": 103,
+      "options": {
+        "afterRender": "",
+        "content": "{{#if (eq isAllowed 0)}}\n  <div style=\"color: #e02424; background: rgba(224, 36, 36, 0.05); border-left: 4px solid #e02424; padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 8px; border-radius: 2px; line-height: 1.4; width: 100%;\">\n    <span>⚠️</span>\n    <span>\n      <strong>Access Denied:</strong> Ask admin to add to one of these teams: {{{requiredGroups}}}\n    </span>\n  </div>\n{{/if}}",
+        "contentPartials": [],
+        "defaultContent": "The query didn't return any results.",
+        "editor": {
+          "format": "auto",
+          "language": "markdown"
+        },
+        "editors": [],
+        "externalStyles": [],
+        "helpers": "",
+        "renderMode": "everyRow",
+        "styles": "",
+        "wrap": true
+      },
+      "pluginVersion": "6.2.0",
+      "targets": [
+        {
+          "dataset": "heart360tk_database",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "postgres-hypertension-cached"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COALESCE(NULLIF('$isAllowed', ''), '0')::int as \"isAllowed\", '${requiredGroups}' as \"requiredGroups\"",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "",
+      "transparent": true,
+      "type": "marcusolsson-dynamictext-panel"
     }
   ],
   "preload": false,
@@ -3086,6 +3168,126 @@
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT MAX(ref_month) AS __value FROM heart360_patients_category WHERE $__timeFilter(ref_month)",
+          "refId": "tempvar",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        },
+        "refresh": 2,
+        "regex": "",
+        "regexApplyTo": "value",
+        "skipUrlSync": true,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "postgres-grafana"
+        },
+        "definition": "SELECT CASE WHEN is_admin = true THEN 1 ELSE 0 END AS __value FROM grafana_schema.user WHERE id = ${__user.id} LIMIT 1",
+        "hide": 2,
+        "name": "isAdmin",
+        "options": [],
+        "query": {
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT CASE WHEN is_admin = true THEN 1 ELSE 0 END AS __value FROM grafana_schema.user WHERE id = ${__user.id} LIMIT 1",
+          "refId": "tempvar",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        },
+        "refresh": 2,
+        "regex": "",
+        "regexApplyTo": "value",
+        "skipUrlSync": true,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "postgres-grafana"
+        },
+        "definition": "SELECT COALESCE(MAX(1), 0) AS is_allowed\nFROM grafana_schema.user u\nLEFT OUTER JOIN grafana_schema.team_member tm ON tm.user_id = u.id\nLEFT OUTER JOIN grafana_schema.team t ON tm.team_id = t.id\nWHERE u.id = ${__user.id}\n  AND (\n      u.is_admin = true\n      OR t.name IN (\n          SELECT (SELECT group_name FROM heart360tk_schema.get_access_groups(lin.ancestor_id, 'aggregated') LIMIT 1)\n          FROM heart360tk_schema.org_unit_lineage lin\n          WHERE lin.org_unit_id = NULLIF(TRIM(BOTH FROM '${org_unit}'), '')::int\n          \n          UNION\n          \n          SELECT (SELECT group_name FROM heart360tk_schema.get_access_groups(lin.ancestor_id, 'patients') LIMIT 1)\n          FROM heart360tk_schema.org_unit_lineage lin\n          WHERE lin.org_unit_id = NULLIF(TRIM(BOTH FROM '${org_unit}'), '')::int\n      )\n      OR EXISTS (\n          SELECT 1 \n          FROM heart360tk_schema.hierarchy_config hc\n          WHERE t.name IN (\n              'heart360tk_' || hc.var_name || '_view_aggregated_ALL',\n              'heart360tk_' || hc.var_name || '_view_patients_ALL'\n          )\n            AND hc.level <= (SELECT level FROM heart360tk_schema.org_units WHERE id = NULLIF(TRIM(BOTH FROM '${org_unit}'), '')::int LIMIT 1)\n      )\n  )",
+        "hide": 2,
+        "name": "isAllowed",
+        "options": [],
+        "query": {
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COALESCE(MAX(1), 0) AS is_allowed\nFROM grafana_schema.user u\nLEFT OUTER JOIN grafana_schema.team_member tm ON tm.user_id = u.id\nLEFT OUTER JOIN grafana_schema.team t ON tm.team_id = t.id\nWHERE u.id = ${__user.id}\n  AND (\n      u.is_admin = true\n      OR t.name IN (\n          SELECT (SELECT group_name FROM heart360tk_schema.get_access_groups(lin.ancestor_id, 'aggregated') LIMIT 1)\n          FROM heart360tk_schema.org_unit_lineage lin\n          WHERE lin.org_unit_id = NULLIF(TRIM(BOTH FROM '${org_unit}'), '')::int\n          \n          UNION\n          \n          SELECT (SELECT group_name FROM heart360tk_schema.get_access_groups(lin.ancestor_id, 'patients') LIMIT 1)\n          FROM heart360tk_schema.org_unit_lineage lin\n          WHERE lin.org_unit_id = NULLIF(TRIM(BOTH FROM '${org_unit}'), '')::int\n      )\n      OR EXISTS (\n          SELECT 1 \n          FROM heart360tk_schema.hierarchy_config hc\n          WHERE t.name IN (\n              'heart360tk_' || hc.var_name || '_view_aggregated_ALL',\n              'heart360tk_' || hc.var_name || '_view_patients_ALL'\n          )\n            AND hc.level <= (SELECT level FROM heart360tk_schema.org_units WHERE id = NULLIF(TRIM(BOTH FROM '${org_unit}'), '')::int LIMIT 1)\n      )\n  )",
+          "refId": "tempvar",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        },
+        "refresh": 2,
+        "regex": "",
+        "regexApplyTo": "value",
+        "skipUrlSync": true,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "postgres-grafana"
+        },
+        "definition": "SELECT COALESCE(\n    '<span style=\"border: 1px solid rgba(224, 36, 36, 0.3); padding: 1px 5px; border-radius: 3px; font-family: monospace; color: #ff7875; word-break: break-all;\">' || \n    (SELECT group_name FROM heart360tk_schema.get_access_groups(NULLIF(TRIM(BOTH FROM '${org_unit}'), '')::int, 'patients') LIMIT 1) || \n    '</span>, ' ||\n    '<span style=\"border: 1px solid rgba(224, 36, 36, 0.3); padding: 1px 5px; border-radius: 3px; font-family: monospace; color: #ff7875; word-break: break-all;\">' || \n    (SELECT group_name FROM heart360tk_schema.get_access_groups(NULLIF(TRIM(BOTH FROM '${org_unit}'), '')::int, 'aggregated') LIMIT 1) || \n    '</span>, or an ' ||\n    '<span style=\"border: 1px solid rgba(224, 36, 36, 0.3); padding: 1px 5px; border-radius: 3px; font-family: monospace; color: #ff7875; word-break: break-all;\">_ALL</span> access team',\n    'None'\n) AS required_groups",
+        "hide": 2,
+        "name": "requiredGroups",
+        "options": [],
+        "query": {
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COALESCE(\n    '<span style=\"border: 1px solid rgba(224, 36, 36, 0.3); padding: 1px 5px; border-radius: 3px; font-family: monospace; color: #ff7875; word-break: break-all;\">' || \n    (SELECT group_name FROM heart360tk_schema.get_access_groups(NULLIF(TRIM(BOTH FROM '${org_unit}'), '')::int, 'patients') LIMIT 1) || \n    '</span>, ' ||\n    '<span style=\"border: 1px solid rgba(224, 36, 36, 0.3); padding: 1px 5px; border-radius: 3px; font-family: monospace; color: #ff7875; word-break: break-all;\">' || \n    (SELECT group_name FROM heart360tk_schema.get_access_groups(NULLIF(TRIM(BOTH FROM '${org_unit}'), '')::int, 'aggregated') LIMIT 1) || \n    '</span>, or an ' ||\n    '<span style=\"border: 1px solid rgba(224, 36, 36, 0.3); padding: 1px 5px; border-radius: 3px; font-family: monospace; color: #ff7875; word-break: break-all;\">_ALL</span> access team',\n    'None'\n) AS required_groups",
           "refId": "tempvar",
           "sql": {
             "columns": [
