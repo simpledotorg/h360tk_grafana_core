@@ -174,7 +174,7 @@ The system processes uploaded files through the following workflow:
 1. **File Upload:** User uploads Excel file via FileBrowser web interface
 2. **File Storage:** File is saved to `data/upload/` directory
 3. **File Detection:** File processor detects new file (using inotify)
-4. **Data Processing:** Python script (`ingest_file_puskesmas.py`) processes the file
+4. **Data Processing:** Python script (`ingest_file_h360tk.py`) processes the file
 5. **Database Insertion:** Data is inserted into PostgreSQL database
 6. **Dashboard Display:** Grafana queries database and displays dashboards
 
