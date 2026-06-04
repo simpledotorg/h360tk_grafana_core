@@ -127,7 +127,7 @@
     {
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension-cached"
+        "uid": "postgres-hypertension"
       },
       "fieldConfig": {
         "defaults": {
@@ -1341,7 +1341,7 @@
                 "editorMode": "code",
                 "format": "table",
                 "rawQuery": true,
-                "rawSql": "INSERT INTO call_results (patient_id, call_date, result_type, removed_reason, org_unit_id)\nVALUES (\n  '${payload.patient_id}',\n  CURRENT_DATE,\n  CASE\n    WHEN '${payload.removed_reason}' IN ('Agreed to visit', 'Pending to call', 'Call again later')\n      THEN NULL\n    ELSE 'removed_from_overdue_list'\n  END,\n  '${payload.removed_reason}',\n  (SELECT org_unit_id FROM patients WHERE patient_id='${payload.patient_id}' LIMIT 1),\n  (SELECT org_unit_id FROM patients WHERE patient_id='${payload.patient_id}' LIMIT 1)\n)\nON CONFLICT (patient_id, call_date)\nDO UPDATE SET\n  result_type = EXCLUDED.result_type,\n  removed_reason = EXCLUDED.removed_reason;",
+                "rawSql": "INSERT INTO call_results (patient_id, call_date, result_type, removed_reason, org_unit_id)\nVALUES (\n  '${payload.patient_id}',\n  CURRENT_DATE,\n  CASE\n    WHEN '${payload.removed_reason}' IN ('Agreed to visit', 'Pending to call', 'Call again later')\n      THEN NULL\n    ELSE 'removed_from_overdue_list'\n  END,\n  '${payload.removed_reason}',\n  (SELECT org_unit_id FROM patients WHERE patient_id='${payload.patient_id}' LIMIT 1)\n)\nON CONFLICT (patient_id, call_date)\nDO UPDATE SET\n  result_type = EXCLUDED.result_type,\n  removed_reason = EXCLUDED.removed_reason;",
                 "refId": "A",
                 "sql": {
                   "columns": [
@@ -1403,7 +1403,7 @@
           "dataset": "metrics_db",
           "datasource": {
             "type": "grafana-postgresql-datasource",
-            "uid": "postgres-hypertension-cached"
+            "uid": "postgres-hypertension"
           },
           "editorMode": "code",
           "format": "table",
