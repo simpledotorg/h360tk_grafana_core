@@ -532,22 +532,21 @@ SELECT
     -- their grace period) OR have an HTN-relevant visit within the last 12
     -- months. This guarantees Total = UnderCare + LTFU.
     SUM(CASE
-        WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 1
         WHEN LATEST_HTN_BY_MONTH_AND_PATIENT.HTN_ENCOUNTER_MONTH IS NULL THEN 0
         WHEN LATEST_HTN_BY_MONTH_AND_PATIENT.HTN_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 0
         ELSE 1 END) AS NB_PATIENTS_UNDER_CARE,
-    SUM(CASE WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 1 ELSE 0 END) AS NB_PATIENTS_NEWLY_REGISTERED,
+    SUM(CASE
+        WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH
+             AND NOT (LATEST_HTN_BY_MONTH_AND_PATIENT.HTN_ENCOUNTER_MONTH IS NULL
+                      OR LATEST_HTN_BY_MONTH_AND_PATIENT.HTN_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH)
+        THEN 1 ELSE 0 END) AS NB_PATIENTS_NEWLY_REGISTERED,
     SUM(CASE
         WHEN LATEST_BP_BY_MONTH_AND_PATIENT.BP_ENCOUNTER_MONTH IS NULL THEN 0
         WHEN LATEST_BP_BY_MONTH_AND_PATIENT.BP_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 0
         WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 0 ELSE 1 END
     ) AS NB_PATIENTS_UNDER_CARE_REGISTERED_BEFORE_THE_PAST_3_MONTHS,
-    -- LTFU = NOT newly registered AND latest HTN-relevant visit is older than
-    -- 12 months OR no visit at all. Newly registered patients are excluded so
-    -- that NEWLY, LTFU, MISSED, CONTROLLED, UNCONTROLLED form a partition of
-    -- TOTAL_NUMBER_OF_PATIENTS.
+    -- LTFU = latest HTN-relevant visit is older than 12 months OR no visit at all.
     SUM(CASE
-        WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 0
         WHEN LATEST_HTN_BY_MONTH_AND_PATIENT.HTN_ENCOUNTER_MONTH IS NULL THEN 1
         WHEN LATEST_HTN_BY_MONTH_AND_PATIENT.HTN_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 1
         ELSE 0 END) AS NB_PATIENTS_LOST_TO_FOLLOW_UP,
@@ -1573,6 +1572,11 @@ ALIVE_PATIENTS AS (
         p.patient_id AS patient_id
     FROM patients p
     WHERE LOWER(patient_status) <> 'dead'
+      AND EXISTS (
+          SELECT 1 FROM patient_diagnoses pd
+          WHERE pd.patient_id = p.patient_id
+            AND pd.diagnosis_code = 'E11'
+      )
 ),
 -- DM-relevant encounters: encounters with a BS reading OR no BP reading (visit-only / missed follow-up).
 -- Mirrors HTN_RELEVANT_ENCOUNTERS from HEART360_PATIENTS_CATEGORY so missed-follow-up
@@ -1630,22 +1634,24 @@ SELECT
     KNOWN_MONTHS.REF_MONTH,
     ALIVE_PATIENTS.org_unit_id,
     count(*) AS TOTAL_NUMBER_OF_PATIENTS,
-    -- Under care: newly registered (grace period) OR visited within last 12 months
+    -- Under care: visited within last 12 months
     SUM(CASE
-        WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 1
         WHEN LATEST_DM_BY_MONTH_AND_PATIENT.DM_ENCOUNTER_MONTH IS NULL THEN 0
         WHEN LATEST_DM_BY_MONTH_AND_PATIENT.DM_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 0
         ELSE 1 END) AS NB_PATIENTS_UNDER_CARE,
-    SUM(CASE WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 1 ELSE 0 END) AS NB_PATIENTS_NEWLY_REGISTERED,
+    SUM(CASE
+        WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH
+             AND NOT (LATEST_DM_BY_MONTH_AND_PATIENT.DM_ENCOUNTER_MONTH IS NULL
+                      OR LATEST_DM_BY_MONTH_AND_PATIENT.DM_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH)
+        THEN 1 ELSE 0 END) AS NB_PATIENTS_NEWLY_REGISTERED,
     -- Denom = registered > 3 months ago AND has a BS reading in last 12 months
     SUM(CASE
         WHEN LATEST_BS_BY_MONTH_AND_PATIENT.BS_ENCOUNTER_MONTH IS NULL THEN 0
         WHEN LATEST_BS_BY_MONTH_AND_PATIENT.BS_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 0
         WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 0 ELSE 1 END
     ) AS NB_PATIENTS_UNDER_CARE_REGISTERED_BEFORE_THE_PAST_3_MONTHS,
-    -- LTFU: not newly registered AND no DM-relevant visit in last 12 months
+    -- LTFU: no DM-relevant visit in last 12 months
     SUM(CASE
-        WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 0
         WHEN LATEST_DM_BY_MONTH_AND_PATIENT.DM_ENCOUNTER_MONTH IS NULL THEN 1
         WHEN LATEST_DM_BY_MONTH_AND_PATIENT.DM_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 1
         ELSE 0 END) AS NB_PATIENTS_LOST_TO_FOLLOW_UP,
