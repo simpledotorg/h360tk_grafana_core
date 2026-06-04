@@ -685,7 +685,7 @@
           }
         }
       ],
-      "title": "% Controlled BS",
+      "title": "% Controlled blood sugar",
       "type": "stat"
     },
     {
@@ -767,7 +767,7 @@
           }
         }
       ],
-      "title": "# Controlled BS",
+      "title": "# Controlled blood sugar",
       "type": "stat"
     },
     {
@@ -849,7 +849,7 @@
           }
         }
       ],
-      "title": "% Uncontrolled BS",
+      "title": "% Uncontrolled blood sugar",
       "type": "stat"
     },
     {
@@ -931,7 +931,7 @@
           }
         }
       ],
-      "title": "# Uncontrolled BS",
+      "title": "# Uncontrolled blood sugar",
       "type": "stat"
     },
     {
