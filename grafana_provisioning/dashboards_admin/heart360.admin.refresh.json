@@ -395,7 +395,7 @@
             "axisLabel": "Duration",
             "axisPlacement": "auto",
             "drawStyle": "line",
-            "fillOpacity": 10,
+            "fillOpacity": 25,
             "gradientMode": "opacity",
             "hideFrom": {
               "legend": false,
@@ -485,7 +485,8 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
+            "fixedColor": "green",
+            "mode": "fixed"
           },
           "custom": {
             "axisBorderShow": false,
@@ -494,7 +495,7 @@
             "axisLabel": "Age (minutes)",
             "axisPlacement": "auto",
             "drawStyle": "line",
-            "fillOpacity": 8,
+            "fillOpacity": 25,
             "gradientMode": "opacity",
             "hideFrom": {
               "legend": false,
@@ -581,7 +582,7 @@
             "fixedColor": "green"
           },
           "custom": {
-            "fillOpacity": 85,
+            "fillOpacity": 100,
             "lineWidth": 0,
             "spanNulls": false
           },
