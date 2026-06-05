@@ -5,29 +5,7 @@ set -e
 
 echo "Executing automated data copy for patients, encounters, blood pressures, and blood sugars..."
 
-# --- Seed Org Units Hierarchy ---
-echo "Seeding org_units hierarchy..."
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
-    SET ROLE heart360tk;
-    SET SEARCH_PATH = heart360tk_schema;
 
-    -- Seed 4-level hierarchy: Region > District > PHC > SHC
-    -- North branch
-    SELECT upsert_org_unit_chain(
-        ARRAY['Demo Region', 'North District', 'PHC Sunrise', 'SHC North A']::VARCHAR[],
-        ARRAY[1, 2, 3, 4]::INTEGER[]);
-    SELECT upsert_org_unit_chain(
-        ARRAY['Demo Region', 'North District', 'PHC Sunrise', 'SHC North B']::VARCHAR[],
-        ARRAY[1, 2, 3, 4]::INTEGER[]);
-    -- South branch
-    SELECT upsert_org_unit_chain(
-        ARRAY['Demo Region', 'South District', 'PHC Garden', 'SHC South A']::VARCHAR[],
-        ARRAY[1, 2, 3, 4]::INTEGER[]);
-    SELECT upsert_org_unit_chain(
-        ARRAY['Demo Region', 'South District', 'PHC Garden', 'SHC South B']::VARCHAR[],
-        ARRAY[1, 2, 3, 4]::INTEGER[]);
-EOSQL
-echo "Org units seeded."
 
 # --- Load Patients Data ---
 # Note: Uses ON CONFLICT to handle duplicates (consistent with insert_heart360_data function)
