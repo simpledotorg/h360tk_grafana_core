@@ -43,10 +43,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 2,
-        "w": 24,
         "x": 0,
-        "y": 0
+        "y": 0,
+        "w": 24,
+        "h": 2
       },
       "id": 100,
       "options": {
@@ -103,10 +103,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 2,
-        "w": 24,
         "x": 0,
-        "y": 2
+        "y": 2,
+        "w": 24,
+        "h": 2
       },
       "id": 1,
       "options": {
@@ -126,10 +126,174 @@
     {
       "collapsed": false,
       "gridPos": {
-        "h": 1,
-        "w": 24,
         "x": 0,
-        "y": 4
+        "y": 4,
+        "w": 24,
+        "h": 1
+      },
+      "id": 5,
+      "panels": [],
+      "title": "Cardiovascular disease + DM indicators",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "postgres-hypertension-cached"
+      },
+      "description": "Patients under care for diabetes with controlled BP at their latest visit in the past 3 months",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisGridShow": true,
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 2,
+            "pointSize": 6,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "always",
+            "showValues": true,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Patients with BP <140/90"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "light-green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Patients with BP <130/80"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "dark-green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 8,
+        "h": 8
+      },
+      "id": 13,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.2",
+      "targets": [
+        {
+          "dataset": "metrics_db",
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  ref_month AS \"time\",\n  SUM(bp_controlled_140_90) AS \"Patients with BP <140/90\",\n  SUM(bp_controlled_130_80) AS \"Patients with BP <130/80\"\nFROM HEART360_DM_BP_CONTROL\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids($Facility::int)) AND $isAllowed > 0\nGROUP BY ref_month\nORDER BY ref_month;",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "DM patients with controlled BP",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 13,
+        "w": 24,
+        "h": 1
       },
       "id": 6,
       "panels": [],
@@ -224,10 +388,10 @@
         ]
       },
       "gridPos": {
-        "h": 8,
-        "w": 8,
         "x": 0,
-        "y": 5
+        "y": 14,
+        "w": 8,
+        "h": 8
       },
       "id": 2,
       "options": {
@@ -429,10 +593,10 @@
         ]
       },
       "gridPos": {
-        "h": 8,
-        "w": 8,
         "x": 8,
-        "y": 5
+        "y": 14,
+        "w": 8,
+        "h": 8
       },
       "id": 3,
       "options": {
@@ -548,10 +712,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 7,
         "x": 16,
-        "y": 5
+        "y": 14,
+        "w": 7,
+        "h": 8
       },
       "id": 4,
       "options": {
@@ -634,10 +798,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 3,
-        "w": 4,
         "x": 0,
-        "y": 13
+        "y": 22,
+        "w": 4,
+        "h": 3
       },
       "id": 7,
       "options": {
@@ -716,10 +880,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 3,
-        "w": 4,
         "x": 4,
-        "y": 13
+        "y": 22,
+        "w": 4,
+        "h": 3
       },
       "id": 8,
       "options": {
@@ -798,10 +962,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 3,
-        "w": 4,
         "x": 8,
-        "y": 13
+        "y": 22,
+        "w": 4,
+        "h": 3
       },
       "id": 9,
       "options": {
@@ -880,10 +1044,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 3,
-        "w": 4,
         "x": 12,
-        "y": 13
+        "y": 22,
+        "w": 4,
+        "h": 3
       },
       "id": 10,
       "options": {
@@ -962,10 +1126,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 3,
-        "w": 4,
         "x": 16,
-        "y": 13
+        "y": 22,
+        "w": 4,
+        "h": 3
       },
       "id": 11,
       "options": {
@@ -1044,10 +1208,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 3,
-        "w": 3,
         "x": 20,
-        "y": 13
+        "y": 22,
+        "w": 3,
+        "h": 3
       },
       "id": 12,
       "options": {
@@ -1097,157 +1261,6 @@
       ],
       "title": "# No visit (DM)",
       "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension-cached"
-      },
-      "description": "Patients under care for diabetes with controlled BP at their latest visit in the past 3 months",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisGridShow": true,
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 25,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineStyle": {
-              "fill": "solid"
-            },
-            "lineWidth": 2,
-            "pointSize": 6,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "always",
-            "showValues": true,
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "decimals": 0,
-          "mappings": [],
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Patients with BP <140/90"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "light-green",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Patients with BP <130/80"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "dark-green",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 16,
-        "x": 0,
-        "y": 16
-      },
-      "id": 13,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.4.2",
-      "targets": [
-        {
-          "dataset": "metrics_db",
-          "editorMode": "code",
-          "format": "time_series",
-          "rawQuery": true,
-          "rawSql": "SELECT\n  ref_month AS \"time\",\n  SUM(bp_controlled_140_90) AS \"Patients with BP <140/90\",\n  SUM(bp_controlled_130_80) AS \"Patients with BP <130/80\"\nFROM HEART360_DM_BP_CONTROL\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids($Facility::int)) AND $isAllowed > 0\nGROUP BY ref_month\nORDER BY ref_month;",
-          "refId": "A",
-          "sql": {
-            "columns": [
-              {
-                "parameters": [],
-                "type": "function"
-              }
-            ],
-            "groupBy": [
-              {
-                "property": {
-                  "type": "string"
-                },
-                "type": "groupBy"
-              }
-            ],
-            "limit": 50
-          }
-        }
-      ],
-      "title": "DM patients with controlled BP",
-      "type": "timeseries"
     },
     {
       "datasource": {
@@ -1332,10 +1345,10 @@
         ]
       },
       "gridPos": {
-        "h": 8,
-        "w": 7,
         "x": 16,
-        "y": 16
+        "y": 25,
+        "w": 7,
+        "h": 9
       },
       "id": 15,
       "options": {
@@ -1516,10 +1529,10 @@
         ]
       },
       "gridPos": {
-        "h": 9,
-        "w": 16,
         "x": 0,
-        "y": 24
+        "y": 25,
+        "w": 16,
+        "h": 9
       },
       "id": 14,
       "options": {
