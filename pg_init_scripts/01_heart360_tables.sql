@@ -368,7 +368,7 @@ KNOWN_MONTHS AS (
   SELECT date_trunc('month', series_date)::date AS REF_MONTH
   FROM generate_series(
       date_trunc('month', (SELECT min(REGISTRATION_DATE) FROM patients)),
-      date_trunc('month', current_date) - interval '1 month',
+      date_trunc('month', current_date),
       '1 month'::interval
   ) AS t(series_date)
 ),
@@ -407,7 +407,7 @@ KNOWN_MONTHS AS (
   SELECT date_trunc('month', series_date)::date AS REF_MONTH
   FROM generate_series(
       date_trunc('month', (SELECT min(REGISTRATION_DATE) FROM patients)),
-      date_trunc('month', current_date) - interval '1 month',
+      date_trunc('month', current_date),
       '1 month'::interval
   ) AS t(series_date)
 ),
@@ -455,7 +455,7 @@ KNOWN_MONTHS AS (
   SELECT date_trunc('month', series_date)::date AS REF_MONTH
   FROM generate_series(
       date_trunc('month', (SELECT min(REGISTRATION_DATE) FROM patients)),
-      date_trunc('month', current_date) - interval '1 month',
+      date_trunc('month', current_date),
       '1 month'::interval
   ) AS t(series_date)
 ),
@@ -712,7 +712,7 @@ CREATE OR REPLACE VIEW HEART360_OVERDUE_START_OF_MONTH AS
 WITH REF_MONTHS AS (
   SELECT generate_series(
       date_trunc('month', (SELECT MIN(registration_date) FROM patients)),
-      date_trunc('month', CURRENT_DATE) - interval '1 month',
+      date_trunc('month', CURRENT_DATE),
       interval '1 month'
   )::date AS ref_month
 ),
@@ -841,7 +841,7 @@ CREATE OR REPLACE VIEW HEART360_BLOOD_SUGAR_CONTROLLED AS
 WITH REF_MONTHS AS (
     SELECT generate_series(
         date_trunc('month', (SELECT MIN(registration_date) FROM patients)),
-        date_trunc('month', CURRENT_DATE) - interval '1 month',
+        date_trunc('month', CURRENT_DATE),
         interval '1 month'
     )::date AS ref_month
 ),
@@ -932,7 +932,7 @@ WITH KNOWN_MONTHS AS (
   SELECT date_trunc('month', series_date)::date AS ref_month
   FROM generate_series(
       date_trunc('month', (SELECT min(registration_date) FROM patients)),
-      date_trunc('month', current_date) - interval '1 month',
+      date_trunc('month', current_date),
       interval '1 month'
   ) AS t(series_date)
 ),
@@ -1040,7 +1040,7 @@ WITH KNOWN_MONTHS AS (
   SELECT date_trunc('month', series_date)::date AS ref_month
   FROM generate_series(
       date_trunc('month', (SELECT min(registration_date) FROM patients)),
-      date_trunc('month', current_date) - interval '1 month',
+      date_trunc('month', current_date),
       interval '1 month'
   ) AS t(series_date)
 ),
@@ -1124,7 +1124,7 @@ KNOWN_MONTHS AS (
   SELECT date_trunc('month', series_date)::date AS ref_month
   FROM generate_series(
       date_trunc('month', (SELECT MIN(registration_date) FROM patients)),
-      date_trunc('month', CURRENT_DATE) - interval '1 month',
+      date_trunc('month', CURRENT_DATE),
       '1 month'::interval
   ) AS t(series_date)
 ),
@@ -1180,7 +1180,7 @@ CREATE OR REPLACE VIEW HEART360_DM_BP_CONTROL AS
 WITH REF_MONTHS AS (
     SELECT generate_series(
         date_trunc('month', (SELECT MIN(registration_date) FROM patients)),
-        date_trunc('month', CURRENT_DATE) - interval '1 month',
+        date_trunc('month', CURRENT_DATE),
         interval '1 month'
     )::date AS ref_month
 ),
@@ -1564,7 +1564,7 @@ KNOWN_MONTHS AS (
   SELECT date_trunc('month', series_date)::date AS REF_MONTH
   FROM generate_series(
       date_trunc('month', (SELECT min(REGISTRATION_DATE) FROM patients)),
-      date_trunc('month', current_date) - interval '1 month',
+      date_trunc('month', current_date),
       '1 month'::interval
   ) AS t(series_date)
 ),

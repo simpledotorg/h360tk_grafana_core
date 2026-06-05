@@ -646,7 +646,19 @@
               },
               {
                 "id": "custom.fillOpacity",
-                "value": 65
+                "value": 32
+              },
+              {
+                "id": "custom.gradientMode",
+                "value": "none"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 0
+              },
+              {
+                "id": "displayName",
+                "value": "HTN - Monthly registrations"
               }
             ]
           },
@@ -685,18 +697,6 @@
               {
                 "id": "displayName",
                 "value": "HTN - Patients under care"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "nb_new_patients"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "HTN - Monthly registrations"
               }
             ]
           }
