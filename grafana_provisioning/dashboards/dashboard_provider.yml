@@ -12,15 +12,6 @@ providers:
       path: /etc/grafana/provisioning/dashboards/Dashboards
       foldersFromFilesStructure: false
 
-  - name: 'Facility Dashboards With Security'
-    orgId: 1
-    folder: 'Facility dashboards (with security)'
-    type: file
-    disableDeletion: false
-    updateIntervalSeconds: 10
-    options:
-      path: /etc/grafana/provisioning/dashboards_secure
-      foldersFromFilesStructure: false
 
   - name: 'Admin Dashboards'
     orgId: 1
