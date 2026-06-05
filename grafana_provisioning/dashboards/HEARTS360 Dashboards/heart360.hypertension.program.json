@@ -26,22 +26,22 @@
         "overrides": []
       },
       "gridPos": {
-        "x": 0,
-        "y": 2,
+        "h": 2,
         "w": 24,
-        "h": 2
+        "x": 0,
+        "y": 2
       },
-      "id": 1,
+      "id": 20,
       "options": {
         "code": {
           "language": "plaintext",
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "<div id=\"tab-bar-wrap\" data-level=\"${selected_level}\"><div class=\"tab-bar\" style=\"display:flex; gap:0; border-bottom:2px solid #e0e0e0; font-size:16px; margin-top:4px;\"><a target=\"_top\" href=\"/d/heart360_drilldown/hearts360-hypertension-dashboard?orgId=1&var-region=${region}&var-district=${district}&var-facility=${facility}&var-sub_facility=${sub_facility}&var-org_unit=${org_unit}&var-village=${village}&var-level_6=${level_6}&var-level_7=${level_7}&var-level_8=${level_8}&var-level_9=${level_9}&var-level_10=${level_10}&${__url_time_range}\" style=\"padding:8px 20px; text-decoration:none; color:#6b7280; cursor:pointer;\">Hypertension Dashboard</a><span style=\"padding:8px 20px; font-weight:600; color:#1f2937; border-bottom:3px solid #3b82f6; cursor:default; text-decoration:none;\">Diabetes Dashboard</span><a target=\"_top\" href=\"/d/heart360_drilldown_overdue/hearts360-overdue-patients?orgId=1&var-region=${region}&var-district=${district}&var-facility=${facility}&var-sub_facility=${sub_facility}&var-org_unit=${org_unit}&var-village=${village}&var-level_6=${level_6}&var-level_7=${level_7}&var-level_8=${level_8}&var-level_9=${level_9}&var-level_10=${level_10}&${__url_time_range}\" style=\"padding:8px 20px; text-decoration:none; color:#6b7280; cursor:pointer;\">Overdue Patient List</a></div></div><script>(function(){var b=(window.top||window).location.pathname.split('/d/')[0];if(!b)return;var ls=document.links;for(var i=0;i<ls.length;i++){if(ls[i].getAttribute('href').indexOf('/d/')==0)ls[i].href=b+ls[i].getAttribute('href');}})();</script>",
+        "content": "<div id=\"tab-bar-wrap\" data-level=\"${selected_level}\"><div class=\"tab-bar\" style=\"display:flex; gap:0; border-bottom:2px solid #e0e0e0; font-size:16px; margin-top:4px;\"><span style=\"padding:8px 20px; font-weight:600; color:#1f2937; border-bottom:3px solid #3b82f6; cursor:default; text-decoration:none;\">Hypertension Dashboard</span><a target=\"_top\" href=\"/d/heart360_drilldown_diabetes/hearts360-diabetes-dashboard?orgId=1&var-region=${region}&var-district=${district}&var-facility=${facility}&var-sub_facility=${sub_facility}&var-org_unit=${org_unit}&var-village=${village}&var-level_6=${level_6}&var-level_7=${level_7}&var-level_8=${level_8}&var-level_9=${level_9}&var-level_10=${level_10}&${__url_time_range}\" style=\"padding:8px 20px; text-decoration:none; color:#6b7280; cursor:pointer;\">Diabetes Dashboard</a><a target=\"_top\" href=\"/d/heart360_drilldown_overdue/hearts360-overdue-patients?orgId=1&var-region=${region}&var-district=${district}&var-facility=${facility}&var-sub_facility=${sub_facility}&var-org_unit=${org_unit}&var-village=${village}&var-level_6=${level_6}&var-level_7=${level_7}&var-level_8=${level_8}&var-level_9=${level_9}&var-level_10=${level_10}&${__url_time_range}\" style=\"padding:8px 20px; text-decoration:none; color:#6b7280; cursor:pointer;\">Overdue Patient List</a></div></div><script>(function(){var b=(window.top||window).location.pathname.split('/d/')[0];if(!b)return;var ls=document.links;for(var i=0;i<ls.length;i++){if(ls[i].getAttribute('href').indexOf('/d/')==0)ls[i].href=b+ls[i].getAttribute('href');}})();</script>",
         "mode": "html"
       },
-      "pluginVersion": "12.4.2",
+      "pluginVersion": "12.4.1",
       "title": "",
       "transparent": true,
       "type": "text"
@@ -49,14 +49,14 @@
     {
       "collapsed": false,
       "gridPos": {
-        "x": 0,
-        "y": 4,
+        "h": 1,
         "w": 24,
-        "h": 1
+        "x": 0,
+        "y": 8
       },
       "id": 5,
       "panels": [],
-      "title": "Cardiovascular disease + DM indicators",
+      "title": "Overview indicators",
       "type": "row"
     },
     {
@@ -64,7 +64,6 @@
         "type": "grafana-postgresql-datasource",
         "uid": "postgres-hypertension-cached"
       },
-      "description": "Patients under care for diabetes with controlled BP at their latest visit in the past 3 months",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -74,7 +73,6 @@
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisGridShow": true,
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -89,15 +87,12 @@
             },
             "insertNulls": false,
             "lineInterpolation": "linear",
-            "lineStyle": {
-              "fill": "solid"
-            },
             "lineWidth": 2,
             "pointSize": 6,
             "scaleDistribution": {
               "type": "linear"
             },
-            "showPoints": "always",
+            "showPoints": "auto",
             "showValues": true,
             "spanNulls": false,
             "stacking": {
@@ -108,9 +103,8 @@
               "mode": "off"
             }
           },
-          "decimals": 0,
+          "displayName": "Patients with BP <140/90:",
           "mappings": [],
-          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -123,70 +117,42 @@
                 "value": 80
               }
             ]
-          },
-          "unit": "none"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Patients with BP <140/90"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "light-green",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Patients with BP <130/80"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "dark-green",
-                  "mode": "fixed"
-                }
-              }
-            ]
           }
-        ]
+        },
+        "overrides": []
       },
       "gridPos": {
+        "h": 10,
+        "w": 23,
         "x": 0,
-        "y": 5,
-        "w": 8,
-        "h": 8
+        "y": 9
       },
-      "id": 13,
+      "id": 1,
       "options": {
         "legend": {
           "calcs": [],
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": false
         },
         "tooltip": {
           "hideZeros": false,
-          "mode": "multi",
+          "mode": "single",
           "sort": "none"
         }
       },
-      "pluginVersion": "12.4.2",
+      "pluginVersion": "12.4.1",
       "targets": [
         {
           "dataset": "metrics_db",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "postgres-hypertension-cached"
+          },
           "editorMode": "code",
-          "format": "time_series",
+          "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT * FROM (\nSELECT\n  ref_month AS \"time\",\n  SUM(bp_controlled_140_90) AS \"Patients with BP <140/90\",\n  SUM(bp_controlled_130_80) AS \"Patients with BP <130/80\"\nFROM HEART360_DM_BP_CONTROL\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\nGROUP BY ref_month\nORDER BY ref_month\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+          "rawSql": "SELECT * FROM (\nselect\n  ref_month,\n  sum(nb_patients_controlled) nb_patients_controlled\nfrom heart360_patients_category\nwhere org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\ngroup by 1\n) AS master_access_control WHERE '${isAllowed}' = '1'",
           "refId": "A",
           "sql": {
             "columns": [
@@ -207,20 +173,20 @@
           }
         }
       ],
-      "title": "DM patients with controlled BP",
+      "title": "Patients protected from heart attacks and strokes with world-class treatment",
       "type": "timeseries"
     },
     {
       "collapsed": false,
       "gridPos": {
-        "x": 0,
-        "y": 13,
+        "h": 1,
         "w": 24,
-        "h": 1
+        "x": 0,
+        "y": 19
       },
       "id": 6,
       "panels": [],
-      "title": "DM treatment outcomes",
+      "title": "Program management indicators",
       "type": "row"
     },
     {
@@ -228,17 +194,15 @@
         "type": "grafana-postgresql-datasource",
         "uid": "postgres-hypertension-cached"
       },
-      "description": "% Patients with RBS <140, FBS <126 mg/dL, or HbA1c <7%",
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "continuous-GrYlRd"
+            "mode": "palette-classic"
           },
           "custom": {
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisGridShow": true,
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -253,15 +217,12 @@
             },
             "insertNulls": false,
             "lineInterpolation": "linear",
-            "lineStyle": {
-              "fill": "solid"
-            },
             "lineWidth": 2,
             "pointSize": 6,
             "scaleDistribution": {
               "type": "linear"
             },
-            "showPoints": "always",
+            "showPoints": "auto",
             "showValues": true,
             "spanNulls": false,
             "stacking": {
@@ -273,7 +234,7 @@
             }
           },
           "decimals": 0,
-          "displayName": "% Patients with RBS <140, FBS <126 mg/dL, or HbA1c <7%",
+          "displayName": "% Patients with  BP <140/90 at latest visit in the past 3 months",
           "mappings": [],
           "max": 100,
           "min": 0,
@@ -289,32 +250,15 @@
                 "value": 80
               }
             ]
-          },
-          "unit": "none"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "% Patients with RBS <140, FBS <126 mg/dL, or HbA1c <7%"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "green",
-                  "mode": "fixed"
-                }
-              }
-            ]
           }
-        ]
+        },
+        "overrides": []
       },
       "gridPos": {
-        "x": 0,
-        "y": 14,
+        "h": 8,
         "w": 8,
-        "h": 8
+        "x": 0,
+        "y": 20
       },
       "id": 2,
       "options": {
@@ -330,14 +274,14 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.4.2",
+      "pluginVersion": "12.4.1",
       "targets": [
         {
           "dataset": "metrics_db",
           "editorMode": "code",
-          "format": "time_series",
+          "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT * FROM (\nSELECT\n  ref_month AS \"time\",\n  SUM(100.0 * diabetes_controlled) /\n  (0.00000001 + SUM(diabetes_patients_under_care)) AS blood_sugar_control_rate\nFROM HEART360_BLOOD_SUGAR_CONTROLLED\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\nGROUP BY ref_month\nORDER BY ref_month\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+          "rawSql": "SELECT * FROM (\nselect \n    ref_month,\n    100.00 * sum(nb_patients_controlled) / (0.000001 + GREATEST(0, sum(TOTAL_NUMBER_OF_PATIENTS) - sum(NB_PATIENTS_NEWLY_REGISTERED) - sum(NB_PATIENTS_LOST_TO_FOLLOW_UP))) as Control_rate\nfrom HEART360_PATIENTS_CATEGORY\nwhere org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\ngroup by 1\n) AS master_access_control WHERE '${isAllowed}' = '1'",
           "refId": "A",
           "sql": {
             "columns": [
@@ -358,7 +302,7 @@
           }
         }
       ],
-      "title": "Controlled Blood Sugar",
+      "title": "BP controlled at latest visit in past 3 months",
       "type": "timeseries"
     },
     {
@@ -366,218 +310,10 @@
         "type": "grafana-postgresql-datasource",
         "uid": "postgres-hypertension-cached"
       },
-      "description": "% Patients with uncontrolled blood sugar (moderate and high)",
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "#CCCC00",
-            "mode": "fixed"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "bars",
-            "fillOpacity": 100,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 0,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "showValues": false,
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "normal"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "decimals": 0,
-          "mappings": [],
-          "max": 100,
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "% Patients with RBS 140\u2013199, FBS 126\u2013199 mg/dL, or HbA1c 7\u20138.9%"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "yellow",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "% Patients with RBS \u2265200, FBS \u2265200 mg/dL, or HbA1c \u22659%"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "rgb(249, 233, 150)",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "% Patients with RBS 140\u2013199, FBS 126\u2013199 mg/dL, or HbA1c 7"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "light-yellow",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "% Total Uncontrolled"
-            },
-            "properties": [
-              {
-                "id": "custom.drawStyle",
-                "value": "points"
-              },
-              {
-                "id": "custom.pointSize",
-                "value": 1
-              },
-              {
-                "id": "custom.showValues",
-                "value": "always"
-              },
-              {
-                "id": "custom.stacking",
-                "value": {
-                  "group": "A",
-                  "mode": "none"
-                }
-              },
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "transparent",
-                  "mode": "fixed"
-                }
-              },
-              {
-                "id": "custom.hideFrom",
-                "value": {
-                  "legend": true,
-                  "tooltip": true,
-                  "viz": false
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "x": 8,
-        "y": 14,
-        "w": 8,
-        "h": 8
-      },
-      "id": 3,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.4.2",
-      "targets": [
-        {
-          "dataset": "metrics_db",
-          "editorMode": "code",
-          "format": "time_series",
-          "rawQuery": true,
-          "rawSql": "SELECT * FROM (\nWITH months AS (\n  SELECT generate_series(\n    date_trunc('month', $__timeFrom()::timestamp),\n    date_trunc('month', $__timeTo()::timestamp),\n    '1 month'::interval\n  )::date AS ref_month\n)\nSELECT\n  months.ref_month AS \"time\",\n\n  COALESCE(SUM(100.0 * s.uncontrolled_moderate) / NULLIF(SUM(s.diabetes_patients_under_care), 0), 0)\n  AS \"% Patients with RBS 140\u2013199, FBS 126\u2013199 mg/dL, or HbA1c 7\u20138.9%\",\n\n  COALESCE(SUM(100.0 * s.uncontrolled_high) / NULLIF(SUM(s.diabetes_patients_under_care), 0), 0)\n  AS \"% Patients with RBS \u2265200, FBS \u2265200 mg/dL, or HbA1c \u22659%\",\n\n  COALESCE(SUM(100.0 * (s.uncontrolled_moderate + s.uncontrolled_high)) / NULLIF(SUM(s.diabetes_patients_under_care), 0), 0)\n  AS \"% Total Uncontrolled\"\n\nFROM months\nLEFT JOIN HEART360_BLOOD_SUGAR_SEVERITY s\n  ON s.ref_month = months.ref_month\n  AND s.org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\nGROUP BY months.ref_month\nORDER BY months.ref_month\n) AS master_access_control WHERE '${isAllowed}' = '1'",
-          "refId": "A",
-          "sql": {
-            "columns": [
-              {
-                "parameters": [],
-                "type": "function"
-              }
-            ],
-            "groupBy": [
-              {
-                "property": {
-                  "type": "string"
-                },
-                "type": "groupBy"
-              }
-            ],
-            "limit": 50
-          }
-        }
-      ],
-      "title": "Uncontrolled Blood Sugar",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension-cached"
-      },
-      "description": "% Patients with no recorded visit",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "#ED6300",
-            "mode": "shades",
-            "seriesBy": "last"
+            "mode": "palette-classic"
           },
           "custom": {
             "axisBorderShow": false,
@@ -614,7 +350,7 @@
             }
           },
           "decimals": 0,
-          "displayName": "% Patients with no recorded visit",
+          "displayName": "% Patients with BP \u2265140/90 at latest visit in the past 3 months",
           "mappings": [],
           "max": 100,
           "min": 0,
@@ -632,15 +368,35 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "uncontrolled_pct"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "light-orange",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "% BP uncontrolled"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
-        "x": 16,
-        "y": 14,
-        "w": 7,
-        "h": 8
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 20
       },
-      "id": 4,
+      "id": 3,
       "options": {
         "legend": {
           "calcs": [],
@@ -654,14 +410,14 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.4.2",
+      "pluginVersion": "12.4.1",
       "targets": [
         {
           "dataset": "metrics_db",
           "editorMode": "code",
-          "format": "time_series",
+          "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT * FROM (\nSELECT\n    ref_month AS \"time\",\n    SUM(100.0 * missed_visit) /\n    (0.00000001 + SUM(diabetes_patients_under_care)) AS missed_visit_rate\nFROM HEART360_BLOOD_SUGAR_MISSED_VISITS\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\nGROUP BY ref_month\nORDER BY ref_month\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+          "rawSql": "SELECT * FROM (\nselect ref_month,\n    100.00 * sum(nb_patients_uncontrolled) / (0.000001 + GREATEST(0, sum(TOTAL_NUMBER_OF_PATIENTS) - sum(NB_PATIENTS_NEWLY_REGISTERED) - sum(NB_PATIENTS_LOST_TO_FOLLOW_UP))) as uncontrolled_pct\nfrom HEART360_PATIENTS_CATEGORY\nwhere org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\ngroup by 1\n) AS master_access_control WHERE '${isAllowed}' = '1'",
           "refId": "A",
           "sql": {
             "columns": [
@@ -682,7 +438,7 @@
           }
         }
       ],
-      "title": " No visit in past 3 months",
+      "title": "BP uncontrolled at latest visit in past 3 months",
       "type": "timeseries"
     },
     {
@@ -690,507 +446,6 @@
         "type": "grafana-postgresql-datasource",
         "uid": "postgres-hypertension-cached"
       },
-      "description": "${Facility:text} - Latest month",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "green",
-            "mode": "fixed"
-          },
-          "decimals": 0,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "red",
-                "value": 0
-              },
-              {
-                "color": "yellow",
-                "value": 30
-              },
-              {
-                "color": "green",
-                "value": 50
-              }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 22,
-        "w": 4,
-        "h": 3
-      },
-      "id": 7,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
-      },
-      "pluginVersion": "12.4.2",
-      "targets": [
-        {
-          "dataset": "metrics_db",
-          "editorMode": "code",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT * FROM (\nSELECT\n  (SUM(diabetes_controlled) * 100.0 / NULLIF(SUM(diabetes_patients_under_care), 0)) AS value\nFROM HEART360_BLOOD_SUGAR_CONTROLLED\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_BLOOD_SUGAR_CONTROLLED\n    WHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  )\n) AS master_access_control WHERE '${isAllowed}' = '1'",
-          "refId": "A",
-          "sql": {
-            "columns": [
-              {
-                "parameters": [],
-                "type": "function"
-              }
-            ],
-            "groupBy": [
-              {
-                "property": {
-                  "type": "string"
-                },
-                "type": "groupBy"
-              }
-            ],
-            "limit": 50
-          }
-        }
-      ],
-      "title": "% Controlled blood sugar",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension-cached"
-      },
-      "description": "${Facility:text} - Latest month",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "green",
-            "mode": "fixed"
-          },
-          "decimals": 0,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "x": 4,
-        "y": 22,
-        "w": 4,
-        "h": 3
-      },
-      "id": 8,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
-      },
-      "pluginVersion": "12.4.2",
-      "targets": [
-        {
-          "dataset": "metrics_db",
-          "editorMode": "code",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT * FROM (\nSELECT\n  SUM(diabetes_controlled) AS value\nFROM HEART360_BLOOD_SUGAR_CONTROLLED\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_BLOOD_SUGAR_CONTROLLED\n    WHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  )\n) AS master_access_control WHERE '${isAllowed}' = '1'",
-          "refId": "A",
-          "sql": {
-            "columns": [
-              {
-                "parameters": [],
-                "type": "function"
-              }
-            ],
-            "groupBy": [
-              {
-                "property": {
-                  "type": "string"
-                },
-                "type": "groupBy"
-              }
-            ],
-            "limit": 50
-          }
-        }
-      ],
-      "title": "# Controlled blood sugar",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension-cached"
-      },
-      "description": "${Facility:text} - Latest month",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "light-yellow",
-            "mode": "fixed"
-          },
-          "decimals": 0,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "x": 8,
-        "y": 22,
-        "w": 4,
-        "h": 3
-      },
-      "id": 9,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
-      },
-      "pluginVersion": "12.4.2",
-      "targets": [
-        {
-          "dataset": "metrics_db",
-          "editorMode": "code",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT * FROM (\nSELECT\n  (SUM(uncontrolled_moderate + uncontrolled_high) * 100.0 / NULLIF(SUM(diabetes_patients_under_care), 0)) AS value\nFROM HEART360_BLOOD_SUGAR_SEVERITY\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_BLOOD_SUGAR_SEVERITY\n    WHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  )\n) AS master_access_control WHERE '${isAllowed}' = '1'",
-          "refId": "A",
-          "sql": {
-            "columns": [
-              {
-                "parameters": [],
-                "type": "function"
-              }
-            ],
-            "groupBy": [
-              {
-                "property": {
-                  "type": "string"
-                },
-                "type": "groupBy"
-              }
-            ],
-            "limit": 50
-          }
-        }
-      ],
-      "title": "% Uncontrolled blood sugar",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension-cached"
-      },
-      "description": "${Facility:text} - Latest month",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "light-yellow",
-            "mode": "fixed"
-          },
-          "decimals": 0,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 22,
-        "w": 4,
-        "h": 3
-      },
-      "id": 10,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
-      },
-      "pluginVersion": "12.4.2",
-      "targets": [
-        {
-          "dataset": "metrics_db",
-          "editorMode": "code",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT * FROM (\nSELECT\n  SUM(uncontrolled_moderate + uncontrolled_high) AS value\nFROM HEART360_BLOOD_SUGAR_SEVERITY\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_BLOOD_SUGAR_SEVERITY\n    WHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  )\n) AS master_access_control WHERE '${isAllowed}' = '1'",
-          "refId": "A",
-          "sql": {
-            "columns": [
-              {
-                "parameters": [],
-                "type": "function"
-              }
-            ],
-            "groupBy": [
-              {
-                "property": {
-                  "type": "string"
-                },
-                "type": "groupBy"
-              }
-            ],
-            "limit": 50
-          }
-        }
-      ],
-      "title": "# Uncontrolled blood sugar",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension-cached"
-      },
-      "description": "${Facility:text} - Latest month",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "light-orange",
-            "mode": "fixed"
-          },
-          "decimals": 0,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "x": 16,
-        "y": 22,
-        "w": 4,
-        "h": 3
-      },
-      "id": 11,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
-      },
-      "pluginVersion": "12.4.2",
-      "targets": [
-        {
-          "dataset": "metrics_db",
-          "editorMode": "code",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT * FROM (\nSELECT\n  (SUM(missed_visit) * 100.0 / NULLIF(SUM(diabetes_patients_under_care), 0)) AS value\nFROM HEART360_BLOOD_SUGAR_MISSED_VISITS\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_BLOOD_SUGAR_MISSED_VISITS\n    WHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  )\n) AS master_access_control WHERE '${isAllowed}' = '1'",
-          "refId": "A",
-          "sql": {
-            "columns": [
-              {
-                "parameters": [],
-                "type": "function"
-              }
-            ],
-            "groupBy": [
-              {
-                "property": {
-                  "type": "string"
-                },
-                "type": "groupBy"
-              }
-            ],
-            "limit": 50
-          }
-        }
-      ],
-      "title": "% No visit (DM)",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension-cached"
-      },
-      "description": "${Facility:text} - Latest month",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "light-orange",
-            "mode": "fixed"
-          },
-          "decimals": 0,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "x": 20,
-        "y": 22,
-        "w": 3,
-        "h": 3
-      },
-      "id": 12,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "value",
-        "wideLayout": true
-      },
-      "pluginVersion": "12.4.2",
-      "targets": [
-        {
-          "dataset": "metrics_db",
-          "editorMode": "code",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT * FROM (\nSELECT\n  SUM(missed_visit) AS value\nFROM HEART360_BLOOD_SUGAR_MISSED_VISITS\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_BLOOD_SUGAR_MISSED_VISITS\n    WHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n  )\n) AS master_access_control WHERE '${isAllowed}' = '1'",
-          "refId": "A",
-          "sql": {
-            "columns": [
-              {
-                "parameters": [],
-                "type": "function"
-              }
-            ],
-            "groupBy": [
-              {
-                "property": {
-                  "type": "string"
-                },
-                "type": "groupBy"
-              }
-            ],
-            "limit": 50
-          }
-        }
-      ],
-      "title": "# No visit (DM)",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension-cached"
-      },
-      "description": "Patients with diabetes with no visit in the past 12 months",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1215,7 +470,7 @@
             "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 2,
-            "pointSize": 5,
+            "pointSize": 6,
             "scaleDistribution": {
               "type": "linear"
             },
@@ -1231,10 +486,321 @@
             }
           },
           "decimals": 0,
-          "displayName": "% DM patients with no visit in the past 12 months",
+          "displayName": "% Patients with no BP measure recorded in past 3 months",
           "mappings": [],
           "max": 100,
           "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "control_rate"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "dark-orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 7,
+        "x": 16,
+        "y": 20
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.1",
+      "targets": [
+        {
+          "dataset": "metrics_db",
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT * FROM (\nselect \n    ref_month,\n    100.00 * sum(nb_patients_no_visit) / (0.000001 + GREATEST(0, sum(TOTAL_NUMBER_OF_PATIENTS) - sum(NB_PATIENTS_NEWLY_REGISTERED) - sum(NB_PATIENTS_LOST_TO_FOLLOW_UP))) as Control_rate\nfrom HEART360_PATIENTS_CATEGORY\nwhere org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\ngroup by 1\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "No visit in past 3 months",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "postgres-hypertension-cached"
+      },
+      "description": "Patients with hypertension with at least 1 visit in the past 12 months",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "showValues": true,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "nb_new_patients"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "bars"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 65
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cumulative_number_of_patients"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "HTN - Cumulative registrations"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "nb_patients_under_care"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "purple",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "HTN - Patients under care"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "nb_new_patients"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "HTN - Monthly registrations"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 16,
+        "x": 0,
+        "y": 28
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.1",
+      "targets": [
+        {
+          "dataset": "metrics_db",
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT * FROM (\nWITH selected_org AS (\n  SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1)))\n),\nknown_months AS (\n  SELECT DATE_TRUNC('month', series_date)::date AS ref_month\n  FROM generate_series(\n    DATE_TRUNC('month', (SELECT MIN(registration_date) FROM patients)),\n    DATE_TRUNC('month', CURRENT_DATE),\n    '1 month'::interval\n  ) AS t(series_date)\n),\nmonthly_registrations AS (\n  SELECT\n    DATE_TRUNC('month', p.registration_date)::date AS ref_month,\n    COUNT(*) AS nb_new_patients\n  FROM patients p\n  WHERE LOWER(p.patient_status) <> 'dead'\n    AND EXISTS (SELECT 1 FROM patient_diagnoses pd WHERE pd.patient_id = p.patient_id AND pd.diagnosis_code = 'I10')\n    AND p.org_unit_id IN (SELECT id FROM selected_org)\n  GROUP BY DATE_TRUNC('month', p.registration_date)\n),\nhtn_under_care AS (\n  SELECT\n    uc.ref_month,\n    SUM(uc.nb_patients_under_care) AS nb_patients_under_care\n  FROM HEART360_PATIENTS_UNDER_CARE uc\n  WHERE uc.org_unit_id IN (SELECT id FROM selected_org)\n  GROUP BY uc.ref_month\n)\nSELECT\n  km.ref_month,\n  SUM(COALESCE(mr.nb_new_patients, 0)) OVER (ORDER BY km.ref_month) AS cumulative_number_of_patients,\n  c.nb_patients_under_care,\n  COALESCE(mr.nb_new_patients, 0) AS nb_new_patients\nFROM known_months km\nLEFT JOIN monthly_registrations mr ON mr.ref_month = km.ref_month\nLEFT JOIN htn_under_care c ON c.ref_month = km.ref_month\nORDER BY km.ref_month\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Patients under care",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "postgres-hypertension-cached"
+      },
+      "description": "Patients with hypertension with no visit in the past 12 months",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 6,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "showValues": true,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "displayName": "% Patients with no BP measure recorded in the past 12 months",
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1268,12 +834,12 @@
         ]
       },
       "gridPos": {
-        "x": 16,
-        "y": 25,
+        "h": 8,
         "w": 7,
-        "h": 9
+        "x": 16,
+        "y": 28
       },
-      "id": 15,
+      "id": 8,
       "options": {
         "legend": {
           "calcs": [],
@@ -1287,14 +853,14 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.4.2",
+      "pluginVersion": "12.4.1",
       "targets": [
         {
           "dataset": "metrics_db",
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT * FROM (\nSELECT\n  ref_month,\n  (100.0 * SUM(COALESCE(nb_patients_lost_to_follow_up, 0))) /\n  NULLIF(SUM(TOTAL_NUMBER_OF_PATIENTS), 0) AS lost_to_follow_up_pct\nFROM HEART360_DM_PATIENTS_CATAGORY\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\nGROUP BY ref_month\nORDER BY ref_month\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+          "rawSql": "SELECT * FROM (\nselect \n  HEART360_PATIENTS_CATEGORY.ref_month,\n  (100.0 * sum(COALESCE(HEART360_PATIENTS_CATEGORY.nb_patients_lost_to_follow_up, 0))) / \n  NULLIF(sum(HEART360_PATIENTS_CATEGORY.TOTAL_NUMBER_OF_PATIENTS), 0) as lost_to_follow_up_pct\nfrom HEART360_PATIENTS_CATEGORY\nwhere HEART360_PATIENTS_CATEGORY.org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\ngroup by 1\n) AS master_access_control WHERE '${isAllowed}' = '1'",
           "refId": "A",
           "sql": {
             "columns": [
@@ -1319,198 +885,14 @@
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "postgres-hypertension-cached"
-      },
-      "description": "Patients with diabetes with at least 1 visit in the past 12 months",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisGridShow": true,
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 25,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineStyle": {
-              "fill": "solid"
-            },
-            "lineWidth": 2,
-            "pointSize": 6,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "showValues": true,
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "nb_new_dm_patients"
-            },
-            "properties": [
-              {
-                "id": "custom.drawStyle",
-                "value": "bars"
-              },
-              {
-                "id": "custom.fillOpacity",
-                "value": 65
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "cumulative_dm_patients"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "blue",
-                  "mode": "fixed"
-                }
-              },
-              {
-                "id": "displayName",
-                "value": "DM - Cumulative registrations"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "nb_dm_patients_under_care"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "purple",
-                  "mode": "fixed"
-                }
-              },
-              {
-                "id": "displayName",
-                "value": "DM - Patients under care"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "nb_new_dm_patients"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "DM - Monthly registrations"
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 25,
-        "w": 16,
-        "h": 9
-      },
-      "id": 14,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.4.2",
-      "targets": [
-        {
-          "dataset": "metrics_db",
-          "editorMode": "code",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT * FROM (\nWITH selected_org AS (\n  SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1)))\n),\nknown_months AS (\n  SELECT DATE_TRUNC('month', series_date)::date AS ref_month\n  FROM generate_series(\n    DATE_TRUNC('month', (SELECT MIN(registration_date) FROM patients)),\n    DATE_TRUNC('month', CURRENT_DATE),\n    '1 month'::interval\n  ) AS t(series_date)\n),\nmonthly_registrations AS (\n  SELECT\n    DATE_TRUNC('month', p.registration_date)::date AS ref_month,\n    COUNT(*) AS nb_new_dm_patients\n  FROM patients p\n  WHERE LOWER(p.patient_status) <> 'dead'\n    AND EXISTS (SELECT 1 FROM patient_diagnoses pd WHERE pd.patient_id = p.patient_id AND pd.diagnosis_code = 'E11')\n    AND p.org_unit_id IN (SELECT id FROM selected_org)\n  GROUP BY DATE_TRUNC('month', p.registration_date)\n),\ndm_under_care AS (\n  SELECT\n    uc.ref_month,\n    SUM(COALESCE(uc.nb_patients_controlled, 0) + COALESCE(uc.nb_patients_uncontrolled, 0) + COALESCE(uc.nb_patients_no_visit, 0)) AS nb_dm_patients_under_care\n  FROM HEART360_DM_PATIENTS_CATAGORY uc\n  WHERE uc.org_unit_id IN (SELECT id FROM selected_org)\n  GROUP BY uc.ref_month\n)\nSELECT\n  km.ref_month,\n  SUM(COALESCE(mr.nb_new_dm_patients, 0)) OVER (ORDER BY km.ref_month) AS cumulative_dm_patients,\n  c.nb_dm_patients_under_care,\n  COALESCE(mr.nb_new_dm_patients, 0) AS nb_new_dm_patients\nFROM known_months km\nLEFT JOIN monthly_registrations mr ON mr.ref_month = km.ref_month\nLEFT JOIN dm_under_care c ON c.ref_month = km.ref_month\nORDER BY km.ref_month\n) AS master_access_control WHERE '${isAllowed}' = '1'",
-          "refId": "A",
-          "sql": {
-            "columns": [
-              {
-                "parameters": [],
-                "type": "function"
-              }
-            ],
-            "groupBy": [
-              {
-                "property": {
-                  "type": "string"
-                },
-                "type": "groupBy"
-              }
-            ],
-            "limit": 50
-          }
-        }
-      ],
-      "title": "Patients under care",
-      "type": "timeseries"
-    },
-    {
       "collapsed": false,
       "gridPos": {
-        "x": 0,
-        "y": 34,
+        "h": 1,
         "w": 24,
-        "h": 1
+        "x": 0,
+        "y": 36
       },
-      "id": 100,
+      "id": 11,
       "panels": [],
       "title": "${child_level_name} Details",
       "type": "row"
@@ -1521,19 +903,19 @@
         "overrides": []
       },
       "gridPos": {
-        "x": 0,
-        "y": 35,
+        "h": 2,
         "w": 24,
-        "h": 2
+        "x": 0,
+        "y": 37
       },
-      "id": 101,
+      "id": 13,
       "options": {
         "code": {
           "language": "plaintext",
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "Treatment outcomes for patients with diabetes at their latest visit before <u>**${reference_month:date:MMMM YYYY}**</u>",
+        "content": "Treatment outcomes for patients with hypertension at their latest visit before <u>**${reference_month:date:MMMM YYYY}**</u>",
         "mode": "markdown"
       },
       "pluginVersion": "12.4.1",
@@ -1583,7 +965,7 @@
               },
               {
                 "id": "displayName",
-                "value": "% BS controlled"
+                "value": "% BP controlled"
               }
             ]
           },
@@ -1606,7 +988,7 @@
               },
               {
                 "id": "displayName",
-                "value": "% BS uncontrolled"
+                "value": "% BP uncontrolled"
               }
             ]
           },
@@ -1682,7 +1064,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "# BS controlled"
+                "value": "# BP controlled"
               }
             ]
           },
@@ -1694,7 +1076,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "# BS uncontrolled"
+                "value": "# BP uncontrolled"
               }
             ]
           },
@@ -1713,12 +1095,12 @@
         ]
       },
       "gridPos": {
-        "x": 0,
-        "y": 37,
+        "h": 12,
         "w": 24,
-        "h": 12
+        "x": 0,
+        "y": 39
       },
-      "id": 102,
+      "id": 12,
       "options": {
         "columnManagerCustomIcon": "",
         "columnManagerNativeIcon": "table",
@@ -2426,7 +1808,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT * FROM (\nWITH latest_month AS (\n    SELECT MAX(ref_month) AS ref_month FROM HEART360_BLOOD_SUGAR_CONTROLLED\n    WHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n    AND $__timeFilter(ref_month)\n)\nSELECT\n    child_ou.id AS child_id,\n    child_ou.name AS child_name,\n    REPLACE(build_drill_url(child_ou.id), '/d/heart360_drilldown?', '/d/heart360_drilldown_diabetes?') AS drill_url,\n    SUM(COALESCE(uc.nb_dm_patients_under_care, 0)) AS nb_patients_under_care,\n    SUM(COALESCE(uc.nb_new_dm_patients, 0)) AS nb_patients_newly_registered,\n    SUM(COALESCE(bsc.diabetes_controlled, 0)) AS nb_patients_controlled,\n    ROUND(100.0 * SUM(COALESCE(bsc.diabetes_controlled, 0)) / NULLIF(SUM(COALESCE(bsc.diabetes_patients_under_care, 0)), 0)) AS per_patients_controlled,\n    SUM(COALESCE(bss.uncontrolled_moderate, 0) + COALESCE(bss.uncontrolled_high, 0)) AS nb_patients_uncontrolled,\n    ROUND(100.0 * SUM(COALESCE(bss.uncontrolled_moderate, 0) + COALESCE(bss.uncontrolled_high, 0)) / NULLIF(SUM(COALESCE(bss.diabetes_patients_under_care, 0)), 0)) AS per_patients_uncontrolled,\n    SUM(COALESCE(bsm.missed_visit, 0)) AS nb_patients_no_visit,\n    ROUND(100.0 * SUM(COALESCE(bsm.missed_visit, 0)) / NULLIF(SUM(COALESCE(bsm.diabetes_patients_under_care, 0)), 0)) AS per_patients_no_visit\nFROM org_unit_lineage lin\nJOIN org_units child_ou ON lin.ancestor_id = child_ou.id AND child_ou.parent_id = ((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))\nLEFT JOIN HEART360_DM_PATIENTS_UNDER_CARE uc ON uc.org_unit_id = lin.org_unit_id AND uc.ref_month = (SELECT ref_month FROM latest_month)\nLEFT JOIN HEART360_BLOOD_SUGAR_CONTROLLED bsc ON bsc.org_unit_id = lin.org_unit_id AND bsc.ref_month = (SELECT ref_month FROM latest_month)\nLEFT JOIN HEART360_BLOOD_SUGAR_SEVERITY bss ON bss.org_unit_id = lin.org_unit_id AND bss.ref_month = (SELECT ref_month FROM latest_month)\nLEFT JOIN HEART360_BLOOD_SUGAR_MISSED_VISITS bsm ON bsm.org_unit_id = lin.org_unit_id AND bsm.ref_month = (SELECT ref_month FROM latest_month)\nGROUP BY child_ou.id, child_ou.name\nORDER BY child_ou.name\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+          "rawSql": "SELECT * FROM (\nSELECT\n    child_ou.id as child_id,\n    child_ou.name as child_name,\n    build_drill_url(child_ou.id) as drill_url,\n    CASE WHEN child_ou.level >= 5 THEN\n      '/d/heart360_facility?var-Region=' || COALESCE((SELECT lin2.ancestor_id::text FROM org_unit_lineage lin2 WHERE lin2.org_unit_id = child_ou.id AND lin2.ancestor_level = 1), '') ||\n      '&var-District=' || COALESCE((SELECT lin2.ancestor_id::text FROM org_unit_lineage lin2 WHERE lin2.org_unit_id = child_ou.id AND lin2.ancestor_level = 2), '') ||\n      '&var-Facility=' || COALESCE((SELECT lin2.ancestor_id::text FROM org_unit_lineage lin2 WHERE lin2.org_unit_id = child_ou.id AND lin2.ancestor_level = 3), '') ||\n      '&var-Sub_Facility=' || COALESCE((SELECT lin2.ancestor_id::text FROM org_unit_lineage lin2 WHERE lin2.org_unit_id = child_ou.id AND lin2.ancestor_level = 4), '')\n    ELSE NULL END as facility_url,\n    SUM(COALESCE(uc.nb_patients_under_care, 0)) AS nb_patients_under_care,\n    SUM(COALESCE(nb_new_patients, 0)) AS nb_patients_newly_registered,\n    SUM(cat.nb_patients_controlled) AS nb_patients_controlled,\n    ROUND(100.0 * SUM(cat.nb_patients_controlled) / NULLIF(GREATEST(0, SUM(cat.TOTAL_NUMBER_OF_PATIENTS) - SUM(cat.NB_PATIENTS_NEWLY_REGISTERED) - SUM(cat.NB_PATIENTS_LOST_TO_FOLLOW_UP)), 0)) AS per_patients_controlled,\n    SUM(cat.nb_patients_uncontrolled) AS nb_patients_uncontrolled,\n    ROUND(100.0 * SUM(cat.nb_patients_uncontrolled) / NULLIF(GREATEST(0, SUM(cat.TOTAL_NUMBER_OF_PATIENTS) - SUM(cat.NB_PATIENTS_NEWLY_REGISTERED) - SUM(cat.NB_PATIENTS_LOST_TO_FOLLOW_UP)), 0)) AS per_patients_uncontrolled,\n    SUM(cat.nb_patients_no_visit) AS nb_patients_no_visit,\n    ROUND(100.0 * SUM(cat.nb_patients_no_visit) / NULLIF(GREATEST(0, SUM(cat.TOTAL_NUMBER_OF_PATIENTS) - SUM(cat.NB_PATIENTS_NEWLY_REGISTERED) - SUM(cat.NB_PATIENTS_LOST_TO_FOLLOW_UP)), 0)) AS per_patients_no_visit\nFROM HEART360_PATIENTS_CATEGORY cat\nJOIN org_unit_lineage lin ON cat.org_unit_id = lin.org_unit_id\nJOIN org_units child_ou ON lin.ancestor_id = child_ou.id AND child_ou.parent_id = ((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))\nLEFT JOIN heart360_patients_registered\n    ON cat.ref_month = heart360_patients_registered.ref_month\n    AND cat.org_unit_id = heart360_patients_registered.org_unit_id\nLEFT JOIN HEART360_PATIENTS_UNDER_CARE uc\n    ON cat.ref_month = uc.ref_month\n    AND cat.org_unit_id = uc.org_unit_id\nWHERE cat.ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_PATIENTS_CATEGORY\n    WHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\n    AND $__timeFilter(ref_month)\n)\nGROUP BY child_ou.id, child_ou.name, child_ou.level\nORDER BY child_ou.name\n) AS master_access_control WHERE '${isAllowed}' = '1'",
           "refId": "A",
           "sql": {
             "columns": [
@@ -2474,12 +1856,12 @@
         "overrides": []
       },
       "gridPos": {
-        "x": 0,
-        "y": 0,
+        "h": 2,
         "w": 24,
-        "h": 2
+        "x": 0,
+        "y": 0
       },
-      "id": 103,
+      "id": 21,
       "options": {
         "afterRender": "",
         "content": "{{#if (eq isAllowed 0)}}\n  <div style=\"color: #e02424; background: rgba(224, 36, 36, 0.05); border-left: 4px solid #e02424; padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 8px; border-radius: 2px; line-height: 1.4; width: 100%;\">\n    <span>\u26a0\ufe0f</span>\n    <span>\n      <strong>Access Denied:</strong> Ask admin to add to one of these teams: {{{requiredGroups}}}\n    </span>\n  </div>\n{{/if}}",
@@ -3128,7 +2510,7 @@
           "type": "grafana-postgresql-datasource",
           "uid": "postgres-hypertension"
         },
-        "definition": "SELECT COALESCE(string_agg('[' || replace(replace(ancestor_name, ']', ')'), '[', '(') || '](' || REPLACE(build_drill_url(ancestor_id), '/d/heart360_drilldown?', '/d/heart360_drilldown_diabetes?') || ')', ' > ' ORDER BY ancestor_level), '*Select an **Org unit***') AS __value FROM org_unit_lineage WHERE org_unit_id = (SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1)",
+        "definition": "SELECT COALESCE(string_agg('[' || replace(replace(ancestor_name, ']', ')'), '[', '(') || '](' || build_drill_url(ancestor_id) || ')', ' > ' ORDER BY ancestor_level), '*Select an **Org unit***') AS __value FROM org_unit_lineage WHERE org_unit_id = (SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1)",
         "hide": 2,
         "name": "breadcrumb_html",
         "options": [],
@@ -3136,7 +2518,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT COALESCE(string_agg('[' || replace(replace(ancestor_name, ']', ')'), '[', '(') || '](' || REPLACE(build_drill_url(ancestor_id), '/d/heart360_drilldown?', '/d/heart360_drilldown_diabetes?') || ')', ' > ' ORDER BY ancestor_level), '*Select an **Org unit***') AS __value FROM org_unit_lineage WHERE org_unit_id = (SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1)",
+          "rawSql": "SELECT COALESCE(string_agg('[' || replace(replace(ancestor_name, ']', ')'), '[', '(') || '](' || build_drill_url(ancestor_id) || ')', ' > ' ORDER BY ancestor_level), '*Select an **Org unit***') AS __value FROM org_unit_lineage WHERE org_unit_id = (SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1)",
           "refId": "tempvar",
           "sql": {
             "columns": [
@@ -3333,8 +2715,8 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "HEARTS360 Diabetes Dashboard",
-  "uid": "heart360_drilldown_diabetes",
-  "version": 1,
+  "title": "Hypertension Program",
+  "uid": "heart360_drilldown",
+  "version": 5,
   "weekStart": ""
 }

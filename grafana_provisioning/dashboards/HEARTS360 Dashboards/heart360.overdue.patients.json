@@ -1829,7 +1829,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "HEARTS360 Overdue Patients",
+  "title": "Overdue Patients",
   "uid": "heart360_drilldown_overdue",
   "version": 1,
   "weekStart": ""

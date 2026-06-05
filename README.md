@@ -87,7 +87,7 @@ Wait 30-60 seconds for all services to initialize.
 1. **Check Grafana Dashboard:**
    - Open browser: `http://localhost:3000`
    - Login with: `admin` / `admin`
-   - You should see the "HEARTS360 Hypertension Dashboard"
+   - You should see the "Hypertension Program" dashboard
 
 2. **Check File Upload:**
    - Open browser: `http://localhost:8080`
