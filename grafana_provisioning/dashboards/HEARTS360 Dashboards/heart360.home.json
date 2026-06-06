@@ -1,0 +1,152 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "code": {
+          "language": "html",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "<div id=\"h360-router\" style=\"padding:24px;text-align:center;color:#9ca3af;font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:13px\">Loading…</div>\n<script>\n(function(){\n  try {\n    var checkInterval = setInterval(function() {\n      try {\n        var urlParams = new URLSearchParams(window.top.location.search);\n        var isGlobal = urlParams.get('var-UserIsGlobal');\n        if (isGlobal === null || isGlobal === '') {\n          return;\n        }\n        if (isGlobal === '1') {\n          clearInterval(checkInterval);\n          window.top.location.replace('/d/heart360_drilldown?orgId=1');\n        } else if (isGlobal === '0') {\n          var slug = urlParams.get('var-UserFacilitySlug');\n          var facilityId = urlParams.get('var-UserFacilityId');\n          var regionId = urlParams.get('var-UserRegionId');\n          var districtId = urlParams.get('var-UserDistrictId');\n          if (slug && slug !== 'null' && facilityId && facilityId !== 'null' && regionId && regionId !== 'null' && districtId && districtId !== 'null') {\n            clearInterval(checkInterval);\n            var url = '/d/heart360_drilldown?orgId=1&var-region=' + regionId + '&var-district=' + districtId + '&var-facility=' + facilityId;\n            window.top.location.replace(url);\n          }\n        }\n      } catch(innerEx) {\n        console.error('HEARTS360 router polling error:', innerEx);\n      }\n    }, 100);\n    setTimeout(function() {\n      clearInterval(checkInterval);\n      if (window.top.location.pathname.indexOf('/d/heart360-home') !== -1) {\n        window.top.location.replace('/d/heart360_drilldown?orgId=1');\n      }\n    }, 3000);\n  } catch(e) { console.error('HEARTS360 home redirect failed:', e); }\n})();\n</script>",
+        "mode": "html"
+      },
+      "pluginVersion": "12.4.1",
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    }
+  ],
+  "preload": false,
+  "schemaVersion": 42,
+  "tags": [],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "postgres-grafana"
+        },
+        "definition": "SELECT COALESCE(MIN(regexp_replace(t.name, '^heart360tk_facility_view_(patients|aggregated)_', '')), '')\nFROM \"user\" u\nLEFT JOIN team_member tm ON tm.user_id = u.id\nLEFT JOIN team t ON tm.team_id = t.id\nWHERE u.id = ${__user.id}\n  AND t.name LIKE 'heart360tk_facility_view_%'\n  AND t.name NOT LIKE '%\\_ALL' ESCAPE '\\'",
+        "hide": 2,
+        "name": "UserFacilitySlug",
+        "options": [],
+        "query": "SELECT COALESCE(MIN(regexp_replace(t.name, '^heart360tk_facility_view_(patients|aggregated)_', '')), '')\nFROM \"user\" u\nLEFT JOIN team_member tm ON tm.user_id = u.id\nLEFT JOIN team t ON tm.team_id = t.id\nWHERE u.id = ${__user.id}\n  AND t.name LIKE 'heart360tk_facility_view_%'\n  AND t.name NOT LIKE '%\\_ALL' ESCAPE '\\'",
+        "refresh": 1,
+        "regex": "",
+        "regexApplyTo": "value",
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "postgres-hypertension"
+        },
+        "definition": "SELECT COALESCE((\n  SELECT id::text FROM org_units\n  WHERE level = 3\n    AND regexp_replace(lower(trim(name)), '\\s+', '_', 'g') = '${UserFacilitySlug}'\n  ORDER BY id\n  LIMIT 1\n), '')",
+        "hide": 2,
+        "name": "UserFacilityId",
+        "options": [],
+        "query": "SELECT COALESCE((\n  SELECT id::text FROM org_units\n  WHERE level = 3\n    AND regexp_replace(lower(trim(name)), '\\s+', '_', 'g') = '${UserFacilitySlug}'\n  ORDER BY id\n  LIMIT 1\n), '')",
+        "refresh": 1,
+        "regex": "",
+        "regexApplyTo": "value",
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "postgres-grafana"
+        },
+        "definition": "SELECT CASE WHEN (u.is_admin OR EXISTS (\n  SELECT 1 FROM team_member tm\n  JOIN team t ON tm.team_id = t.id\n  WHERE tm.user_id = u.id AND t.name LIKE '%\\_ALL' ESCAPE '\\'\n)) THEN 1 ELSE 0 END\nFROM \"user\" u WHERE u.id = ${__user.id}",
+        "hide": 2,
+        "name": "UserIsGlobal",
+        "options": [],
+        "query": "SELECT CASE WHEN (u.is_admin OR EXISTS (\n  SELECT 1 FROM team_member tm\n  JOIN team t ON tm.team_id = t.id\n  WHERE tm.user_id = u.id AND t.name LIKE '%\\_ALL' ESCAPE '\\'\n)) THEN 1 ELSE 0 END\nFROM \"user\" u WHERE u.id = ${__user.id}",
+        "refresh": 1,
+        "regex": "",
+        "regexApplyTo": "value",
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "postgres-hypertension"
+        },
+        "definition": "SELECT COALESCE((SELECT ancestor_id::text FROM org_unit_lineage WHERE org_unit_id = NULLIF('${UserFacilityId}', '')::int AND ancestor_level = 1 LIMIT 1), '')",
+        "hide": 2,
+        "name": "UserRegionId",
+        "options": [],
+        "query": "SELECT COALESCE((SELECT ancestor_id::text FROM org_unit_lineage WHERE org_unit_id = NULLIF('${UserFacilityId}', '')::int AND ancestor_level = 1 LIMIT 1), '')",
+        "refresh": 1,
+        "regex": "",
+        "regexApplyTo": "value",
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "postgres-hypertension"
+        },
+        "definition": "SELECT COALESCE((SELECT ancestor_id::text FROM org_unit_lineage WHERE org_unit_id = NULLIF('${UserFacilityId}', '')::int AND ancestor_level = 2 LIMIT 1), '')",
+        "hide": 2,
+        "name": "UserDistrictId",
+        "options": [],
+        "query": "SELECT COALESCE((SELECT ancestor_id::text FROM org_unit_lineage WHERE org_unit_id = NULLIF('${UserFacilityId}', '')::int AND ancestor_level = 2 LIMIT 1), '')",
+        "refresh": 1,
+        "regex": "",
+        "regexApplyTo": "value",
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Home",
+  "uid": "heart360-home",
+  "version": 1,
+  "weekStart": ""
+}
