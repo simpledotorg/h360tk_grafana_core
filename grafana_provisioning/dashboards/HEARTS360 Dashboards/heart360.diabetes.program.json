@@ -220,7 +220,7 @@
       },
       "id": 6,
       "panels": [],
-      "title": "DM treatment outcomes",
+      "title": "Program management indicators",
       "type": "row"
     },
     {
@@ -228,7 +228,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "postgres-hypertension-cached"
       },
-      "description": "% Patients with RBS <140, FBS <126 mg/dL, or HbA1c <7%",
+      "description": "Numerator:\nPatients with controlled blood sugar (FBS <126 mg/dL or HbA1c <7%) at their latest visit in the past 3 months.\nDenominator:\nPatients with diabetes registered before the past 3 months. Dead patients and 12 month lost to follow-up patients are excluded.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -358,7 +358,7 @@
           }
         }
       ],
-      "title": "Controlled Blood Sugar",
+      "title": "% Controlled blood sugar at latest visit in past 3 months",
       "type": "timeseries"
     },
     {
@@ -366,7 +366,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "postgres-hypertension-cached"
       },
-      "description": "% Patients with uncontrolled blood sugar (moderate and high)",
+      "description": "Numerator:\nPatients with uncontrolled blood sugar (FBS ≥126 mg/dL or HbA1c ≥7%) at their latest visit in the past 3 months.\nDenominator:\nPatients with diabetes registered before the past 3 months. Dead patients and 12 month lost to follow-up patients are excluded.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -429,7 +429,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "% Patients with FBS 126\u2013199 mg/dL or HbA1c 7\u20138.9%"
+              "options": "% Patients with FBS 126–199 mg/dL or HbA1c 7–8.9%"
             },
             "properties": [
               {
@@ -444,7 +444,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "% Patients with FBS \u2265200 mg/dL or HbA1c \u22659%"
+              "options": "% Patients with FBS ≥200 mg/dL or HbA1c ≥9%"
             },
             "properties": [
               {
@@ -527,7 +527,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT * FROM (\nWITH months AS (\n  SELECT generate_series(\n    date_trunc('month', $__timeFrom()::timestamp),\n    date_trunc('month', $__timeTo()::timestamp),\n    '1 month'::interval\n  )::date AS ref_month\n)\nSELECT\n  months.ref_month AS \"time\",\n\n  COALESCE(SUM(100.0 * s.uncontrolled_moderate) / NULLIF(SUM(s.diabetes_patients_under_care), 0), 0)\n  AS \"% Patients with FBS 126\u2013199 mg/dL or HbA1c 7\u20138.9%\",\n\n  COALESCE(SUM(100.0 * s.uncontrolled_high) / NULLIF(SUM(s.diabetes_patients_under_care), 0), 0)\n  AS \"% Patients with FBS \u2265200 mg/dL or HbA1c \u22659%\",\n\n  COALESCE(SUM(100.0 * (s.uncontrolled_moderate + s.uncontrolled_high)) / NULLIF(SUM(s.diabetes_patients_under_care), 0), 0)\n  AS \"% Total Uncontrolled\"\n\nFROM months\nLEFT JOIN HEART360_BLOOD_SUGAR_SEVERITY s\n  ON s.ref_month = months.ref_month\n  AND s.org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\nGROUP BY months.ref_month\nORDER BY months.ref_month\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+          "rawSql": "SELECT * FROM (\nWITH months AS (\n  SELECT generate_series(\n    date_trunc('month', $__timeFrom()::timestamp),\n    date_trunc('month', $__timeTo()::timestamp),\n    '1 month'::interval\n  )::date AS ref_month\n)\nSELECT\n  months.ref_month AS \"time\",\n\n  COALESCE(SUM(100.0 * s.uncontrolled_moderate) / NULLIF(SUM(s.diabetes_patients_under_care), 0), 0)\n  AS \"% Patients with FBS 126–199 mg/dL or HbA1c 7–8.9%\",\n\n  COALESCE(SUM(100.0 * s.uncontrolled_high) / NULLIF(SUM(s.diabetes_patients_under_care), 0), 0)\n  AS \"% Patients with FBS ≥200 mg/dL or HbA1c ≥9%\",\n\n  COALESCE(SUM(100.0 * (s.uncontrolled_moderate + s.uncontrolled_high)) / NULLIF(SUM(s.diabetes_patients_under_care), 0), 0)\n  AS \"% Total Uncontrolled\"\n\nFROM months\nLEFT JOIN HEART360_BLOOD_SUGAR_SEVERITY s\n  ON s.ref_month = months.ref_month\n  AND s.org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\nGROUP BY months.ref_month\nORDER BY months.ref_month\n) AS master_access_control WHERE '${isAllowed}' = '1'",
           "refId": "A",
           "sql": {
             "columns": [
@@ -548,7 +548,7 @@
           }
         }
       ],
-      "title": "Uncontrolled Blood Sugar",
+      "title": "% Uncontrolled blood sugar at latest visit in past 3 months",
       "type": "timeseries"
     },
     {
@@ -556,7 +556,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "postgres-hypertension-cached"
       },
-      "description": "% Patients with no recorded visit",
+      "description": "Numerator:\nPatients with no visit in the past 3 months.\nDenominator:\nPatients with diabetes registered before the past 3 months. Dead patients and 12 month lost to follow-up patients are excluded.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -599,7 +599,7 @@
             }
           },
           "decimals": 0,
-          "displayName": "% Patients with no recorded visit",
+          "displayName": "DM - % Patients with no blood sugar measure recorded in the past 3 months",
           "mappings": [],
           "max": 100,
           "min": 0,
@@ -622,7 +622,7 @@
       "gridPos": {
         "x": 16,
         "y": 14,
-        "w": 7,
+        "w": 8,
         "h": 8
       },
       "id": 4,
@@ -667,7 +667,7 @@
           }
         }
       ],
-      "title": " No visit in past 3 months",
+      "title": "% No visit in past 3 months (DM)",
       "type": "timeseries"
     },
     {
@@ -675,7 +675,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "postgres-hypertension-cached"
       },
-      "description": "${Facility:text} - Latest month",
+      "description": "${facility:text} - Latest month",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -765,7 +765,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "postgres-hypertension-cached"
       },
-      "description": "${Facility:text} - Latest month",
+      "description": "${facility:text} - Latest month",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -847,7 +847,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "postgres-hypertension-cached"
       },
-      "description": "${Facility:text} - Latest month",
+      "description": "${facility:text} - Latest month",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -929,7 +929,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "postgres-hypertension-cached"
       },
-      "description": "${Facility:text} - Latest month",
+      "description": "${facility:text} - Latest month",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1011,7 +1011,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "postgres-hypertension-cached"
       },
-      "description": "${Facility:text} - Latest month",
+      "description": "${facility:text} - Latest month",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1093,7 +1093,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "postgres-hypertension-cached"
       },
-      "description": "${Facility:text} - Latest month",
+      "description": "${facility:text} - Latest month",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1118,7 +1118,7 @@
       "gridPos": {
         "x": 20,
         "y": 22,
-        "w": 3,
+        "w": 4,
         "h": 3
       },
       "id": 12,
@@ -1300,7 +1300,7 @@
           }
         }
       ],
-      "title": "12 month lost to follow-up",
+      "title": "% 12 month lost to follow-up (DM)",
       "type": "timeseries"
     },
     {
@@ -1308,7 +1308,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "postgres-hypertension-cached"
       },
-      "description": "Patients with diabetes with at least 1 visit in the past 12 months",
+      "description": "**Patients under care:** Registered patients with diabetes with at least 1 visit in the past 12 months. Dead patients and 12 month lost to follow-up patients are excluded.\n**Cumulative registered patients:** All patients with diabetes registered. Dead patients are excluded.\n**Monthly registered patients:** Patients with diabetes registered each month.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1484,7 +1484,7 @@
           }
         }
       ],
-      "title": "Patients under care",
+      "title": "Patients under care & registrations (DM)",
       "type": "timeseries"
     },
     {
@@ -1497,7 +1497,7 @@
       },
       "id": 100,
       "panels": [],
-      "title": "${child_level_name} Details",
+      "title": "${child_level_name} comparison",
       "type": "row"
     },
     {
@@ -1568,7 +1568,7 @@
               },
               {
                 "id": "displayName",
-                "value": "% BS controlled"
+                "value": "DM - % Controlled blood sugar"
               }
             ]
           },
@@ -1591,7 +1591,7 @@
               },
               {
                 "id": "displayName",
-                "value": "% BS uncontrolled"
+                "value": "DM - % Uncontrolled blood sugar"
               }
             ]
           },
@@ -1614,7 +1614,7 @@
               },
               {
                 "id": "displayName",
-                "value": "% No visit in past 3 months"
+                "value": "DM - % No visit in past 3 months"
               }
             ]
           },
@@ -1643,7 +1643,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Patients under care"
+                "value": "DM - Patients under care"
               }
             ]
           },
@@ -1655,7 +1655,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Monthly new patients registered"
+                "value": "DM - Monthly registrations"
               }
             ]
           },
@@ -1667,7 +1667,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "# BS controlled"
+                "value": "DM - # Controlled Blood Sugar"
               }
             ]
           },
@@ -1679,7 +1679,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "# BS uncontrolled"
+                "value": "DM - # Uncontrolled Blood Sugar"
               }
             ]
           },
@@ -1691,7 +1691,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "# No visit in past 3 months"
+                "value": "DM - # No visit in past 3 months"
               }
             ]
           }
@@ -2467,7 +2467,7 @@
       "id": 103,
       "options": {
         "afterRender": "",
-        "content": "{{#if (eq isAllowed 0)}}\n  <div style=\"color: #e02424; background: rgba(224, 36, 36, 0.05); border-left: 4px solid #e02424; padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 8px; border-radius: 2px; line-height: 1.4; width: 100%;\">\n    <span>\u26a0\ufe0f</span>\n    <span>\n      <strong>Access Denied:</strong> Ask admin to add to one of these teams: {{{requiredGroups}}}\n    </span>\n  </div>\n{{/if}}",
+        "content": "{{#if (eq isAllowed 0)}}\n  <div style=\"color: #e02424; background: rgba(224, 36, 36, 0.05); border-left: 4px solid #e02424; padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 8px; border-radius: 2px; line-height: 1.4; width: 100%;\">\n    <span>⚠️</span>\n    <span>\n      <strong>Access Denied:</strong> Ask admin to add to one of these teams: {{{requiredGroups}}}\n    </span>\n  </div>\n{{/if}}",
         "contentPartials": [],
         "defaultContent": "The query didn't return any results.",
         "editor": {
