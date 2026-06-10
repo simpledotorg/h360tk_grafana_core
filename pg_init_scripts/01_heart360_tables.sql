@@ -1174,7 +1174,8 @@ ORDER BY km.ref_month DESC;
 -- ============================================================================
 -- VIEW 13: HEART360_DM_BP_CONTROL
 -- DM patients with controlled BP at their latest visit in the past 3 months.
--- Fixed: uses DM_RELEVANT_ENCOUNTERS for the under-care denominator.
+-- Denominator matches HEART360_BLOOD_SUGAR_CONTROLLED diabetes_patients_under_care:
+-- E11 only, registered 3+ months before ref_month, DM_RELEVANT_ENCOUNTERS visit in past 12 months.
 -- ============================================================================
 CREATE OR REPLACE VIEW HEART360_DM_BP_CONTROL AS
 WITH REF_MONTHS AS (
@@ -1191,11 +1192,6 @@ ALL_PATIENTS AS (
         SELECT 1 FROM patient_diagnoses pd
         WHERE pd.patient_id = p.patient_id
           AND pd.diagnosis_code = 'E11'
-    )
-    AND EXISTS (
-        SELECT 1 FROM patient_diagnoses pd
-        WHERE pd.patient_id = p.patient_id
-          AND pd.diagnosis_code = 'I10'
     )
 ),
 -- DM-relevant encounters: encounters with a BS reading OR no BP reading
@@ -1224,7 +1220,8 @@ SELECT
     rm.ref_month,
     p.org_unit_id,
     COUNT(DISTINCT p.patient_id) FILTER (
-        WHERE EXISTS (
+        WHERE DATE_TRUNC('month', p.registration_date) + interval '3 month' <= rm.ref_month
+            AND EXISTS (
                 SELECT 1 FROM DM_RELEVANT_ENCOUNTERS dre
                 WHERE dre.patient_id = p.patient_id
             )
@@ -1236,7 +1233,8 @@ SELECT
             )
     ) AS dm_patients_under_care,
     COUNT(DISTINCT p.patient_id) FILTER (
-        WHERE EXISTS (
+        WHERE DATE_TRUNC('month', p.registration_date) + interval '3 month' <= rm.ref_month
+            AND EXISTS (
                 SELECT 1 FROM DM_RELEVANT_ENCOUNTERS dre
                 WHERE dre.patient_id = p.patient_id
             )
@@ -1252,7 +1250,8 @@ SELECT
             AND NOT (lbp.systolic_bp < 130 AND lbp.diastolic_bp < 80)
     ) AS bp_controlled_140_90,
     COUNT(DISTINCT p.patient_id) FILTER (
-        WHERE EXISTS (
+        WHERE DATE_TRUNC('month', p.registration_date) + interval '3 month' <= rm.ref_month
+            AND EXISTS (
                 SELECT 1 FROM DM_RELEVANT_ENCOUNTERS dre
                 WHERE dre.patient_id = p.patient_id
             )
