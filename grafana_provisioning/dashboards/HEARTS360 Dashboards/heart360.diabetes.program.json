@@ -64,7 +64,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "postgres-hypertension-cached"
       },
-      "description": "Patients under care for diabetes with controlled BP at their latest visit in the past 3 months",
+      "description": "Numerator:\nPatients with controlled BP at their latest visit in the past 3 months (<140/90 or <130/80).\nDenominator:\nPatients with diabetes registered before the past 3 months. Dead patients and 12 month lost to follow-up patients are excluded.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -110,6 +110,7 @@
           },
           "decimals": 0,
           "mappings": [],
+          "max": 100,
           "min": 0,
           "thresholds": {
             "mode": "absolute",
@@ -124,13 +125,13 @@
               }
             ]
           },
-          "unit": "none"
+          "unit": "percent"
         },
         "overrides": [
           {
             "matcher": {
               "id": "byName",
-              "options": "Patients with BP <140/90"
+              "options": "% Patients with BP <140/90"
             },
             "properties": [
               {
@@ -145,7 +146,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Patients with BP <130/80"
+              "options": "% Patients with BP <130/80"
             },
             "properties": [
               {
@@ -186,7 +187,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT * FROM (\nSELECT\n  ref_month AS \"time\",\n  SUM(bp_controlled_140_90) AS \"Patients with BP <140/90\",\n  SUM(bp_controlled_130_80) AS \"Patients with BP <130/80\"\nFROM HEART360_DM_BP_CONTROL\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\nGROUP BY ref_month\nORDER BY ref_month\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+          "rawSql": "SELECT * FROM (\nSELECT\n  ref_month AS \"time\",\n  100.0 * SUM(bp_controlled_140_90 + bp_controlled_130_80) / NULLIF(SUM(dm_patients_under_care), 0) AS \"% Patients with BP <140/90\",\n  100.0 * SUM(bp_controlled_130_80) / NULLIF(SUM(dm_patients_under_care), 0) AS \"% Patients with BP <130/80\"\nFROM HEART360_DM_BP_CONTROL\nWHERE org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\nGROUP BY ref_month\nORDER BY ref_month\n) AS master_access_control WHERE '${isAllowed}' = '1'",
           "refId": "A",
           "sql": {
             "columns": [
@@ -207,7 +208,7 @@
           }
         }
       ],
-      "title": "DM patients with controlled BP",
+      "title": "% DM patients with controlled BP",
       "type": "timeseries"
     },
     {
