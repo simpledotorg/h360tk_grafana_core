@@ -41,6 +41,21 @@ CREATE TABLE IF NOT EXISTS patients (
 
 CREATE INDEX IF NOT EXISTS idx_patients_org_unit_id ON patients(org_unit_id);
 
+CREATE TABLE IF NOT EXISTS patient_diagnoses (
+    id BIGSERIAL PRIMARY KEY,
+    patient_id BIGINT NOT NULL REFERENCES patients(patient_id) ON DELETE CASCADE,
+    diagnosis_code VARCHAR(10) NOT NULL,
+    UNIQUE(patient_id, diagnosis_code),
+
+    CHECK (diagnosis_code IN ('I10', 'E11'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_patient_diagnoses_patient_id
+ON patient_diagnoses(patient_id);
+
+CREATE INDEX IF NOT EXISTS idx_patient_diagnoses_code
+ON patient_diagnoses(diagnosis_code);
+
 -- 2. Drop old BP Encounters Table (if exists)
 DROP TABLE IF EXISTS bp_encounters CASCADE;
 
@@ -298,11 +313,40 @@ $$;
 
 
 -- ============================================================================
+-- get_access_groups(org_unit_id, access_type)
+-- Returns the Grafana group/team names corresponding to a given hierarchy node
+-- and all of its descendants recursively.
+-- ============================================================================
+CREATE OR REPLACE FUNCTION get_access_groups(p_org_unit_id INTEGER, p_access_type VARCHAR)
+RETURNS TABLE(group_name VARCHAR)
+LANGUAGE sql STABLE
+AS $$
+    WITH RECURSIVE descendants AS (
+        SELECT ou.id, ou.name, ou.level
+        FROM heart360tk_schema.org_units ou
+        WHERE ou.id = p_org_unit_id
+        
+        UNION ALL
+        
+        SELECT o.id, o.name, o.level
+        FROM heart360tk_schema.org_units o
+        JOIN descendants d ON o.parent_id = d.id
+    )
+    SELECT CAST(
+        'heart360tk_' || COALESCE(hc.var_name, 'level_' || d.level) || '_view_' || p_access_type || '_' || replace(lower(trim(d.name)), ' ', '_')
+        AS VARCHAR
+    ) AS group_name
+    FROM descendants d
+    LEFT JOIN heart360tk_schema.hierarchy_config hc ON d.level = hc.level;
+$$;
+
+
+-- ============================================================================
 -- DROP OLD VIEWS
 -- ============================================================================
 DROP VIEW IF EXISTS HEART360_PATIENTS_REGISTERED CASCADE;
 DROP VIEW IF EXISTS HEART360_PATIENTS_UNDER_CARE CASCADE;
-DROP VIEW IF EXISTS HEART360_PATIENTS_CATAGORY CASCADE;
+DROP VIEW IF EXISTS HEART360_PATIENTS_CATEGORY CASCADE;
 DROP VIEW IF EXISTS HEART360_OVERDUE_PATIENTS CASCADE;
 DROP VIEW IF EXISTS HEART360_OVERDUE_START_OF_MONTH CASCADE;
 DROP VIEW IF EXISTS HEART360_OVERDUE_PATIENTS_CALLED CASCADE;
@@ -324,7 +368,7 @@ KNOWN_MONTHS AS (
   SELECT date_trunc('month', series_date)::date AS REF_MONTH
   FROM generate_series(
       date_trunc('month', (SELECT min(REGISTRATION_DATE) FROM patients)),
-      date_trunc('month', current_date) - interval '1 month',
+      date_trunc('month', current_date),
       '1 month'::interval
   ) AS t(series_date)
 ),
@@ -335,6 +379,11 @@ PATIENTS_BY_MONTH AS (
         count(*) AS NB_NEW_PATIENTS
     FROM patients p
     WHERE LOWER(patient_status) <> 'dead'
+      AND EXISTS (
+          SELECT 1 FROM patient_diagnoses pd
+          WHERE pd.patient_id = p.patient_id
+            AND pd.diagnosis_code = 'I10'
+      )
     GROUP BY DATE_TRUNC('month', REGISTRATION_DATE), p.org_unit_id
 )
 SELECT
@@ -358,7 +407,7 @@ KNOWN_MONTHS AS (
   SELECT date_trunc('month', series_date)::date AS REF_MONTH
   FROM generate_series(
       date_trunc('month', (SELECT min(REGISTRATION_DATE) FROM patients)),
-      date_trunc('month', current_date) - interval '1 month',
+      date_trunc('month', current_date),
       '1 month'::interval
   ) AS t(series_date)
 ),
@@ -369,6 +418,11 @@ ALIVE_PATIENTS AS (
         p.patient_id
     FROM patients p
     WHERE LOWER(patient_status) <> 'dead'
+      AND EXISTS (
+          SELECT 1 FROM patient_diagnoses pd
+          WHERE pd.patient_id = p.patient_id
+            AND pd.diagnosis_code = 'I10'
+      )
 ),
 ALL_ENCOUNTERS AS (
     SELECT e.patient_id,
@@ -393,15 +447,15 @@ ORDER BY KNOWN_MONTHS.REF_MONTH DESC;
 
 
 -- ============================================================================
--- VIEW 3: HEART360_PATIENTS_CATAGORY
+-- VIEW 3: HEART360_PATIENTS_CATEGORY
 -- ============================================================================
-CREATE OR REPLACE VIEW HEART360_PATIENTS_CATAGORY AS
+CREATE OR REPLACE VIEW HEART360_PATIENTS_CATEGORY AS
 WITH
 KNOWN_MONTHS AS (
   SELECT date_trunc('month', series_date)::date AS REF_MONTH
   FROM generate_series(
       date_trunc('month', (SELECT min(REGISTRATION_DATE) FROM patients)),
-      date_trunc('month', current_date) - interval '1 month',
+      date_trunc('month', current_date),
       '1 month'::interval
   ) AS t(series_date)
 ),
@@ -412,6 +466,11 @@ ALIVE_PATIENTS AS (
         p.patient_id AS patient_id
     FROM patients p
     WHERE LOWER(patient_status) <> 'dead'
+      AND EXISTS (
+          SELECT 1 FROM patient_diagnoses pd
+          WHERE pd.patient_id = p.patient_id
+            AND pd.diagnosis_code = 'I10'
+      )
 ),
 BP_ENCOUNTERS AS (
     SELECT
@@ -473,22 +532,21 @@ SELECT
     -- their grace period) OR have an HTN-relevant visit within the last 12
     -- months. This guarantees Total = UnderCare + LTFU.
     SUM(CASE
-        WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 1
         WHEN LATEST_HTN_BY_MONTH_AND_PATIENT.HTN_ENCOUNTER_MONTH IS NULL THEN 0
         WHEN LATEST_HTN_BY_MONTH_AND_PATIENT.HTN_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 0
         ELSE 1 END) AS NB_PATIENTS_UNDER_CARE,
-    SUM(CASE WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 1 ELSE 0 END) AS NB_PATIENTS_NEWLY_REGISTERED,
+    SUM(CASE
+        WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH
+             AND NOT (LATEST_HTN_BY_MONTH_AND_PATIENT.HTN_ENCOUNTER_MONTH IS NULL
+                      OR LATEST_HTN_BY_MONTH_AND_PATIENT.HTN_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH)
+        THEN 1 ELSE 0 END) AS NB_PATIENTS_NEWLY_REGISTERED,
     SUM(CASE
         WHEN LATEST_BP_BY_MONTH_AND_PATIENT.BP_ENCOUNTER_MONTH IS NULL THEN 0
         WHEN LATEST_BP_BY_MONTH_AND_PATIENT.BP_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 0
         WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 0 ELSE 1 END
     ) AS NB_PATIENTS_UNDER_CARE_REGISTERED_BEFORE_THE_PAST_3_MONTHS,
-    -- LTFU = NOT newly registered AND latest HTN-relevant visit is older than
-    -- 12 months OR no visit at all. Newly registered patients are excluded so
-    -- that NEWLY, LTFU, MISSED, CONTROLLED, UNCONTROLLED form a partition of
-    -- TOTAL_NUMBER_OF_PATIENTS.
+    -- LTFU = latest HTN-relevant visit is older than 12 months OR no visit at all.
     SUM(CASE
-        WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 0
         WHEN LATEST_HTN_BY_MONTH_AND_PATIENT.HTN_ENCOUNTER_MONTH IS NULL THEN 1
         WHEN LATEST_HTN_BY_MONTH_AND_PATIENT.HTN_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 1
         ELSE 0 END) AS NB_PATIENTS_LOST_TO_FOLLOW_UP,
@@ -603,6 +661,11 @@ WITH patients_quarter AS (
         date_trunc('quarter', registration_date) + interval '6 month' AS cohort_validation_month,
         registration_date
     FROM patients p
+    WHERE EXISTS (
+        SELECT 1 FROM patient_diagnoses pd
+        WHERE pd.patient_id = p.patient_id
+          AND pd.diagnosis_code = 'I10'
+    )
 ),
 LAST_BP_IN_INTERVAL AS (
     SELECT
@@ -649,7 +712,7 @@ CREATE OR REPLACE VIEW HEART360_OVERDUE_START_OF_MONTH AS
 WITH REF_MONTHS AS (
   SELECT generate_series(
       date_trunc('month', (SELECT MIN(registration_date) FROM patients)),
-      date_trunc('month', CURRENT_DATE) - interval '1 month',
+      date_trunc('month', CURRENT_DATE),
       interval '1 month'
   )::date AS ref_month
 ),
@@ -771,20 +834,25 @@ ORDER BY r.ref_month;
 -- ============================================================================
 -- VIEW 9: HEART360_BLOOD_SUGAR_CONTROLLED
 -- Fixed: uses DM_RELEVANT_ENCOUNTERS (BS encounter OR no-BP encounter) for the
--- under-care denominator, mirroring HTN_RELEVANT_ENCOUNTERS in HEART360_PATIENTS_CATAGORY.
+-- under-care denominator, mirroring HTN_RELEVANT_ENCOUNTERS in HEART360_PATIENTS_CATEGORY.
 -- This ensures missed-follow-up DM patients are counted the same way as HTN.
 -- ============================================================================
 CREATE OR REPLACE VIEW HEART360_BLOOD_SUGAR_CONTROLLED AS
 WITH REF_MONTHS AS (
     SELECT generate_series(
         date_trunc('month', (SELECT MIN(registration_date) FROM patients)),
-        date_trunc('month', CURRENT_DATE) - interval '1 month',
+        date_trunc('month', CURRENT_DATE),
         interval '1 month'
     )::date AS ref_month
 ),
 ALL_PATIENTS AS (
     SELECT p.patient_id, p.org_unit_id, p.registration_date, p.death_date
     FROM patients p
+    WHERE EXISTS (
+        SELECT 1 FROM patient_diagnoses pd
+        WHERE pd.patient_id = p.patient_id
+          AND pd.diagnosis_code = 'E11'
+    )
 ),
 -- DM-relevant encounters: encounters with a BS reading OR no BP reading (visit-only / missed follow-up)
 DM_RELEVANT_ENCOUNTERS AS (
@@ -864,13 +932,18 @@ WITH KNOWN_MONTHS AS (
   SELECT date_trunc('month', series_date)::date AS ref_month
   FROM generate_series(
       date_trunc('month', (SELECT min(registration_date) FROM patients)),
-      date_trunc('month', current_date) - interval '1 month',
+      date_trunc('month', current_date),
       interval '1 month'
   ) AS t(series_date)
 ),
 ALL_PATIENTS AS (
   SELECT p.patient_id, p.org_unit_id, p.registration_date, p.death_date
   FROM patients p
+  WHERE EXISTS (
+      SELECT 1 FROM patient_diagnoses pd
+      WHERE pd.patient_id = p.patient_id
+        AND pd.diagnosis_code = 'E11'
+  )
 ),
 -- DM-relevant encounters: encounters with a BS reading OR no BP reading
 DM_RELEVANT_ENCOUNTERS AS (
@@ -967,27 +1040,50 @@ WITH KNOWN_MONTHS AS (
   SELECT date_trunc('month', series_date)::date AS ref_month
   FROM generate_series(
       date_trunc('month', (SELECT min(registration_date) FROM patients)),
-      date_trunc('month', current_date) - interval '1 month',
+      date_trunc('month', current_date),
       interval '1 month'
   ) AS t(series_date)
 ),
 ALL_PATIENTS AS (
   SELECT p.patient_id, p.org_unit_id, p.registration_date, p.death_date
   FROM patients p
+  WHERE EXISTS (
+      SELECT 1 FROM patient_diagnoses pd
+      WHERE pd.patient_id = p.patient_id
+        AND pd.diagnosis_code = 'E11'
+  )
 ),
--- Encounters relevant for the DM "no visit" indicator:
---   BS encounters + visit-only encounters (no BP AND no BS attached).
--- BP-only encounters are excluded.
 DM_RELEVANT_ENCOUNTERS AS (
-  SELECT e.id, e.patient_id, e.encounter_date
+  SELECT
+    e.patient_id,
+    date_trunc('month', e.encounter_date)::date AS encounter_month,
+    e.encounter_date
   FROM encounters e
-  WHERE EXISTS (SELECT 1 FROM blood_sugars bs WHERE bs.encounter_id = e.id)
-     OR NOT EXISTS (SELECT 1 FROM blood_pressures bp WHERE bp.encounter_id = e.id)
+  WHERE EXISTS (
+    SELECT 1 FROM blood_sugars bs WHERE bs.encounter_id = e.id
+  )
+  OR NOT EXISTS (
+    SELECT 1 FROM blood_pressures bp WHERE bp.encounter_id = e.id
+  )
 ),
-LAST_DM_VISIT_BEFORE_MONTH AS (
-  SELECT km.ref_month, e.patient_id, MAX(e.encounter_date) AS last_visit_date
+PATIENT_MONTHLY_ACTIVE AS (
+  SELECT
+    km.ref_month,
+    e.patient_id
   FROM KNOWN_MONTHS km
-  JOIN DM_RELEVANT_ENCOUNTERS e ON DATE_TRUNC('month', e.encounter_date) <= km.ref_month
+  JOIN DM_RELEVANT_ENCOUNTERS e
+    ON e.encounter_month <= km.ref_month
+   AND e.encounter_month + interval '12 month' > km.ref_month
+  GROUP BY km.ref_month, e.patient_id
+),
+LAST_VISIT_PER_MONTH AS (
+  SELECT
+    km.ref_month,
+    e.patient_id,
+    MAX(e.encounter_date) AS last_visit_date
+  FROM KNOWN_MONTHS km
+  JOIN DM_RELEVANT_ENCOUNTERS e
+    ON e.encounter_month <= km.ref_month
   GROUP BY km.ref_month, e.patient_id
 )
 SELECT
@@ -995,37 +1091,23 @@ SELECT
   p.org_unit_id,
   COUNT(DISTINCT p.patient_id) FILTER (
     WHERE DATE_TRUNC('month', p.registration_date) + interval '3 month' <= km.ref_month
-      AND EXISTS (
-            SELECT 1 FROM DM_RELEVANT_ENCOUNTERS e
-            WHERE e.patient_id = p.patient_id
-        )
-      AND EXISTS (
-            SELECT 1 FROM DM_RELEVANT_ENCOUNTERS e
-            WHERE e.patient_id = p.patient_id
-              AND DATE_TRUNC('month', e.encounter_date) <= km.ref_month
-              AND DATE_TRUNC('month', e.encounter_date) + interval '12 month' > km.ref_month
-        )
+      AND pma.patient_id IS NOT NULL
   ) AS diabetes_patients_under_care,
   COUNT(DISTINCT p.patient_id) FILTER (
     WHERE DATE_TRUNC('month', p.registration_date) + interval '3 month' <= km.ref_month
-      AND EXISTS (
-            SELECT 1 FROM DM_RELEVANT_ENCOUNTERS e
-            WHERE e.patient_id = p.patient_id
-        )
-      AND EXISTS (
-            SELECT 1 FROM DM_RELEVANT_ENCOUNTERS e
-            WHERE e.patient_id = p.patient_id
-              AND DATE_TRUNC('month', e.encounter_date) <= km.ref_month
-              AND DATE_TRUNC('month', e.encounter_date) + interval '12 month' > km.ref_month
-        )
+      AND pma.patient_id IS NOT NULL
       AND DATE_TRUNC('month', lv.last_visit_date) + interval '3 month' <= km.ref_month
   ) AS missed_visit
 FROM KNOWN_MONTHS km
 LEFT JOIN ALL_PATIENTS p
   ON p.registration_date <= km.ref_month
   AND (p.death_date IS NULL OR DATE_TRUNC('month', p.death_date) >= km.ref_month)
-LEFT JOIN LAST_DM_VISIT_BEFORE_MONTH lv
-  ON lv.patient_id = p.patient_id AND lv.ref_month = km.ref_month
+LEFT JOIN PATIENT_MONTHLY_ACTIVE pma
+  ON pma.patient_id = p.patient_id
+  AND pma.ref_month = km.ref_month
+LEFT JOIN LAST_VISIT_PER_MONTH lv
+  ON lv.patient_id = p.patient_id
+  AND lv.ref_month = km.ref_month
 GROUP BY km.ref_month, p.org_unit_id
 ORDER BY km.ref_month;
 
@@ -1042,7 +1124,7 @@ KNOWN_MONTHS AS (
   SELECT date_trunc('month', series_date)::date AS ref_month
   FROM generate_series(
       date_trunc('month', (SELECT MIN(registration_date) FROM patients)),
-      date_trunc('month', CURRENT_DATE) - interval '1 month',
+      date_trunc('month', CURRENT_DATE),
       '1 month'::interval
   ) AS t(series_date)
 ),
@@ -1053,6 +1135,11 @@ ALIVE_PATIENTS AS (
       p.patient_id
   FROM patients p
   WHERE LOWER(p.patient_status) <> 'dead'
+    AND EXISTS (
+        SELECT 1 FROM patient_diagnoses pd
+        WHERE pd.patient_id = p.patient_id
+          AND pd.diagnosis_code = 'E11'
+    )
 ),
 -- DM-relevant encounters: encounters with a BS reading OR no BP reading
 DM_RELEVANT_ENCOUNTERS AS (
@@ -1087,19 +1174,25 @@ ORDER BY km.ref_month DESC;
 -- ============================================================================
 -- VIEW 13: HEART360_DM_BP_CONTROL
 -- DM patients with controlled BP at their latest visit in the past 3 months.
--- Fixed: uses DM_RELEVANT_ENCOUNTERS for the under-care denominator.
+-- Denominator matches HEART360_BLOOD_SUGAR_CONTROLLED diabetes_patients_under_care:
+-- E11 only, registered 3+ months before ref_month, DM_RELEVANT_ENCOUNTERS visit in past 12 months.
 -- ============================================================================
 CREATE OR REPLACE VIEW HEART360_DM_BP_CONTROL AS
 WITH REF_MONTHS AS (
     SELECT generate_series(
         date_trunc('month', (SELECT MIN(registration_date) FROM patients)),
-        date_trunc('month', CURRENT_DATE) - interval '1 month',
+        date_trunc('month', CURRENT_DATE),
         interval '1 month'
     )::date AS ref_month
 ),
 ALL_PATIENTS AS (
     SELECT p.patient_id, p.org_unit_id, p.registration_date, p.death_date
     FROM patients p
+    WHERE EXISTS (
+        SELECT 1 FROM patient_diagnoses pd
+        WHERE pd.patient_id = p.patient_id
+          AND pd.diagnosis_code = 'E11'
+    )
 ),
 -- DM-relevant encounters: encounters with a BS reading OR no BP reading
 DM_RELEVANT_ENCOUNTERS AS (
@@ -1154,6 +1247,7 @@ SELECT
             AND lbp.encounter_date IS NOT NULL
             AND DATE_TRUNC('month', lbp.encounter_date) + interval '3 month' > rm.ref_month
             AND lbp.systolic_bp < 140 AND lbp.diastolic_bp < 90
+            AND NOT (lbp.systolic_bp < 130 AND lbp.diastolic_bp < 80)
     ) AS bp_controlled_140_90,
     COUNT(DISTINCT p.patient_id) FILTER (
         WHERE DATE_TRUNC('month', p.registration_date) + interval '3 month' <= rm.ref_month
@@ -1180,10 +1274,281 @@ LEFT JOIN LATEST_BP_VALUES lbp
 GROUP BY rm.ref_month, p.org_unit_id
 ORDER BY rm.ref_month;
 
+-- ============================================================================
+-- Materialized view for saving precalculated data
+-- ============================================================================
+DROP MATERIALIZED VIEW IF EXISTS heart360tk_reporting.HEART360_PATIENTS_CATEGORY;
+DROP MATERIALIZED VIEW IF EXISTS heart360tk_reporting.HEART360_PATIENTS_UNDER_CARE;
+DROP MATERIALIZED VIEW IF EXISTS heart360tk_reporting.HEART360_PATIENTS_REGISTERED;
+DROP MATERIALIZED VIEW IF EXISTS heart360tk_reporting.HEART360_BLOOD_SUGAR_CONTROLLED;
+DROP MATERIALIZED VIEW IF EXISTS heart360tk_reporting.HEART360_BLOOD_SUGAR_SEVERITY;
+DROP MATERIALIZED VIEW IF EXISTS heart360tk_reporting.HEART360_BLOOD_SUGAR_MISSED_VISITS;
+DROP MATERIALIZED VIEW IF EXISTS heart360tk_reporting.HEART360_DM_BP_CONTROL;
+DROP MATERIALIZED VIEW IF EXISTS heart360tk_reporting.HEART360_DM_PATIENTS_UNDER_CARE;
+DROP MATERIALIZED VIEW IF EXISTS heart360tk_reporting.HEART360_OVERDUE_PATIENTS;
+DROP MATERIALIZED VIEW IF EXISTS heart360tk_reporting.HEART360_OVERDUE_START_OF_MONTH;
+DROP MATERIALIZED VIEW IF EXISTS heart360tk_reporting.HEART360_OVERDUE_PATIENTS_CALLED;
+DROP MATERIALIZED VIEW IF EXISTS heart360tk_reporting.HEART360_OVERDUE_RETURNED_TO_CARE;
+DROP MATERIALIZED VIEW IF EXISTS heart360tk_reporting.HEART360_COHORT_PATIENT_DETAILS;
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS heart360tk_reporting.HEART360_PATIENTS_CATEGORY AS SELECT * FROM heart360tk_schema.HEART360_PATIENTS_CATEGORY;
+CREATE MATERIALIZED VIEW IF NOT EXISTS heart360tk_reporting.HEART360_PATIENTS_UNDER_CARE AS SELECT * FROM heart360tk_schema.HEART360_PATIENTS_UNDER_CARE;
+CREATE MATERIALIZED VIEW IF NOT EXISTS heart360tk_reporting.HEART360_PATIENTS_REGISTERED AS SELECT * FROM heart360tk_schema.HEART360_PATIENTS_REGISTERED;
+CREATE MATERIALIZED VIEW IF NOT EXISTS heart360tk_reporting.HEART360_BLOOD_SUGAR_CONTROLLED AS SELECT * FROM heart360tk_schema.HEART360_BLOOD_SUGAR_CONTROLLED;
+CREATE MATERIALIZED VIEW IF NOT EXISTS heart360tk_reporting.HEART360_BLOOD_SUGAR_SEVERITY AS SELECT * FROM heart360tk_schema.HEART360_BLOOD_SUGAR_SEVERITY;
+CREATE MATERIALIZED VIEW IF NOT EXISTS heart360tk_reporting.HEART360_BLOOD_SUGAR_MISSED_VISITS AS SELECT * FROM heart360tk_schema.HEART360_BLOOD_SUGAR_MISSED_VISITS;
+CREATE MATERIALIZED VIEW IF NOT EXISTS heart360tk_reporting.HEART360_DM_BP_CONTROL AS SELECT * FROM heart360tk_schema.HEART360_DM_BP_CONTROL;
+CREATE MATERIALIZED VIEW IF NOT EXISTS heart360tk_reporting.HEART360_DM_PATIENTS_UNDER_CARE AS SELECT * FROM heart360tk_schema.HEART360_DM_PATIENTS_UNDER_CARE;
+CREATE MATERIALIZED VIEW IF NOT EXISTS heart360tk_reporting.HEART360_OVERDUE_PATIENTS AS SELECT * FROM heart360tk_schema.HEART360_OVERDUE_PATIENTS;
+CREATE MATERIALIZED VIEW IF NOT EXISTS heart360tk_reporting.HEART360_OVERDUE_START_OF_MONTH AS SELECT * FROM heart360tk_schema.HEART360_OVERDUE_START_OF_MONTH;
+CREATE MATERIALIZED VIEW IF NOT EXISTS heart360tk_reporting.HEART360_OVERDUE_PATIENTS_CALLED AS SELECT * FROM heart360tk_schema.HEART360_OVERDUE_PATIENTS_CALLED;
+CREATE MATERIALIZED VIEW IF NOT EXISTS heart360tk_reporting.HEART360_OVERDUE_RETURNED_TO_CARE AS SELECT * FROM heart360tk_schema.HEART360_OVERDUE_RETURNED_TO_CARE;
+CREATE MATERIALIZED VIEW IF NOT EXISTS heart360tk_reporting.HEART360_COHORT_PATIENT_DETAILS AS SELECT * FROM heart360tk_schema.HEART360_COHORT_PATIENT_DETAILS;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pat_cat_org_month ON heart360tk_reporting.HEART360_PATIENTS_CATEGORY (org_unit_id, ref_month);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pat_under_care_org_month ON heart360tk_reporting.HEART360_PATIENTS_UNDER_CARE (org_unit_id, ref_month);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pat_registered_org_month ON heart360tk_reporting.HEART360_PATIENTS_REGISTERED (org_unit_id, ref_month);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pat_registered_org_month ON heart360tk_reporting.HEART360_PATIENTS_REGISTERED (org_unit_id, ref_month);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_bs_controlled_org_month ON heart360tk_reporting.HEART360_BLOOD_SUGAR_CONTROLLED (org_unit_id, ref_month);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_bs_severity_org_month ON heart360tk_reporting.HEART360_BLOOD_SUGAR_SEVERITY (org_unit_id, ref_month);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_bs_missed_visits_org_month ON heart360tk_reporting.HEART360_BLOOD_SUGAR_MISSED_VISITS (org_unit_id, ref_month);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_dm_bp_control_org_month ON heart360tk_reporting.HEART360_DM_BP_CONTROL (org_unit_id, ref_month);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_dm_pat_under_care_org_month ON heart360tk_reporting.HEART360_DM_PATIENTS_UNDER_CARE (org_unit_id, ref_month);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_overdue_patient_id ON heart360tk_reporting.HEART360_OVERDUE_PATIENTS (patient_id);
+CREATE INDEX IF NOT EXISTS idx_overdue_org_last_visit ON heart360tk_reporting.HEART360_OVERDUE_PATIENTS (org_unit_id, last_visit_date);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_overdue_start_month_org_month ON heart360tk_reporting.HEART360_OVERDUE_START_OF_MONTH (org_unit_id, ref_month);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_overdue_called_org_month ON heart360tk_reporting.HEART360_OVERDUE_PATIENTS_CALLED (org_unit_id, ref_month);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_overdue_returned_org_month ON heart360tk_reporting.HEART360_OVERDUE_RETURNED_TO_CARE (org_unit_id, ref_month);
+CREATE INDEX IF NOT EXISTS idx_cohort_org_quarter ON heart360tk_reporting.HEART360_COHORT_PATIENT_DETAILS (org_unit_id, registration_quarter);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_cohort_patient_id ON heart360tk_reporting.HEART360_COHORT_PATIENT_DETAILS (patient_id);
+
+CREATE TABLE IF NOT EXISTS heart360tk_reporting.matview_refresh_log (
+    id serial PRIMARY KEY,
+    matview_name text NOT NULL,
+    last_refreshed_at timestamp NOT NULL DEFAULT now(),
+    refresh_duration interval,
+    status text NOT NULL,
+    refresh_batch_id bigint
+);
+
+CREATE INDEX IF NOT EXISTS idx_refresh_log_matview_name ON heart360tk_reporting.matview_refresh_log (matview_name);
+CREATE INDEX IF NOT EXISTS idx_refresh_log_last_refreshed ON heart360tk_reporting.matview_refresh_log (last_refreshed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_refresh_log_batch ON heart360tk_reporting.matview_refresh_log (refresh_batch_id);
+
+-- =======================================================================================
+-- Function to refresh all materialized views and log the refresh status and duration:
+-- =======================================================================================
+
+CREATE OR REPLACE FUNCTION heart360tk_reporting.refresh_all_matviews()
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    mv RECORD;
+    start_time timestamp;
+    end_time timestamp;
+    v_batch_id bigint;
+BEGIN
+    -- Generate a unique batch id to group all matview refreshes from this cycle
+    v_batch_id := EXTRACT(EPOCH FROM clock_timestamp())::bigint;
+
+    FOR mv IN
+        SELECT matviewname FROM pg_matviews WHERE schemaname = 'heart360tk_reporting'
+    LOOP
+        BEGIN
+            start_time := clock_timestamp();
+            RAISE NOTICE 'Refreshing %', mv.matviewname;
+            EXECUTE format('REFRESH MATERIALIZED VIEW CONCURRENTLY heart360tk_reporting.%I', mv.matviewname);
+            end_time := clock_timestamp();
+
+            INSERT INTO heart360tk_reporting.matview_refresh_log
+                (matview_name, last_refreshed_at, refresh_duration, status, refresh_batch_id)
+            VALUES
+                (mv.matviewname, end_time, end_time - start_time, 'success', v_batch_id);
+
+        EXCEPTION WHEN OTHERS THEN
+            INSERT INTO heart360tk_reporting.matview_refresh_log
+                (matview_name, last_refreshed_at, refresh_duration, status, refresh_batch_id)
+            VALUES
+                (mv.matviewname, now(), NULL, 'failed: ' || SQLERRM, v_batch_id);
+        END;
+    END LOOP;
+END;
+$$;
+
+-- =======================================================================================
+-- Single-row status table for the admin dashboard: tracks the most recent refresh attempt
+-- and serves as the queue gate for manual triggers.
+-- =======================================================================================
+CREATE TABLE IF NOT EXISTS heart360tk_reporting.matview_refresh_status (
+    id smallint PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    status text NOT NULL DEFAULT 'idle',  -- idle | queued | in_progress | success | failed
+    requested_at timestamptz,
+    started_at timestamptz,
+    finished_at timestamptz,
+    last_error text,
+    requested_by text,
+    job_name text
+);
+
+INSERT INTO heart360tk_reporting.matview_refresh_status (id) VALUES (1)
+ON CONFLICT (id) DO NOTHING;
+
+-- =======================================================================================
+-- Status-aware refresh: acquires an advisory lock so manual and scheduled paths cannot
+-- run concurrently, updates the status row, calls refresh_all_matviews(), and records
+-- success / failure. Used by both the hourly pg_cron job and the manual one-shot.
+-- =======================================================================================
+CREATE OR REPLACE FUNCTION heart360tk_reporting.run_refresh_with_status(p_source text DEFAULT 'manual')
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_lock_key bigint := hashtext('heart360tk_reporting.matview_refresh');
+    v_lock_acquired boolean;
+    v_start_time timestamptz;
+BEGIN
+    SELECT pg_try_advisory_lock(v_lock_key) INTO v_lock_acquired;
+    IF NOT v_lock_acquired THEN
+        RAISE NOTICE 'Matview refresh already running (source=%); skipping.', p_source;
+        RETURN;
+    END IF;
+
+    v_start_time := clock_timestamp();
+
+    BEGIN
+        PERFORM heart360tk_reporting.refresh_all_matviews();
+        UPDATE heart360tk_reporting.matview_refresh_status
+        SET status = 'success',
+            started_at = v_start_time,
+            finished_at = clock_timestamp(),
+            last_error = NULL
+        WHERE id = 1;
+    EXCEPTION WHEN OTHERS THEN
+        UPDATE heart360tk_reporting.matview_refresh_status
+        SET status = 'failed',
+            started_at = v_start_time,
+            finished_at = clock_timestamp(),
+            last_error = SQLERRM
+        WHERE id = 1;
+    END;
+
+    PERFORM pg_advisory_unlock(v_lock_key);
+END;
+$$;
+
+-- =======================================================================================
+-- Manual trigger: atomically claims the queue slot, schedules an ephemeral pg_cron job
+-- that will fire at the next minute boundary, do the work via run_refresh_with_status,
+-- and unschedule itself. Returns 'queued' on success or 'already_running' if another
+-- refresh is queued or in progress.
+-- =======================================================================================
+CREATE OR REPLACE FUNCTION heart360tk_reporting.start_async_refresh(p_user text DEFAULT NULL)
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_job_name text;
+BEGIN
+    UPDATE heart360tk_reporting.matview_refresh_status
+    SET status = 'queued',
+        requested_at = now(),
+        requested_by = p_user,
+        last_error = NULL,
+        finished_at = NULL
+    WHERE id = 1
+      AND status NOT IN ('queued', 'in_progress');
+
+    IF NOT FOUND THEN
+        RETURN 'already_running';
+    END IF;
+
+    v_job_name := 'mv_refresh_oneshot_' || extract(epoch from clock_timestamp())::bigint;
+
+    UPDATE heart360tk_reporting.matview_refresh_status
+    SET job_name = v_job_name
+    WHERE id = 1;
+
+    PERFORM cron.schedule(
+        v_job_name,
+        '* * * * *',
+        format($cmd$
+            DO $body$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM heart360tk_reporting.matview_refresh_status
+                    WHERE id = 1 AND status = 'queued'
+                ) THEN
+                    UPDATE heart360tk_reporting.matview_refresh_status
+                    SET status = 'in_progress', started_at = clock_timestamp()
+                    WHERE id = 1;
+                    COMMIT;
+                    PERFORM heart360tk_reporting.run_refresh_with_status('manual');
+                END IF;
+                IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = %L) THEN
+                    PERFORM cron.unschedule(%L);
+                END IF;
+            END
+            $body$;
+        $cmd$, v_job_name, v_job_name)
+    );
+
+    RETURN 'queued';
+END;
+$$;
+
+GRANT SELECT ON heart360tk_reporting.matview_refresh_status TO heart360tk;
+GRANT EXECUTE ON FUNCTION heart360tk_reporting.start_async_refresh(text) TO heart360tk;
+GRANT EXECUTE ON FUNCTION heart360tk_reporting.run_refresh_with_status(text) TO heart360tk;
+
+-- Cached Grafana datasource: read-only access with reporting matviews first in
+-- the role search_path (heart360tk_reporting, heart360tk_schema, public).
+--
+-- heart360tk_reporting: full SELECT so every matview is reachable.
+GRANT USAGE ON SCHEMA heart360tk_reporting TO heart360tk_cached;
+GRANT SELECT ON ALL TABLES IN SCHEMA heart360tk_reporting TO heart360tk_cached;
+--
+-- heart360tk_schema: SELECT only on the helper tables/views that dashboard
+-- panel queries (and the SQL-stable functions they call) actually touch.
+-- Raw encounter/BP/BS tables are NOT exposed — panels read from matviews.
+GRANT USAGE ON SCHEMA heart360tk_schema TO heart360tk_cached;
+GRANT SELECT ON heart360tk_schema.org_units        TO heart360tk_cached;
+GRANT SELECT ON heart360tk_schema.hierarchy_config TO heart360tk_cached;
+GRANT SELECT ON heart360tk_schema.org_unit_lineage TO heart360tk_cached;
+GRANT SELECT ON heart360tk_schema.patients         TO heart360tk_cached;
+GRANT SELECT ON heart360tk_schema.patient_diagnoses TO heart360tk_cached;
+GRANT SELECT ON heart360tk_schema.patient_diagnoses TO heart360tk;
+--
+GRANT EXECUTE ON FUNCTION heart360tk_schema.get_descendant_ids(integer)        TO heart360tk_cached;
+GRANT EXECUTE ON FUNCTION heart360tk_schema.build_drill_url(integer)           TO heart360tk_cached;
+GRANT EXECUTE ON FUNCTION heart360tk_schema.get_child_level_name(integer)      TO heart360tk_cached;
+GRANT EXECUTE ON FUNCTION heart360tk_schema.get_ancestor_name(integer, integer) TO heart360tk_cached;
+GRANT EXECUTE ON FUNCTION heart360tk_schema.get_breadcrumb_path(integer)       TO heart360tk_cached;
+GRANT EXECUTE ON FUNCTION heart360tk_schema.get_access_groups(integer, varchar) TO heart360tk_cached;
+
+-- Grafana datasource user needs to call start_async_refresh as part of an admin-check
+-- query that joins against the grafana user/team tables (which only the grafana role
+-- can read). USAGE on the schema + EXECUTE on the function is enough; no data tables
+-- are exposed.
+GRANT USAGE ON SCHEMA heart360tk_reporting TO grafana;
+GRANT EXECUTE ON FUNCTION heart360tk_reporting.start_async_refresh(text) TO grafana;
+
+-- Grants for grafana to perform hierarchy checks directly
+GRANT USAGE ON SCHEMA heart360tk_schema TO grafana;
+GRANT SELECT ON heart360tk_schema.org_units TO grafana;
+GRANT SELECT ON heart360tk_schema.hierarchy_config TO grafana;
+GRANT SELECT ON heart360tk_schema.org_unit_lineage TO grafana;
+GRANT EXECUTE ON FUNCTION heart360tk_schema.get_access_groups(integer, varchar) TO grafana;
+
+-- ============================================================================
+-- pg_cron: Schedule the refresh of all materialized views every hour
+-- ============================================================================
+SELECT cron.schedule('refresh_matviews_every_hour', '0 * * * *', 'SELECT heart360tk_reporting.run_refresh_with_status(''cron'');');
 
 -- ============================================================================
 -- VIEW 14: HEART360_DM_PATIENTS_CATAGORY
--- DM equivalent of HEART360_PATIENTS_CATAGORY. Produces identical columns so
+-- DM equivalent of HEART360_PATIENTS_CATEGORY. Produces identical columns so
 -- the DM dashboard can use the same graph formulas as HTN:
 --   % LTFU         = NB_PATIENTS_LOST_TO_FOLLOW_UP x 100 / TOTAL_NUMBER_OF_PATIENTS
 --   % Missed Visit = NB_PATIENTS_NO_VISIT          x 100 / denom
@@ -1198,7 +1563,7 @@ KNOWN_MONTHS AS (
   SELECT date_trunc('month', series_date)::date AS REF_MONTH
   FROM generate_series(
       date_trunc('month', (SELECT min(REGISTRATION_DATE) FROM patients)),
-      date_trunc('month', current_date) - interval '1 month',
+      date_trunc('month', current_date),
       '1 month'::interval
   ) AS t(series_date)
 ),
@@ -1209,9 +1574,14 @@ ALIVE_PATIENTS AS (
         p.patient_id AS patient_id
     FROM patients p
     WHERE LOWER(patient_status) <> 'dead'
+      AND EXISTS (
+          SELECT 1 FROM patient_diagnoses pd
+          WHERE pd.patient_id = p.patient_id
+            AND pd.diagnosis_code = 'E11'
+      )
 ),
 -- DM-relevant encounters: encounters with a BS reading OR no BP reading (visit-only / missed follow-up).
--- Mirrors HTN_RELEVANT_ENCOUNTERS from HEART360_PATIENTS_CATAGORY so missed-follow-up
+-- Mirrors HTN_RELEVANT_ENCOUNTERS from HEART360_PATIENTS_CATEGORY so missed-follow-up
 -- DM patients are captured the same way as missed-follow-up HTN patients.
 DM_RELEVANT_ENCOUNTERS AS (
     SELECT e.id, e.patient_id, e.encounter_date
@@ -1266,22 +1636,24 @@ SELECT
     KNOWN_MONTHS.REF_MONTH,
     ALIVE_PATIENTS.org_unit_id,
     count(*) AS TOTAL_NUMBER_OF_PATIENTS,
-    -- Under care: newly registered (grace period) OR visited within last 12 months
+    -- Under care: visited within last 12 months
     SUM(CASE
-        WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 1
         WHEN LATEST_DM_BY_MONTH_AND_PATIENT.DM_ENCOUNTER_MONTH IS NULL THEN 0
         WHEN LATEST_DM_BY_MONTH_AND_PATIENT.DM_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 0
         ELSE 1 END) AS NB_PATIENTS_UNDER_CARE,
-    SUM(CASE WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 1 ELSE 0 END) AS NB_PATIENTS_NEWLY_REGISTERED,
+    SUM(CASE
+        WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH
+             AND NOT (LATEST_DM_BY_MONTH_AND_PATIENT.DM_ENCOUNTER_MONTH IS NULL
+                      OR LATEST_DM_BY_MONTH_AND_PATIENT.DM_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH)
+        THEN 1 ELSE 0 END) AS NB_PATIENTS_NEWLY_REGISTERED,
     -- Denom = registered > 3 months ago AND has a BS reading in last 12 months
     SUM(CASE
         WHEN LATEST_BS_BY_MONTH_AND_PATIENT.BS_ENCOUNTER_MONTH IS NULL THEN 0
         WHEN LATEST_BS_BY_MONTH_AND_PATIENT.BS_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 0
         WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 0 ELSE 1 END
     ) AS NB_PATIENTS_UNDER_CARE_REGISTERED_BEFORE_THE_PAST_3_MONTHS,
-    -- LTFU: not newly registered AND no DM-relevant visit in last 12 months
+    -- LTFU: no DM-relevant visit in last 12 months
     SUM(CASE
-        WHEN ALIVE_PATIENTS.REGISTRATION_MONTH + interval '3 month' > KNOWN_MONTHS.REF_MONTH THEN 0
         WHEN LATEST_DM_BY_MONTH_AND_PATIENT.DM_ENCOUNTER_MONTH IS NULL THEN 1
         WHEN LATEST_DM_BY_MONTH_AND_PATIENT.DM_ENCOUNTER_MONTH + interval '12 month' <= KNOWN_MONTHS.REF_MONTH THEN 1
         ELSE 0 END) AS NB_PATIENTS_LOST_TO_FOLLOW_UP,
@@ -1407,3 +1779,6 @@ BEGIN
     RAISE NOTICE 'All data cleared and sequences reset.';
 END;
 $$;
+
+GRANT SELECT ON heart360tk_schema.HEART360_DM_PATIENTS_CATAGORY TO heart360tk_cached;
+GRANT SELECT ON heart360tk_schema.HEART360_DM_PATIENTS_CATAGORY TO heart360tk;

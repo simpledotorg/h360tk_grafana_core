@@ -5,29 +5,7 @@ set -e
 
 echo "Executing automated data copy for patients, encounters, blood pressures, and blood sugars..."
 
-# --- Seed Org Units Hierarchy ---
-echo "Seeding org_units hierarchy..."
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
-    SET ROLE heart360tk;
-    SET SEARCH_PATH = heart360tk_schema;
 
-    -- Seed 4-level hierarchy: Region > District > PHC > SHC
-    -- North branch
-    SELECT upsert_org_unit_chain(
-        ARRAY['Demo Region', 'North District', 'PHC Sunrise', 'SHC North A']::VARCHAR[],
-        ARRAY[1, 2, 3, 4]::INTEGER[]);
-    SELECT upsert_org_unit_chain(
-        ARRAY['Demo Region', 'North District', 'PHC Sunrise', 'SHC North B']::VARCHAR[],
-        ARRAY[1, 2, 3, 4]::INTEGER[]);
-    -- South branch
-    SELECT upsert_org_unit_chain(
-        ARRAY['Demo Region', 'South District', 'PHC Garden', 'SHC South A']::VARCHAR[],
-        ARRAY[1, 2, 3, 4]::INTEGER[]);
-    SELECT upsert_org_unit_chain(
-        ARRAY['Demo Region', 'South District', 'PHC Garden', 'SHC South B']::VARCHAR[],
-        ARRAY[1, 2, 3, 4]::INTEGER[]);
-EOSQL
-echo "Org units seeded."
 
 # --- Load Patients Data ---
 # Note: Uses ON CONFLICT to handle duplicates (consistent with insert_heart360_data function)
@@ -178,6 +156,36 @@ if [ -f "/var/lib/postgresql/import/blood_sugars_data.csv" ]; then
 EOSQL
 else
     echo "Warning: blood_sugars_data.csv not found, skipping blood sugars load."
+fi
+
+# --- Load Patient Diagnoses (HTN/DM tags) ---
+# Seeds patient_diagnoses with I10 (HTN) and E11 (DM) so patients are
+# classified into the Hypertension/Diabetes dashboards at container start.
+if [ -f "/var/lib/postgresql/import/patient_diagnoses_data.csv" ]; then
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+        SET ROLE heart360tk;
+        SET SEARCH_PATH = heart360tk_schema;
+
+        -- Load diagnoses using temp table to handle duplicates
+        CREATE TEMP TABLE temp_patient_diagnoses (
+            patient_id BIGINT,
+            diagnosis_code VARCHAR(10)
+        );
+
+        \COPY temp_patient_diagnoses (patient_id, diagnosis_code) FROM '/var/lib/postgresql/import/patient_diagnoses_data.csv' WITH (FORMAT CSV, HEADER TRUE, DELIMITER ',', NULL 'NaT');
+
+        -- Only insert tags for patients that exist; skip duplicates
+        INSERT INTO patient_diagnoses (patient_id, diagnosis_code)
+        SELECT tpd.patient_id, tpd.diagnosis_code
+        FROM temp_patient_diagnoses tpd
+        JOIN patients p ON p.patient_id = tpd.patient_id
+        WHERE tpd.diagnosis_code IN ('I10', 'E11')
+        ON CONFLICT (patient_id, diagnosis_code) DO NOTHING;
+
+        DROP TABLE temp_patient_diagnoses;
+EOSQL
+else
+    echo "Warning: patient_diagnoses_data.csv not found, skipping patient diagnoses load."
 fi
 
 echo "Data copy completed successfully."
