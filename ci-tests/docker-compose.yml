@@ -75,7 +75,7 @@ services:
 ##
   tester:
     image: python:3.15.0b2-alpine3.24
-    command: sh /tests/scripts/runtests.sh
+    command: time sh /tests/scripts/runtests.sh
     volumes:
       - .:/tests:ro
 
