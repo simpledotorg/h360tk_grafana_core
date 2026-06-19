@@ -74,8 +74,8 @@ services:
 ## One Component to laod the data, then run the integration tests
 ##
   tester:
-    image: python:3.15.0b2-alpine3.24
-    command: time sh /tests/scripts/runtests.sh
+    image: python:3.12-slim
+    command: sh /tests/scripts/runtests.sh
     volumes:
       - .:/tests:ro
 
