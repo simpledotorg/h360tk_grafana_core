@@ -27,6 +27,24 @@ services:
       retries: 5
       start_period: 80s
 
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    ports:
+      - 8080:80
+    restart: unless-stopped
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@domain.com
+      - PGADMIN_DEFAULT_PASSWORD=your_secure_password
+      - PGADMIN_CONFIG_SERVER_MODE=False
+    volumes:
+      - ./servers.json:/pgadmin4/servers.json:ro
+    depends_on:
+      db-leaf:
+        condition: service_healthy
+      db-central:
+        condition: service_healthy
+
+
 ##
 ## Two Grafanas
 ##
@@ -75,7 +93,7 @@ services:
 ##
   tester:
     image: python:3.12-slim
-    command: sh /tests/scripts/runtests.sh
+    command: sleep 10000; sh /tests/scripts/runtests.sh
     volumes:
       - .:/tests:ro
       - ./target/:/target
