@@ -1,5 +1,8 @@
 behave
 behave-html-formatter
 allure-behave
-psycopg
+allure-combine
+allure-report-exporter
+behave-html-pretty-formatter
+psycopg[binary]
 psycopg-pool
