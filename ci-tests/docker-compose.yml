@@ -78,6 +78,7 @@ services:
     command: sh /tests/scripts/runtests.sh
     volumes:
       - .:/tests:ro
+      - ./target/:/target
 
 
 
