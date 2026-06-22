@@ -4,6 +4,7 @@ apt-get upgrade
 apt-get install -y --no-install-recommends libpq5
 
 ## Pip
+pip install --upgrade pip
 pip install -r /tests/requirements.txt
 
 ## Runs the tests
