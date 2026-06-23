@@ -1,11 +1,14 @@
 import psycopg
+import time
 from psycopg_pool import ConnectionPool
 
 def before_all(context):
-    """
-    Runs once before any features or steps are executed.
-    Initializes the PostgreSQL connection pool using hardcoded configurations.
-    """
+
+
+    ## 
+    context.run_id=f"test_{int(time.time())}";
+
+
     print("Initializing PostgreSQL Connection Pool...")
 
     try:

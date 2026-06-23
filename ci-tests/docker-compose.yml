@@ -93,7 +93,7 @@ services:
 ##
   tester:
     image: python:3.12-slim
-    command: sleep 10000; sh /tests/scripts/runtests.sh
+    command: sh /tests/scripts/runtests.sh
     volumes:
       - .:/tests:ro
       - ./target/:/target

@@ -1,9 +1,11 @@
 from behave import given, when, then
-
+import logging
 # A simple class to simulate the application code we are testing
 class H360tkSteps:
     def __init__(self):
         self.current_facility_id  = None
+        self.context.created_hierarchy = []
+
 
 
 
@@ -94,4 +96,84 @@ def step_impl(context):
                     
     except Exception as e:
         raise AssertionError(f"Failed to process facility hierarchy idempotently: {e}")
+
+
+
+
+@given('A top level Org Unit exists for the current run')
+def add_test_top_level_facility(context):
+
+    logging.warn('Sample dict log: %s', context)
+    current_facility_id  = None
+    context.created_hierarchy = []
+    add_facility(context, context.run_id)
+
+
+
+
+@given('An org unit exists in the current org unit with name {name_param}')
+def add_facility(context, name_param):
+    pool = context.leaf_db_pool
+    # 2. Get the current parent ID from context
+    parent_id = getattr(context, 'parent_id', None)
+    try:
+        with pool.connection() as conn:
+            with conn.cursor() as cursor:
+                facility_name = name_param
+
+                print("########################################", flush=True)
+                print("########################################", flush=True)
+                print("creating one Facility", parent_id, flush=True)
+                print("parent_id", parent_id,flush=True)
+                print("########################################", flush=True)
+                print("########################################", flush=True)
+
+                
+                # 1. Check if the tier already exists.
+                # We look up based on name and parent_id.
+                if parent_id is None:
+                    select_query = "SELECT id, level FROM org_units WHERE name = %s AND parent_id IS NULL LIMIT 1;"
+                    cursor.execute(select_query, (facility_name,))
+                else:
+                    select_query = "SELECT id, level FROM org_units WHERE name = %s AND parent_id = %s LIMIT 1;"
+                    cursor.execute(select_query, (facility_name, parent_id))
+                
+                result = cursor.fetchone()
+                
+                if result:
+                    current_id = result[0]
+                    current_level = result[1]
+                else:
+                    # 2. If it doesn't exist, we INSERT it.
+                    # Instead of calculating 'level' in Python, we query the parent's level 
+                    # directly in the SQL statement. If parent_id is NULL, it falls back to 1.
+                    insert_query = """
+                        INSERT INTO org_units (name, parent_id, level) 
+                        VALUES (
+                            %s, 
+                            %s, 
+                            COALESCE((SELECT level + 1 FROM org_units WHERE id = %s), 1)
+                        ) 
+                        RETURNING id, level;
+                    """
+                    cursor.execute(insert_query, (facility_name, parent_id, parent_id))
+                    
+                    inserted_result = cursor.fetchone()
+                    current_id = inserted_result[0]
+                    current_level = inserted_result[1]
+                
+                # Save the real database values to the context tracking list
+                context.created_hierarchy.append({
+                    "id": current_id,
+                    "name": facility_name,
+                    "parent_id": parent_id,
+                    "level": current_level
+                })
+                
+                # Move down to the next child item
+                parent_id = current_id
+                    
+    except Exception as e:
+        raise AssertionError(f"Failed to process facility hierarchy idempotently: {e}")
+
 

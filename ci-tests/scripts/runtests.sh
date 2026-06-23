@@ -16,6 +16,5 @@ pip install -r /tests/requirements.txt
 
 ## Runs the tests
 cd /tests/
-behave --junit --junit-directory=/target -f allure_behave.formatter:AllureFormatter -o /target/allure-results
+behave --no-capture --no-color --junit --junit-directory=/target -f behave_html_formatter:HTMLFormatter -o /target/report.html
 
-allure generate /target/allure-results --clean -o /target/html-report
