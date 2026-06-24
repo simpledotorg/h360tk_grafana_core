@@ -54,12 +54,8 @@ jobs:
 
       - name: Run Ci
         run: |
-          cd ci-tests
-          mkdir -p target
-          chmod -R 777 target
-          docker rm -f $(docker ps -aq) 2>/dev/null || true
-          docker network prune -f
-          docker compose up --timeout 0 --exit-code-from tester 
+          cd .github/workflows
+          bash run-ci.sh
 
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v6
