@@ -37,7 +37,7 @@ jobs:
           cd autodoc
           mkdir -p schemaspy-output
           chmod -R 777 schemaspy-output
-          docker compose up --exit-code-from schemaspy
+          docker compose up --exit-code-from schemaspy --timeout 0 
           zip -r schemaspy-report.zip schemaspy-output
 
       - name: Upload SchemaSpy Artifact
@@ -57,6 +57,8 @@ jobs:
           cd ci-tests
           mkdir -p target
           chmod -R 777 target
+          docker rm -f $(docker ps -aq) 2>/dev/null || true
+          docker network prune -f
           docker compose up --timeout 0 --exit-code-from tester 
 
       - name: Publish Test Report
