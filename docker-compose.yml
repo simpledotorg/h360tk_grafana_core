@@ -97,5 +97,28 @@ services:
       - ./inotify_scripts:/scripts:ro
       - ./prepare_date.py:/prepare_date.py
 
+  exporter:
+    build:
+      context: .
+      dockerfile: docker_build/heart360.exporter.docker
+      args:
+        SOURCE_VERSION: ${SOURCE_VERSION:-}
+    container_name: h360tk-exporter
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      - is_central_node=false
+      - SOURCE_KEY=h360tk_grafana_core
+      - EXPORT_CRON=0 * * * *
+      - UPLOAD_PROTOCOL=file
+      - UPLOAD_DEST_PATH=/export
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=heart360tk_database
+      - POSTGRES_USER=heart360tk
+      - POSTGRES_PASSWORD=YmE4ZTk0OGI0OTNmNGU5YmFjZDY1YTA0
+    volumes:
+      - ./data/export:/export:rw
+
 volumes:
   pgadmin_data:
