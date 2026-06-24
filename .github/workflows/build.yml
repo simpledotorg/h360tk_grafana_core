@@ -57,7 +57,7 @@ jobs:
           cd ci-tests
           mkdir -p target
           chmod -R 777 target
-          docker compose up --exit-code-from tester --timeout 1
+          docker compose up --timeout 0 --exit-code-from tester 
 
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v6
