@@ -5,12 +5,17 @@ from psycopg_pool import ConnectionPool
 def before_all(context):
 
 
-    ## 
+    ## The Id of the Run
     context.run_id=f"test_{int(time.time())}";
+    
+    ## run state
+    context.current_facility_id=None
 
 
+    ##
+    ## The connection pools
+    ##
     print("Initializing PostgreSQL Connection Pool...")
-
     try:
 
         leaf_db_config = {
@@ -35,6 +40,9 @@ def before_all(context):
     except (Exception, psycopg2.DatabaseError) as error:
         print(f"Error while connecting to PostgreSQL: {error}")
         raise error
+
+
+
 
 
 def after_all(context):

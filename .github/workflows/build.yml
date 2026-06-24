@@ -32,7 +32,7 @@ jobs:
           cd .github/workflows
           bash dockertag.sh
 
-      - name: Document Databae
+      - name: Document Database
         run: |
           cd autodoc
           mkdir -p schemaspy-output
@@ -46,6 +46,14 @@ jobs:
           name: database-documentation
           path: autodoc/schemaspy-report.zip
           retention-days: 90       
+
+
+      - name: Run Ci
+        run: |
+          cd ci-tests
+          mkdir -p target
+          chmod -R 777 target
+          docker compose up --exit-code-from tester
 
       - name: Push Docker images (all tags)
         run: |

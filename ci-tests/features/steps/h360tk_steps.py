@@ -1,10 +1,11 @@
 from behave import given, when, then
 import logging
+from psycopg import sql
+
 # A simple class to simulate the application code we are testing
 class H360tkSteps:
     def __init__(self):
-        self.current_facility_id  = None
-        self.context.created_hierarchy = []
+        plop  = None
 
 
 
@@ -41,7 +42,7 @@ def step_impl(context, facility_name):
 @given('The following facility exists:')
 def step_impl(context):
     pool = context.leaf_db_pool
-    parent_id = None 
+    context. parent_id = None 
     context.created_hierarchy = []
     
     try:
@@ -104,7 +105,7 @@ def step_impl(context):
 def add_test_top_level_facility(context):
 
     logging.warn('Sample dict log: %s', context)
-    current_facility_id  = None
+    context.current_facility_id  = None
     context.created_hierarchy = []
     add_facility(context, context.run_id)
 
@@ -115,7 +116,7 @@ def add_test_top_level_facility(context):
 def add_facility(context, name_param):
     pool = context.leaf_db_pool
     # 2. Get the current parent ID from context
-    parent_id = getattr(context, 'parent_id', None)
+    parent_id = context.current_facility_id
     try:
         with pool.connection() as conn:
             with conn.cursor() as cursor:
@@ -171,9 +172,60 @@ def add_facility(context, name_param):
                 })
                 
                 # Move down to the next child item
-                parent_id = current_id
+                context.current_facility_id = current_id
                     
     except Exception as e:
         raise AssertionError(f"Failed to process facility hierarchy idempotently: {e}")
 
+
+@given('That Facility has a patient with the following details')
+def step_impl(context):
+    # 1. Ensure the parent facility context exists
+    facility_id = getattr(context, 'current_facility_id', None)
+    if not facility_id:
+        raise RuntimeError("State Error: 'current_facility_id' is missing from the test context.")
+    pool = context.leaf_db_pool
+    try:
+        with pool.connection() as conn:
+            with conn.cursor() as cursor:
+                # Iterate over the row(s) provided in the Gherkin table
+                for row in context.table:
+                    # Convert the row into a standard dictionary
+                    row_data = {key: row[key] for key in row.headings}
+                    
+                    # Force inject the facility_id from context
+                    row_data['org_unit_id'] = facility_id
+                                        
+                    columns = []
+                    values = []
+                    columns.append(sql.Identifier('patient_id'))
+                    values.append(sql.SQL("nextval({})").format(sql.Literal("patient_diagnoses_id_seq")))
+                    for key, val in row_data.items():
+                        
+                        if isinstance(val, str) and val.strip() == "":
+                            continue  # Skip blank optional fields
+                        columns.append(sql.Identifier(key))
+                        # We append a placeholder object to represent %s in the final values list
+                        values.append(sql.Placeholder())
+
+                    query = sql.SQL("""
+                        INSERT INTO patients ({fields})
+                        VALUES ({values_clause})
+                        RETURNING patient_id;
+                    """).format(
+                        fields=sql.SQL(', ').join(columns),
+                        values_clause=sql.SQL(', ').join(
+                            v if isinstance(v, sql.Composable) else sql.Placeholder() for v in values
+                        )
+                    )
+
+                    raw_sql_string = query.as_string(cursor)
+                    print(raw_sql_string)
+
+                    # 4. Execute the dynamic query safely against the DB
+                    cursor.execute(query, values)
+                    context.current_patient_id = cursor.fetchone()[0]
+                    
+    except Exception as e:
+        raise RuntimeError(f"Dynamic database insertion failed for patients table: {e}")
 
