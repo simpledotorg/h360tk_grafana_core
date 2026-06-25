@@ -272,8 +272,7 @@ def generate_metadata(tmp_dir, stats, generation_start_epoch):
 
 
 def package_zip(tmp_dir):
-    epoch = int(time.time())
-    zip_filename = f'{SOURCE_KEY}_{epoch}.zip'
+    zip_filename = f'{SOURCE_KEY}.zip'
     zip_path = os.path.join('/tmp', zip_filename)
     zip_tmp_path = zip_path + '.tmp'
 
@@ -337,6 +336,10 @@ def upload_sftp(zip_path):
         # Upload to a .tmp path first — atomic rename prevents the importer
         # from picking up a half-written file if the transfer fails midway.
         sftp.put(zip_path, remote_tmp)
+        try:
+            sftp.remove(remote_path)
+        except FileNotFoundError:
+            pass
         sftp.rename(remote_tmp, remote_path)
 
         os.remove(zip_path)
