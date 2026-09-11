@@ -36,6 +36,8 @@ services:
       - shared_preload_libraries=pg_cron
       - -c
       - cron.database_name=heart360tk_database
+      - -c
+      - app.is_central_node=${is_central_node:-false}
     environment:
       - POSTGRES_USER=h360tk_root
       - POSTGRES_PASSWORD=NGE5ZjljYjM1ZWEyNDI5N2I0YmZiZGM0
@@ -93,6 +95,51 @@ services:
       - ./data/upload:/data:rw
       - ./inotify_scripts:/scripts:ro
       - ./prepare_date.py:/prepare_date.py
+
+  exporter:
+    build:
+      context: .
+      dockerfile: docker_build/heart360.exporter.docker
+      args:
+        SOURCE_VERSION: ${SOURCE_VERSION}
+    container_name: h360tk-exporter
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      - SOURCE_KEY=${SOURCE_KEY}
+      - EXPORT_CRON=${EXPORT_CRON}
+      - UPLOAD_PROTOCOL=${UPLOAD_PROTOCOL}
+      - UPLOAD_DEST_PATH=${UPLOAD_DEST_PATH}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - ./data/export:/export:rw
+
+  importer:
+    build:
+      context: .
+      dockerfile: docker_build/heart360.importer.docker
+    container_name: h360tk-importer
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      - IMPORT_CRON=${IMPORT_CRON}
+      - IMPORT_AGGREAGATE_DATA=${IMPORT_AGGREAGATE_DATA}
+      - IMPORT_FOLDER_PATH=${IMPORT_FOLDER_PATH}
+      - IMPORT_PROTOCOL=${IMPORT_PROTOCOL}
+      - SFTP_HOST=${SFTP_HOST}
+      - SFTP_PORT=${SFTP_PORT}
+      - SFTP_USER=${SFTP_USER}
+      - SFTP_PASSWORD=${SFTP_PASSWORD}
+      - SFTP_TIMEOUT=${SFTP_TIMEOUT}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 
 volumes:
   pgadmin_data:

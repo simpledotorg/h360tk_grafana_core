@@ -16,3 +16,13 @@ services:
     build:
       context: ..
       dockerfile: docker_build/heart360.pgadmin.docker
+  exporter:
+    build:
+      context: ..
+      dockerfile: docker_build/heart360.exporter.docker
+      args:
+        SOURCE_VERSION: ${SOURCE_VERSION:-}
+  importer:
+    build:
+      context: ..
+      dockerfile: docker_build/heart360.importer.docker
