@@ -27,7 +27,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 IMPORT_CRON = os.getenv('IMPORT_CRON', '0 * * * *').strip()
-IMPORT_AGGREAGATE_DATA = os.getenv('IMPORT_AGGREAGATE_DATA', 'false').strip().lower() == 'true'
+IMPORT_AGGREGATE_DATA = os.getenv('IMPORT_AGGREGATE_DATA', 'false').strip().lower() == 'true'
 IMPORT_PROTOCOL = os.getenv('IMPORT_PROTOCOL', 'sftp').strip().lower()
 IMPORT_FOLDER_PATH = os.getenv('IMPORT_FOLDER_PATH', '/export').strip()
 
@@ -64,7 +64,7 @@ def validate_config():
 
     log.info('Config validated OK.')
     log.info('  IMPORT_CRON            : %s', IMPORT_CRON)
-    log.info('  IMPORT_AGGREAGATE_DATA : %s', IMPORT_AGGREAGATE_DATA)
+    log.info('  IMPORT_AGGREGATE_DATA : %s', IMPORT_AGGREGATE_DATA)
     log.info('  IMPORT_PROTOCOL        : %s', IMPORT_PROTOCOL)
     log.info('  IMPORT_FOLDER_PATH     : %s', IMPORT_FOLDER_PATH)
     if IMPORT_PROTOCOL == 'sftp':
@@ -75,8 +75,8 @@ def validate_config():
 
 
 def is_import_enabled():
-    if not IMPORT_AGGREAGATE_DATA:
-        log.info('IMPORT_AGGREAGATE_DATA=false — import is disabled. Skipping.')
+    if not IMPORT_AGGREGATE_DATA:
+        log.info('IMPORT_AGGREGATE_DATA=false — import is disabled. Skipping.')
         return False
     return True
 
@@ -481,7 +481,7 @@ if __name__ == '__main__':
     validate_config()
 
     if not is_import_enabled():
-        log.info('Importer is disabled (IMPORT_AGGREAGATE_DATA=false). Container will exit.')
+        log.info('Importer is disabled (IMPORT_AGGREGATE_DATA=false). Container will exit.')
         sys.exit(0)
 
     start_scheduler()

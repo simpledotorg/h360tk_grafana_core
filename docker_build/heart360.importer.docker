@@ -15,7 +15,7 @@ USER importeruser
 COPY ./importer_scripts/importer.py ./importer.py
 COPY ./importer_scripts/import_versions/ ./import_versions/
 
-ENV IMPORT_AGGREAGATE_DATA=false
+ENV IMPORT_AGGREGATE_DATA=false
 ENV IMPORT_FOLDER_PATH=/export
 ENV IMPORT_PROTOCOL=sftp
 ENV SFTP_HOST=__CHANGE_THIS__
