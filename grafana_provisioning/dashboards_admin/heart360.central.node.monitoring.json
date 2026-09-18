@@ -1,0 +1,306 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "postgres-grafana"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 100,
+      "options": {
+        "afterRender": "",
+        "content": "{{#if (eq user_is_admin 0)}}\n  <div style=\"color: #e02424; background: rgba(224, 36, 36, 0.05); border-left: 4px solid #e02424; padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 8px; border-radius: 2px; line-height: 1.4;\">\n    <span>⚠️</span>\n    <span><strong>Access Denied:</strong> You must be an admin to view this page.</span>\n  </div>\n{{/if}}",
+        "contentPartials": [],
+        "defaultContent": "",
+        "editor": {
+          "format": "auto",
+          "language": "markdown"
+        },
+        "editors": [],
+        "externalStyles": [],
+        "helpers": "",
+        "renderMode": "everyRow",
+        "styles": "",
+        "wrap": true
+      },
+      "pluginVersion": "6.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "postgres-grafana"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT $UserIsAdmin AS user_is_admin",
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "transparent": true,
+      "type": "marcusolsson-dynamictext-panel"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 24,
+        "x": 0,
+        "y": 2
+      },
+      "id": 10,
+      "options": {
+        "code": {
+          "language": "html",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "<div style='display:flex;justify-content:space-between;align-items:flex-start;padding:4px 0 8px 0;border-bottom:1px solid #e5e7eb;'><div><div style='font-size:26px;font-weight:700;color:#111827;letter-spacing:-.3px;'>Central Node - Monitoring Dashboard</div></div></div>",
+        "mode": "html"
+      },
+      "pluginVersion": "13.2.2",
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    },
+    {
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "id": 22,
+      "options": {
+        "code": {
+          "language": "html",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "<div style='padding:10px 0 4px 0;'><div style='font-size:22px;font-weight:600;color:#111827;'>Import monitoring</div><div style='font-size:13px;color:#6b7280;margin-top:2px;'>Monitor data received from HEARTS360 sources.</div></div>",
+        "mode": "html"
+      },
+      "pluginVersion": "13.2.2",
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres-hypertension"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 12
+      },
+      "id": 24,
+      "options": {
+        "afterRender": "var el = context.element || context.grafana?.element; if (!el) return; var root = el.querySelector('#h3-cards-root'); if (!root) return; var stats = {}; try { stats = JSON.parse(root.dataset.rows || '{}'); } catch (e) { stats = {}; } function timeAgo(ms) { if (!ms) return '\\u2014'; var diff = Math.max(0, Date.now() - ms); var min = Math.round(diff / 60000); if (min < 1) return 'just now'; if (min < 60) return min + ' min ago'; var hr = Math.round(min / 60); if (hr < 24) return hr + (hr === 1 ? ' hour ago' : ' hours ago'); var day = Math.round(hr / 24); return day + (day === 1 ? ' day ago' : ' days ago'); } var total = stats.total_sources || 0; var received = stats.received_sources || 0; var failed = stats.failed_sources || 0; var receivedPct = stats.received_pct || 0; var failedPct = stats.failed_pct || 0; root.querySelector('#h3c-received-value').textContent = received + ' of ' + total; root.querySelector('#h3c-received-bar').style.width = receivedPct + '%'; root.querySelector('#h3c-received-pct').textContent = receivedPct + '% received'; root.querySelector('#h3c-failed-value').textContent = failed; root.querySelector('#h3c-failed-bar').style.width = failedPct + '%'; root.querySelector('#h3c-failed-pct').textContent = failedPct + '% of sources'; var nextMs = stats.next_run_ms; var mins = (nextMs && nextMs > Date.now()) ? Math.round((nextMs - Date.now()) / 60000) : null; var nextText; if (mins === null) { nextText = 'Not scheduled'; } else if (mins === 0) { nextText = 'less than a minute'; } else { nextText = 'in ' + mins + (mins === 1 ? ' minute' : ' minutes'); } root.querySelector('#h3c-next-value').textContent = nextText; root.querySelector('#h3c-next-last').textContent = 'Last import: ' + timeAgo(stats.last_run_ms);",
+        "content": "<div id='h3-cards-root' data-rows=\"{{stats_json}}\"><div style='display:flex;gap:16px;flex-wrap:wrap;'><div style='flex:1;min-width:220px;border:1px solid #e5e7eb;border-radius:10px;padding:16px 18px;background:#fff;'><div id='h3c-received-value' style='font-size:26px;font-weight:700;color:#111827;line-height:1.1;'></div><div style='font-size:13px;color:#6b7280;margin-top:4px;'>sources received data</div><div style='width:100%;height:6px;background:#f3f4f6;border-radius:999px;margin-top:12px;overflow:hidden;'><div id='h3c-received-bar' style='height:100%;border-radius:999px;background:#22c55e;width:0%;'></div></div><div id='h3c-received-pct' style='font-size:12px;color:#9ca3af;margin-top:6px;text-align:right;'></div></div><div style='flex:1;min-width:220px;border:1px solid #e5e7eb;border-radius:10px;padding:16px 18px;background:#fff;'><div id='h3c-failed-value' style='font-size:26px;font-weight:700;color:#dc2626;line-height:1.1;'></div><div style='font-size:13px;color:#6b7280;margin-top:4px;'>failed on latest attempt</div><div style='width:100%;height:6px;background:#f3f4f6;border-radius:999px;margin-top:12px;overflow:hidden;'><div id='h3c-failed-bar' style='height:100%;border-radius:999px;background:#ef4444;width:0%;'></div></div><div id='h3c-failed-pct' style='font-size:12px;color:#9ca3af;margin-top:6px;text-align:right;'></div></div><div style='flex:1;min-width:220px;border:1px solid #e5e7eb;border-radius:10px;padding:16px 18px;background:#fff;'><div style='font-size:13px;color:#6b7280;font-weight:600;'>Next import</div><div id='h3c-next-value' style='font-size:22px;font-weight:700;color:#111827;margin-top:6px;'></div><div id='h3c-next-last' style='font-size:13px;color:#111827;font-weight:600;margin-top:8px;'></div></div></div></div>",
+        "contentPartials": [],
+        "defaultContent": "",
+        "editor": {
+          "format": "auto",
+          "language": "markdown"
+        },
+        "editors": [],
+        "externalStyles": [],
+        "helpers": "",
+        "renderMode": "everyRow",
+        "styles": "",
+        "wrap": true
+      },
+      "pluginVersion": "6.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres-hypertension"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH last_attempt AS (\n  SELECT DISTINCT ON (source_key)\n    source_key, status\n  FROM heart360tk_reporting.import_run_log\n  ORDER BY source_key, started_at DESC\n),\ncounts AS (\n  SELECT\n    COUNT(*) AS total_sources,\n    COUNT(*) FILTER (WHERE status = 'success') AS received_sources,\n    COUNT(*) FILTER (WHERE status = 'failed') AS failed_sources\n  FROM last_attempt\n),\nschedule AS (\n  SELECT next_run_at, cron_expression\n  FROM heart360tk_reporting.import_schedule_status\n  WHERE id = 1\n),\nlast_run AS (\n  SELECT MAX(started_at) AS last_import_at\n  FROM heart360tk_reporting.import_run_log\n)\nSELECT row_to_json(t)::text AS stats_json\nFROM (\n  SELECT\n    c.total_sources,\n    c.received_sources,\n    c.failed_sources,\n    CASE WHEN c.total_sources > 0 THEN ROUND(c.received_sources * 100.0 / c.total_sources) ELSE 0 END AS received_pct,\n    CASE WHEN c.total_sources > 0 THEN ROUND(c.failed_sources * 100.0 / c.total_sources) ELSE 0 END AS failed_pct,\n    (EXTRACT(EPOCH FROM s.next_run_at) * 1000)::bigint AS next_run_ms,\n    (EXTRACT(EPOCH FROM lr.last_import_at) * 1000)::bigint AS last_run_ms,\n    s.cron_expression\n  FROM counts c\n  LEFT JOIN schedule s ON true\n  LEFT JOIN last_run lr ON true\n) t",
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "transparent": true,
+      "type": "marcusolsson-dynamictext-panel"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "postgres-hypertension"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 20,
+        "w": 24,
+        "x": 0,
+        "y": 17
+      },
+      "id": 23,
+      "options": {
+        "afterRender": "var el = context.element || context.grafana?.element; if (!el) return; var root = el.querySelector('#h3-src-root'); if (!root) return; var allRows = []; try { allRows = JSON.parse(root.dataset.rows || '[]'); } catch (e) { allRows = []; } var tabsEl   = root.querySelector('#h3-src-tabs'); var searchEl = root.querySelector('#h3-src-search'); var tableEl  = root.querySelector('#h3-src-table'); var pageEl   = root.querySelector('#h3-src-pagination'); var state = { tab: 'all', search: '', page: 1, pageSize: 10, sortCol: 'status', sortDir: 'asc' }; function timeAgo(ms) { if (!ms) return '\\u2014'; var diff = Math.max(0, Date.now() - ms); var min = Math.round(diff / 60000); if (min < 1) return 'just now'; if (min < 60) return min + ' min ago'; var hr = Math.round(min / 60); if (hr < 24) return hr + (hr === 1 ? ' hour ago' : ' hours ago'); var day = Math.round(hr / 24); return day + (day === 1 ? ' day ago' : ' days ago'); } var statusCfg = { received: { bg: '#dcfce7', clr: '#16a34a', label: 'Received' }, failed:   { bg: '#fee2e2', clr: '#dc2626', label: 'Failed'   } }; function counts() { return { all:      allRows.length, received: allRows.filter(function (r) { return r.status === 'received'; }).length, failed:   allRows.filter(function (r) { return r.status === 'failed';   }).length }; } function filteredRows() { return allRows.filter(function (r) { if (state.tab !== 'all' && r.status !== state.tab) return false; if (state.search) { var q = state.search.toLowerCase(); if ((r.source_key || '').toLowerCase().indexOf(q) === -1) return false; } return true; }); } function sortedRows() { var rows = filteredRows().slice(); if (!state.sortCol) return rows; var dir = state.sortDir === 'desc' ? -1 : 1; rows.sort(function (a, b) { var av = a[state.sortCol]; var bv = b[state.sortCol]; if (av == null && bv == null) return 0; if (av == null) return 1; if (bv == null) return -1; if (av < bv) return -1 * dir; if (av > bv) return  1 * dir; return 0; }); return rows; } function sortIcon(col) { if (state.sortCol !== col) return ' <span style=\\'color:#a5b4fc;font-size:11px;\\'>\\u2191</span>'; return state.sortDir === 'desc' ? ' <span style=\\'color:#6366f1;font-size:11px;\\'>\\u2193</span>' : ' <span style=\\'color:#6366f1;font-size:11px;\\'>\\u2191</span>'; } function renderTabs() { var c = counts(); var tabs = [ { key: 'all',      label: 'All',      count: c.all      }, { key: 'received', label: 'Received', count: c.received }, { key: 'failed',   label: 'Failed',   count: c.failed   } ]; tabsEl.innerHTML = tabs.map(function (t) { var active = state.tab === t.key; return '<button data-tab=\\'' + t.key + '\\' style=\\'padding:6px 14px;font-size:13px;font-weight:600;border:none;border-radius:8px;cursor:pointer;background:' + (active ? '#fff' : 'transparent') + ';color:' + (active ? '#111827' : '#6b7280') + ';box-shadow:' + (active ? '0 1px 2px rgba(0,0,0,0.08)' : 'none') + ';\\'>' + t.label + ' ' + t.count + '</button>'; }).join(''); Array.prototype.forEach.call(tabsEl.querySelectorAll('button'), function (btn) { btn.onclick = function () { state.tab = btn.dataset.tab; state.page = 1; renderTabs(); renderTable(); }; }); } function renderPagination() { if (!pageEl) return; var total      = filteredRows().length; var totalPages = Math.max(1, Math.ceil(total / state.pageSize)); if (total === 0) { pageEl.innerHTML = ''; return; } var start = (state.page - 1) * state.pageSize + 1; var end   = Math.min(state.page * state.pageSize, total); var html  = '<span style=\\'font-size:13px;color:#6b7280;\\'>Showing ' + start + '\\u2013' + end + ' of ' + total + ' results</span>'; if (totalPages > 1) { html += '<div style=\\'display:flex;gap:4px;align-items:center;\\'>'; var prevOp = state.page === 1 ? 'opacity:0.35;cursor:default;' : 'cursor:pointer;'; html += '<button id=\\'h3-pg-prev\\' style=\\'padding:5px 12px;font-size:13px;border:1px solid #d1d5db;border-radius:6px;background:#fff;color:#374151;' + prevOp + '\\'>\\u2190 Prev</button>'; var pages = []; if (totalPages <= 7) { for (var i = 1; i <= totalPages; i++) pages.push(i); } else { pages.push(1); if (state.page > 3) pages.push('...'); var lo = Math.max(2, state.page - 1); var hi = Math.min(totalPages - 1, state.page + 1); for (var i = lo; i <= hi; i++) pages.push(i); if (state.page < totalPages - 2) pages.push('...'); pages.push(totalPages); } pages.forEach(function (pg) { if (pg === '...') { html += '<span style=\\'padding:5px 4px;font-size:13px;color:#6b7280;\\'>\\u2026</span>'; } else { var active = pg === state.page; html += '<button data-pg=\\'' + pg + '\\' style=\\'padding:5px 10px;font-size:13px;border:1px solid ' + (active ? '#6366f1' : '#d1d5db') + ';border-radius:6px;background:' + (active ? '#6366f1' : '#fff') + ';color:' + (active ? '#fff' : '#374151') + ';cursor:pointer;\\'>' + pg + '</button>'; } }); var nextOp = state.page === totalPages ? 'opacity:0.35;cursor:default;' : 'cursor:pointer;'; html += '<button id=\\'h3-pg-next\\' style=\\'padding:5px 12px;font-size:13px;border:1px solid #d1d5db;border-radius:6px;background:#fff;color:#374151;' + nextOp + '\\'>Next \\u2192</button>'; html += '</div>'; } pageEl.innerHTML = html; var prevBtn = pageEl.querySelector('#h3-pg-prev'); if (prevBtn) prevBtn.onclick = function () { if (state.page > 1) { state.page--; renderTable(); } }; var nextBtn = pageEl.querySelector('#h3-pg-next'); if (nextBtn) nextBtn.onclick = function () { var tp = Math.ceil(filteredRows().length / state.pageSize); if (state.page < tp) { state.page++; renderTable(); } }; Array.prototype.forEach.call(pageEl.querySelectorAll('[data-pg]'), function (btn) { btn.onclick = function () { state.page = parseInt(btn.dataset.pg, 10); renderTable(); }; }); } function renderTable() { var allSorted = sortedRows(); var rows      = allSorted.slice((state.page - 1) * state.pageSize, state.page * state.pageSize); if (!allSorted.length) { tableEl.innerHTML = '<div style=\\'padding:36px;text-align:center;color:#9ca3af;font-size:13px;\\'>No sources match.</div>'; if (pageEl) pageEl.innerHTML = ''; return; } var thStyle = 'text-align:left;padding:10px 16px;color:#111827;font-weight:700;font-size:12px;background:#ffffff;'; var thSort  = thStyle + 'cursor:pointer;user-select:none;white-space:nowrap;'; var html = '<table style=\\'width:100%;border-collapse:collapse;font-size:13px;\\'>'; html += '<thead><tr style=\\'border-bottom:1px solid #e5e7eb;background:#ffffff;\\'>'; html += '<th style=\\'' + thStyle + '\\'><b>Source key</b></th>'; html += '<th data-sort=\\'status\\' style=\\'' + thSort + '\\'><b>Status</b>' + sortIcon('status') + '</th>'; html += '<th data-sort=\\'last_success_ms\\' style=\\'' + thSort + '\\'><b>Last successful import</b>' + sortIcon('last_success_ms') + '</th>'; html += '<th data-sort=\\'last_attempt_ms\\' style=\\'' + thSort + '\\'><b>Last attempt</b>' + sortIcon('last_attempt_ms') + '</th>'; html += '<th style=\\'' + thStyle + '\\'><b>Reason for failure</b></th>'; html += '</tr></thead><tbody>'; rows.forEach(function (r) { var cfg = statusCfg[r.status] || statusCfg.failed; html += '<tr style=\\'border-bottom:1px solid #f3f4f6;\\'>'; html += '<td style=\\'padding:14px 16px;color:#111827;font-weight:500;\\'>' + r.source_key + '</td>'; html += '<td style=\\'padding:14px 16px;\\'><span style=\\'display:inline-block;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:600;background:' + cfg.bg + ';color:' + cfg.clr + ';\\'>' + cfg.label + '</span></td>'; html += '<td style=\\'padding:14px 16px;color:#374151;white-space:nowrap;\\'>' + timeAgo(r.last_success_ms) + '</td>'; html += '<td style=\\'padding:14px 16px;color:#374151;white-space:nowrap;\\'>' + timeAgo(r.last_attempt_ms) + '</td>'; html += '<td style=\\'padding:14px 16px;color:#6b7280;max-width:280px;\\'>' + (r.failure_reason ? r.failure_reason : '\\u2014') + '</td>'; html += '</tr>'; }); html += '</tbody></table>'; tableEl.innerHTML = html; Array.prototype.forEach.call(tableEl.querySelectorAll('th[data-sort]'), function (th) { th.onclick = function () { var col = th.dataset.sort; if (state.sortCol === col) { state.sortDir = state.sortDir === 'desc' ? 'asc' : 'desc'; } else { state.sortCol = col; state.sortDir = 'desc'; } state.page = 1; renderTable(); }; }); renderPagination(); } searchEl.oninput = function () { state.search = searchEl.value; state.page = 1; renderTable(); }; renderTabs(); renderTable();",
+        "content": "<div id='h3-src-root' data-rows=\"{{rows_json}}\"><div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;'><div style='display:flex;align-items:center;gap:12px;'><div style='font-size:20px;font-weight:700;color:#111827;'>Sources</div><div id='h3-src-tabs' style='display:flex;gap:6px;background:#f3f4f6;padding:4px;border-radius:10px;'></div></div><input id='h3-src-search' type='text' placeholder='Search sources...' style='padding:8px 14px;font-size:13px;border:1px solid #d1d5db;border-radius:8px;min-width:220px;color:#111827;' /></div><div id='h3-src-table' style='border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;'></div><div id='h3-src-pagination' style='display:flex;justify-content:space-between;align-items:center;padding:12px 2px 4px 2px;flex-wrap:wrap;gap:8px;'></div></div>",
+        "contentPartials": [],
+        "defaultContent": "",
+        "editor": {
+          "format": "auto",
+          "language": "markdown"
+        },
+        "editors": [],
+        "externalStyles": [],
+        "helpers": "",
+        "renderMode": "everyRow",
+        "styles": "",
+        "wrap": true
+      },
+      "pluginVersion": "6.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "postgres-hypertension"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH last_attempt AS (\n  SELECT DISTINCT ON (source_key)\n    source_key, started_at, status, error_message\n  FROM heart360tk_reporting.import_run_log\n  ORDER BY source_key, started_at DESC\n),\nlast_success AS (\n  SELECT DISTINCT ON (source_key)\n    source_key, started_at\n  FROM heart360tk_reporting.import_run_log\n  WHERE status = 'success'\n  ORDER BY source_key, started_at DESC\n),\nfinal_rows AS (\n  SELECT\n    la.source_key,\n    CASE WHEN la.status = 'success' THEN 'received' ELSE 'failed' END AS status,\n    (EXTRACT(EPOCH FROM ls.started_at) * 1000)::bigint AS last_success_ms,\n    (EXTRACT(EPOCH FROM la.started_at) * 1000)::bigint AS last_attempt_ms,\n    CASE WHEN la.status = 'failed' THEN COALESCE(la.error_message, 'Import failed') ELSE NULL END AS failure_reason\n  FROM last_attempt la\n  LEFT JOIN last_success ls ON ls.source_key = la.source_key\n)\nSELECT COALESCE((SELECT json_agg(row_to_json(final_rows) ORDER BY source_key) FROM final_rows), '[]'::json)::text AS rows_json",
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "transparent": true,
+      "type": "marcusolsson-dynamictext-panel"
+    }
+  ],
+  "preload": false,
+  "refresh": "30s",
+  "schemaVersion": 42,
+  "tags": [
+    "admin"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "postgres-grafana"
+        },
+        "definition": "SELECT CASE WHEN (u.is_admin OR EXISTS (\n  SELECT 1 FROM grafana_schema.team_member tm\n  JOIN grafana_schema.team t ON tm.team_id = t.id\n  WHERE tm.user_id = u.id AND t.name LIKE '%\\_ALL' ESCAPE '\\'\n)) THEN 1 ELSE 0 END\nFROM grafana_schema.\"user\" u WHERE u.id = ${__user.id}",
+        "hide": 2,
+        "name": "UserIsAdmin",
+        "options": [],
+        "query": "SELECT CASE WHEN (u.is_admin OR EXISTS (\n  SELECT 1 FROM grafana_schema.team_member tm\n  JOIN grafana_schema.team t ON tm.team_id = t.id\n  WHERE tm.user_id = u.id AND t.name LIKE '%\\_ALL' ESCAPE '\\'\n)) THEN 1 ELSE 0 END\nFROM grafana_schema.\"user\" u WHERE u.id = ${__user.id}",
+        "refresh": 1,
+        "regex": "",
+        "regexApplyTo": "value",
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Central Node - Monitoring Dashboard",
+  "uid": "heart360-central-node-monitoring",
+  "version": 1,
+  "weekStart": ""
+}
