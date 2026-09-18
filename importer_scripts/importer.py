@@ -117,6 +117,49 @@ def log_import_run(
         log.warning('Could not write import run log to DB (non-fatal): %s', e)
 
 
+def update_schedule_status(
+    next_run_at=None,
+    last_run_started_at=None,
+    last_run_finished_at=None,
+):
+    try:
+        with psycopg2.connect(**DB_CONNECTION_PARAMS) as conn:
+            conn.autocommit = True
+            with conn.cursor() as cur:
+                cur.execute(
+                    '''
+                    INSERT INTO heart360tk_reporting.import_schedule_status
+                        (id, cron_expression, next_run_at,
+                         last_run_started_at, last_run_finished_at, updated_at)
+                    VALUES (1, %s, %s, %s, %s, now())
+                    ON CONFLICT (id) DO UPDATE SET
+                        cron_expression = EXCLUDED.cron_expression,
+                        next_run_at = COALESCE(
+                            EXCLUDED.next_run_at,
+                            heart360tk_reporting.import_schedule_status.next_run_at
+                        ),
+                        last_run_started_at = COALESCE(
+                            EXCLUDED.last_run_started_at,
+                            heart360tk_reporting.import_schedule_status.last_run_started_at
+                        ),
+                        last_run_finished_at = COALESCE(
+                            EXCLUDED.last_run_finished_at,
+                            heart360tk_reporting.import_schedule_status.last_run_finished_at
+                        ),
+                        updated_at = now()
+                    ''',
+                    (
+                        IMPORT_CRON,
+                        next_run_at,
+                        last_run_started_at,
+                        last_run_finished_at,
+                    ),
+                )
+        log.info('  Schedule status updated — next_run_at=%s', next_run_at)
+    except Exception as e:
+        log.warning('Could not write import schedule status to DB (non-fatal): %s', e)
+
+
 def _open_sftp_client():
     log.warning(
         'SFTP host key verification is disabled — '
@@ -452,11 +495,62 @@ def run_import():
         if conn is not None:
             conn.rollback()
         log.error('Import job failed: %s', e, exc_info=True)
+        # Infrastructure-level failure (e.g. SFTP unreachable, DB error) —
+        # no per-zip log_import_run() was written.  Record a catch-all entry
+        # so the dashboard always shows something for this failed attempt.
+        infra_key = f'{IMPORT_PROTOCOL}://{SFTP_HOST}' \
+            if IMPORT_PROTOCOL == 'sftp' else 'infrastructure'
+        log_import_run(
+            source_key=infra_key,
+            started_at=job_start,
+            status='failed',
+            duration_seconds=round(time.time() - job_start, 2),
+            error_message=str(e),
+        )
 
     finally:
         if conn is not None:
             conn.close()
         shutil.rmtree(work_dir, ignore_errors=True)
+
+
+def _get_next_run_time(scheduler):
+    job = scheduler.get_job('import_job')
+    if job is None:
+        return None
+    try:
+        return job.trigger.get_next_fire_time(None, datetime.now(timezone.utc))
+    except Exception:
+        # Absolute last-resort: attribute may exist post-start
+        return getattr(job, 'next_run_time', None)
+
+
+def scheduled_import_job(scheduler):
+    last_run_started_at = datetime.now(timezone.utc)
+    job_start = time.time()
+    try:
+        run_import()
+    except Exception as e:
+        infra_key = f'{IMPORT_PROTOCOL}://{SFTP_HOST}' if IMPORT_PROTOCOL == 'sftp' \
+            else 'infrastructure'
+        log.error(
+            'Infrastructure-level import failure (source_key=%s): %s',
+            infra_key, e,
+        )
+        log_import_run(
+            source_key=infra_key,
+            started_at=job_start,
+            status='failed',
+            duration_seconds=round(time.time() - job_start, 2),
+            error_message=str(e),
+        )
+    finally:
+        last_run_finished_at = datetime.now(timezone.utc)
+        update_schedule_status(
+            next_run_at=_get_next_run_time(scheduler),
+            last_run_started_at=last_run_started_at,
+            last_run_finished_at=last_run_finished_at,
+        )
 
 
 def start_scheduler():
@@ -467,8 +561,14 @@ def start_scheduler():
         sys.exit(1)
 
     scheduler = BlockingScheduler()
-    scheduler.add_job(run_import, trigger, id='import_job', name='h360tk import')
+    scheduler.add_job(
+        lambda: scheduled_import_job(scheduler),
+        trigger,
+        id='import_job',
+        name='h360tk import',
+    )
     log.info("Scheduler started. Import will run on cron: '%s'", IMPORT_CRON)
+    update_schedule_status(next_run_at=_get_next_run_time(scheduler))
 
     try:
         scheduler.start()
