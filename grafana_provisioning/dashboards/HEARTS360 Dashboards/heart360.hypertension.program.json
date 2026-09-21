@@ -217,6 +217,9 @@
             },
             "insertNulls": false,
             "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
             "lineWidth": 2,
             "pointSize": 6,
             "scaleDistribution": {
@@ -252,7 +255,52 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Historical"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Current Month"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.gradientMode",
+                "value": "opacity"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -281,7 +329,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT * FROM (\nselect \n    ref_month,\n    100.00 * sum(nb_patients_controlled) / (0.000001 + GREATEST(0, sum(TOTAL_NUMBER_OF_PATIENTS) - sum(NB_PATIENTS_NEWLY_REGISTERED) - sum(NB_PATIENTS_LOST_TO_FOLLOW_UP))) as Control_rate\nfrom HEART360_PATIENTS_CATEGORY\nwhere org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\ngroup by 1\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+          "rawSql": "SELECT * FROM (\nSELECT\n    ref_month,\n    CASE\n      WHEN DATE_TRUNC('month', ref_month) < DATE_TRUNC('month', CURRENT_DATE)\n            THEN Control_rate\n        END AS \"Historical\",\n        CASE\n            WHEN DATE_TRUNC('month', ref_month) >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'\n            THEN Control_rate\n        END AS \"Current Month\"\n    FROM (\n        SELECT\n            ref_month,\n            100.00 * SUM(nb_patients_controlled) \n            / \n            (0.000001 + GREATEST(0, SUM(TOTAL_NUMBER_OF_PATIENTS) - SUM(NB_PATIENTS_NEWLY_REGISTERED) - SUM(NB_PATIENTS_LOST_TO_FOLLOW_UP) ) ) \n        AS Control_rate\n        FROM HEART360_PATIENTS_CATEGORY\n        WHERE org_unit_id IN (\n            SELECT id\n            FROM get_descendant_ids(\n                (\n                    SELECT ou.id\n                    FROM org_units ou\n                    WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '')\n                    LIMIT 1\n                )\n            )\n        )\n        GROUP BY ref_month\n    ) AS data\n) AS master_access_control WHERE '${isAllowed}' = '1'",
           "refId": "A",
           "sql": {
             "columns": [
@@ -334,6 +382,9 @@
             },
             "insertNulls": false,
             "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
             "lineWidth": 2,
             "pointSize": 6,
             "scaleDistribution": {
@@ -388,6 +439,50 @@
                 "value": "% BP uncontrolled"
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Historical"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "light-orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Current Month"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "light-orange"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.gradientMode",
+                "value": "opacity"
+              }
+            ]
           }
         ]
       },
@@ -418,7 +513,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT * FROM (\nselect ref_month,\n    100.00 * sum(nb_patients_uncontrolled) / (0.000001 + GREATEST(0, sum(TOTAL_NUMBER_OF_PATIENTS) - sum(NB_PATIENTS_NEWLY_REGISTERED) - sum(NB_PATIENTS_LOST_TO_FOLLOW_UP))) as uncontrolled_pct\nfrom HEART360_PATIENTS_CATEGORY\nwhere org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\ngroup by 1\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+          "rawSql": "SELECT * FROM (\n    SELECT\n        ref_month,\n\n        CASE\n            WHEN DATE_TRUNC('month', ref_month) < DATE_TRUNC('month', CURRENT_DATE)\n            THEN uncontrolled_pct\n        END AS \"Historical\",\n\n        CASE\n            WHEN DATE_TRUNC('month', ref_month) >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'\n            THEN uncontrolled_pct\n        END AS \"Current Month\"\n\n    FROM (\n        SELECT\n            ref_month,\n            100.00 * SUM(nb_patients_uncontrolled)\n            /\n            (\n                0.000001 +\n                GREATEST(\n                    0,\n                    SUM(TOTAL_NUMBER_OF_PATIENTS)\n                    - SUM(NB_PATIENTS_NEWLY_REGISTERED)\n                    - SUM(NB_PATIENTS_LOST_TO_FOLLOW_UP)\n                )\n            ) AS uncontrolled_pct\n\n        FROM HEART360_PATIENTS_CATEGORY\n\n        WHERE org_unit_id IN (\n            SELECT id\n            FROM get_descendant_ids(\n                (\n                    SELECT ou.id\n                    FROM org_units ou\n                    WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '')\n                    LIMIT 1\n                )\n            )\n        )\n\n        GROUP BY ref_month\n    ) AS data\n\n) AS master_access_control\n\nWHERE '${isAllowed}' = '1';\n",
           "refId": "A",
           "sql": {
             "columns": [
@@ -471,6 +566,9 @@
             },
             "insertNulls": false,
             "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
             "lineWidth": 2,
             "pointSize": 6,
             "scaleDistribution": {
@@ -521,6 +619,50 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Historical"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "dark-orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Current Month"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "dark-orange"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.gradientMode",
+                "value": "opacity"
+              }
+            ]
           }
         ]
       },
@@ -551,7 +693,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT * FROM (\nselect \n    ref_month,\n    100.00 * sum(nb_patients_no_visit) / (0.000001 + GREATEST(0, sum(TOTAL_NUMBER_OF_PATIENTS) - sum(NB_PATIENTS_NEWLY_REGISTERED) - sum(NB_PATIENTS_LOST_TO_FOLLOW_UP))) as Control_rate\nfrom HEART360_PATIENTS_CATEGORY\nwhere org_unit_id IN (SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))))\ngroup by 1\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+          "rawSql": "SELECT * FROM (\n    SELECT\n        ref_month,\n\n        CASE\n            WHEN DATE_TRUNC('month', ref_month) < DATE_TRUNC('month', CURRENT_DATE)\n            THEN Control_rate\n        END AS \"Historical\",\n\n        CASE\n            WHEN DATE_TRUNC('month', ref_month) >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'\n            THEN Control_rate\n        END AS \"Current Month\"\n\n    FROM (\n        SELECT\n            ref_month,\n            100.00 * SUM(nb_patients_no_visit)\n            /\n            (\n                0.000001 +\n                GREATEST(\n                    0,\n                    SUM(TOTAL_NUMBER_OF_PATIENTS)\n                    - SUM(NB_PATIENTS_NEWLY_REGISTERED)\n                    - SUM(NB_PATIENTS_LOST_TO_FOLLOW_UP)\n                )\n            ) AS Control_rate\n\n        FROM HEART360_PATIENTS_CATEGORY\n\n        WHERE org_unit_id IN (\n            SELECT id\n            FROM get_descendant_ids(\n                (\n                    SELECT ou.id\n                    FROM org_units ou\n                    WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '')\n                    LIMIT 1\n                )\n            )\n        )\n\n        GROUP BY ref_month\n    ) AS data\n\n) AS master_access_control\n\nWHERE '${isAllowed}' = '1';\n",
           "refId": "A",
           "sql": {
             "columns": [
