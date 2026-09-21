@@ -1,0 +1,271 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "uid": "postgres-grafana",
+        "type": "grafana-postgresql-datasource"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 100,
+      "links": [],
+      "options": {
+        "afterRender": "",
+        "content": "{{#if (eq user_is_admin 0)}}\n  <div style=\"color: #e02424; background: rgba(224, 36, 36, 0.05); border-left: 4px solid #e02424; padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 8px; border-radius: 2px; line-height: 1.4;\">\n    <span>⚠️</span>\n    <span><strong>Access Denied:</strong> You must be an admin to view this page.</span>\n  </div>\n{{/if}}",
+        "contentPartials": [],
+        "defaultContent": "",
+        "editor": {
+          "format": "auto",
+          "language": "markdown"
+        },
+        "editors": [],
+        "externalStyles": [],
+        "helpers": "",
+        "renderMode": "everyRow",
+        "styles": "",
+        "wrap": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "postgres-grafana",
+            "type": "grafana-postgresql-datasource"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT $UserIsAdmin AS user_is_admin",
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "transparent": true,
+      "type": "marcusolsson-dynamictext-panel"
+    },
+    {
+      "datasource": {
+        "uid": "postgres-hypertension",
+        "type": "grafana-postgresql-datasource"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 2
+      },
+      "id": 2,
+      "links": [],
+      "options": {
+        "afterRender": "",
+        "content": "<div style='padding:4px 0 12px 0;border-bottom:1px solid #e5e7eb;margin-bottom:16px;'><div style='font-size:22px;font-weight:700;color:#111827;letter-spacing:-.3px;'>Leaf node - monitoring dashboard</div><div style='font-size:13px;color:#6b7280;margin-top:2px;'>{{#if source_key}}{{source_key}} · {{/if}}export status to central node</div></div><style>.ln-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:4px}.ln-card{border-radius:12px;padding:20px 24px}.ln-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:14px}.ln-row{display:flex;align-items:center;gap:14px}.ln-ic{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px;font-weight:700}.ln-val{font-size:26px;font-weight:700;color:#1e293b;line-height:1.1}</style><div class='ln-grid'>{{#if (eq last_status 'success')}}<div class='ln-card' style='background:#f0fdf4;border:1px solid #bbf7d0;'><div class='ln-lbl'>Last Export Status</div><div class='ln-row'><div class='ln-ic' style='background:#dcfce7;color:#16a34a;'>&#10003;</div><div style='font-size:22px;font-weight:700;color:#16a34a;'>Success</div></div></div>{{else}}{{#if (eq last_status 'failed')}}<div class='ln-card' style='background:#fff0f0;border:1px solid #fecaca;'><div class='ln-lbl'>Last Export Status</div><div class='ln-row'><div class='ln-ic' style='background:#fee2e2;color:#dc2626;'>&#10007;</div><div style='font-size:22px;font-weight:700;color:#dc2626;'>Failed</div></div></div>{{else}}<div class='ln-card' style='background:#f8fafc;border:1px solid #e2e8f0;'><div class='ln-lbl'>Last Export Status</div><div class='ln-row'><div class='ln-ic' style='background:#f1f5f9;color:#94a3b8;font-size:20px;'>&#8212;</div><div style='font-size:22px;font-weight:700;color:#94a3b8;'>No exports yet</div></div></div>{{/if}}{{/if}}<div class='ln-card' style='background:#f8fafc;border:1px solid #e2e8f0;'><div class='ln-lbl'>Last Export Attempt</div><div class='ln-row'><div class='ln-ic' style='background:#e0f2fe;color:#0284c7;'>&#9201;</div><div class='ln-val'>{{last_attempt_ago}}</div></div></div><div class='ln-card' style='background:#f8fafc;border:1px solid #e2e8f0;'><div class='ln-lbl'>Last Successful Export</div><div class='ln-row'><div class='ln-ic' style='background:#dcfce7;color:#16a34a;'>&#10003;</div><div class='ln-val'>{{last_success_ago}}</div></div></div></div>",
+        "contentPartials": [],
+        "defaultContent": "",
+        "editor": {
+          "format": "auto",
+          "language": "markdown"
+        },
+        "editors": [],
+        "externalStyles": [],
+        "helpers": "",
+        "renderMode": "everyRow",
+        "styles": "",
+        "wrap": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "postgres-hypertension",
+            "type": "grafana-postgresql-datasource"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH\nlatest_export AS (\n  SELECT source_key, status, started_at, error_message\n  FROM   heart360tk_reporting.export_run_log\n  ORDER  BY started_at DESC\n  LIMIT  1\n),\nlatest_success AS (\n  SELECT started_at\n  FROM   heart360tk_reporting.export_run_log\n  WHERE  status = 'success'\n  ORDER  BY started_at DESC\n  LIMIT  1\n),\nago AS (\n  -- Write the time-ago CASE exactly once; apply it to both timestamps.\n  SELECT\n    ts_name,\n    CASE\n      WHEN ts IS NULL                               THEN '—'\n      WHEN EXTRACT(EPOCH FROM now() - ts) <    60  THEN EXTRACT(EPOCH FROM now() - ts)::int || 's ago'\n      WHEN EXTRACT(EPOCH FROM now() - ts) <  3600  THEN (EXTRACT(EPOCH FROM now() - ts) /   60)::int || ' min ago'\n      WHEN EXTRACT(EPOCH FROM now() - ts) < 86400  THEN (EXTRACT(EPOCH FROM now() - ts) / 3600)::int || ' hours ago'\n      ELSE                                               (EXTRACT(EPOCH FROM now() - ts) / 86400)::int || ' days ago'\n    END AS ago_text\n  FROM (VALUES\n    ('attempt', (SELECT started_at FROM latest_export)),\n    ('success', (SELECT started_at FROM latest_success))\n  ) t(ts_name, ts)\n)\nSELECT\n  COALESCE(le.source_key, '')                                  AS source_key,\n  COALESCE(le.status, '')                                      AS last_status,\n  (SELECT ago_text FROM ago WHERE ts_name = 'attempt')         AS last_attempt_ago,\n  (SELECT ago_text FROM ago WHERE ts_name = 'success')         AS last_success_ago,\n  CASE\n    WHEN le.error_message IS NULL\n      THEN ''\n    WHEN le.error_message ~* 'sftp.*login|ssh.*auth|authentication.*fail|wrong.*password|bad.*password'\n      THEN 'SFTP login was rejected by the central node. The stored credentials for this facility may have expired — check the SFTP username and password in the export config and try again.'\n    WHEN le.error_message ~* 'connection.*refused|timed.?out|network.*unreachable|no.*route'\n      THEN 'Could not connect to the central node. Check that the SFTP host address and port are correct, and that the network is reachable.'\n    WHEN le.error_message ~* 'no such file|directory.*not.*found'\n      THEN 'The export destination folder does not exist on the central node. Check the SFTP remote path in the export config.'\n    WHEN le.error_message ~* 'permission.*denied|access.*denied'\n      THEN 'The export user does not have permission to write to the destination folder. Check SFTP user permissions on the central node.'\n    WHEN le.error_message ~* 'disk.*full|no space|quota.*exceeded'\n      THEN 'The central node is out of disk space. Free up space or contact your system administrator.'\n    ELSE le.error_message\n  END AS friendly_error\nFROM  (SELECT 1) base\nLEFT  JOIN latest_export le ON true\nWHERE $UserIsAdmin = 1",
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "transparent": true,
+      "type": "marcusolsson-dynamictext-panel"
+    },
+    {
+      "datasource": {
+        "uid": "postgres-hypertension",
+        "type": "grafana-postgresql-datasource"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "id": 5,
+      "links": [],
+      "options": {
+        "afterRender": "var el=context.element||context.grafana?.element; if(!el)return;\nvar root=el.querySelector('#p5-root'); if(!root)return;\nvar runs=[]; try{runs=JSON.parse(root.dataset.runs||'[]');}catch(e){}\nvar avgLbl=root.dataset.avg||'\\u2014'; var maxLbl=root.dataset.max||'\\u2014';\nvar canvas=el.querySelector('#p5-canvas'); if(!canvas)return;\nvar dpr=window.devicePixelRatio||1;\nvar W=(canvas.parentElement&&canvas.parentElement.offsetWidth>20)?canvas.parentElement.offsetWidth:500;\nvar H=380;\ncanvas.width=Math.round(W*dpr); canvas.height=Math.round(H*dpr);\ncanvas.style.width=W+'px'; canvas.style.height=H+'px';\nvar ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr); ctx.clearRect(0,0,W,H);\n\nfunction rr(x,y,w,h,r){\n  r=Math.min(r,w/2,h/2);\n  ctx.beginPath();\n  ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r);\n  ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r);\n  ctx.arcTo(x,y,x+w,y,r); ctx.closePath();\n}\n\n/* white card */\nctx.save(); ctx.shadowColor='rgba(0,0,0,0.10)'; ctx.shadowBlur=14; ctx.shadowOffsetY=2;\nctx.fillStyle='#ffffff'; rr(1,1,W-2,H-2,14); ctx.fill(); ctx.restore();\nctx.strokeStyle='#e5e7eb'; ctx.lineWidth=1; rr(1,1,W-2,H-2,14); ctx.stroke();\n\n/* title */\nctx.fillStyle='#111827'; ctx.font='600 15px Inter,system-ui,sans-serif';\nctx.textAlign='left'; ctx.fillText('Export processing time',16,30);\n\n/* subtitle */\nctx.fillStyle='#9ca3af'; ctx.font='12px Inter,system-ui,sans-serif';\nctx.fillText('Duration per attempt, in seconds',16,48);\n\n/* avg/max */\nctx.textAlign='right'; ctx.font='600 13px Inter,system-ui,sans-serif';\nctx.fillStyle='#111827';\nctx.fillText('avg '+avgLbl+'s  \\u00b7  max '+maxLbl+'s',W-16,30);\nctx.textAlign='left';\n\nvar n=runs.length;\nif(!n){\n  ctx.fillStyle='#9ca3af'; ctx.font='13px Inter,sans-serif';\n  ctx.textAlign='center'; ctx.fillText('No data in selected time range',W/2,H/2);\n  return;\n}\n\nvar durs=runs.map(function(r){return parseFloat(r.duration_seconds)||0;});\n\n/* chart area */\nvar cL=40,cR=W-16,cT=58,cB=H-66;\nvar cW=cR-cL,cH=cB-cT;\n\n/* y-axis range: always 0 to at least 25, rounded up to next 5 */\nvar maxDur=Math.max.apply(null,durs);\nvar maxY=Math.max(25,Math.ceil((maxDur+2)/5)*5);\n\nvar tx=function(i){return n>1?cL+i/(n-1)*cW:cL+cW/2;};\nvar ty=function(v){return cB-v/maxY*cH;};\n\n/* grid lines + y labels (every 5s) */\nfor(var v=0;v<=maxY;v+=5){\n  var gy=Math.round(ty(v));\n  ctx.strokeStyle='#f3f4f6'; ctx.lineWidth=1; ctx.setLineDash([]);\n  ctx.beginPath(); ctx.moveTo(cL,gy); ctx.lineTo(cR,gy); ctx.stroke();\n  ctx.fillStyle='#9ca3af'; ctx.font='10px Inter,sans-serif'; ctx.textAlign='right';\n  ctx.fillText(v+'s',cL-6,gy+4);\n}\n\n\n/* gradient fill under line */\nvar grad=ctx.createLinearGradient(0,cT,0,cB);\ngrad.addColorStop(0,'rgba(59,130,246,0.18)');\ngrad.addColorStop(1,'rgba(59,130,246,0.01)');\nctx.beginPath(); ctx.moveTo(tx(0),ty(durs[0]));\nfor(var i=1;i<n;i++) ctx.lineTo(tx(i),ty(durs[i]));\nctx.lineTo(tx(n-1),cB); ctx.lineTo(tx(0),cB); ctx.closePath();\nctx.fillStyle=grad; ctx.fill();\n\n/* line */\nctx.strokeStyle='#3b82f6'; ctx.lineWidth=2; ctx.lineJoin='round'; ctx.setLineDash([]);\nctx.beginPath();\nfor(var i=0;i<n;i++){if(i===0)ctx.moveTo(tx(i),ty(durs[i]));else ctx.lineTo(tx(i),ty(durs[i]));}\nctx.stroke();\n\n/* success dots (blue, small) */\nfor(var i=0;i<n;i++){\n  if(runs[i].status!=='failed'){\n    ctx.fillStyle='#3b82f6'; ctx.strokeStyle='#93c5fd'; ctx.lineWidth=1.5;\n    ctx.beginPath(); ctx.arc(tx(i),ty(durs[i]),4,0,Math.PI*2);\n    ctx.fill(); ctx.stroke();\n  }\n}\n\n/* failed dots (red, larger, on top) */\nfor(var i=0;i<n;i++){\n  if(runs[i].status==='failed'){\n    ctx.fillStyle='#ef4444'; ctx.strokeStyle='#fca5a5'; ctx.lineWidth=1.5;\n    ctx.beginPath(); ctx.arc(tx(i),ty(durs[i]),4,0,Math.PI*2);\n    ctx.fill(); ctx.stroke();\n  }\n}\n\n/* x-axis line */\nctx.strokeStyle='#e5e7eb'; ctx.lineWidth=1; ctx.setLineDash([]);\nctx.beginPath(); ctx.moveTo(cL,cB); ctx.lineTo(cR,cB); ctx.stroke();\n\n/* x-axis labels */\nctx.fillStyle='#9ca3af'; ctx.font='10px Inter,sans-serif'; ctx.textAlign='center';\nvar xPts=n<=1?[0]:n<=6?Array.from({length:n},function(_,i){return i;}):[0,Math.floor((n-1)/2),n-1];\nvar shown={};\nxPts.forEach(function(i){\n  if(shown[i])return; shown[i]=1;\n  ctx.fillText(i+1,tx(i),cB+14);\n});\nctx.fillStyle='#9ca3af'; ctx.font='11px Inter,sans-serif';\nctx.fillText('Attempt #',cL+cW/2,cB+28);\n\n/* legend row */\nvar lgY=H-14, lgX=cL;\n/* Duration line + dot */\nctx.strokeStyle='#3b82f6'; ctx.lineWidth=2; ctx.setLineDash([]);\nctx.beginPath(); ctx.moveTo(lgX,lgY-5); ctx.lineTo(lgX+18,lgY-5); ctx.stroke();\nctx.fillStyle='#3b82f6'; ctx.beginPath(); ctx.arc(lgX+9,lgY-5,4,0,Math.PI*2); ctx.fill();\nctx.fillStyle='#374151'; ctx.font='11px Inter,sans-serif'; ctx.textAlign='left';\nctx.fillText('Duration (s)',lgX+24,lgY);\n/* Failed dot */\nctx.fillStyle='#ef4444'; ctx.beginPath(); ctx.arc(lgX+128,lgY-5,4,0,Math.PI*2); ctx.fill();\nctx.fillStyle='#374151'; ctx.fillText('Failed attempt',lgX+140,lgY);",
+        "content": "<div id='p5-root' data-runs=\"{{runs_json}}\" data-avg=\"{{avg_duration}}\" data-max=\"{{max_duration}}\" style='width:100%;'><canvas id='p5-canvas' style='display:block;width:100%;'></canvas></div>",
+        "contentPartials": [],
+        "defaultContent": "<div style=\"padding:20px;text-align:center;color:#9ca3af;font-size:13px;\">No export data found.</div>",
+        "editor": {
+          "format": "auto",
+          "language": "markdown"
+        },
+        "editors": [],
+        "externalStyles": [],
+        "helpers": "",
+        "renderMode": "everyRow",
+        "styles": "",
+        "wrap": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "postgres-hypertension",
+            "type": "grafana-postgresql-datasource"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH period AS (\n  SELECT\n    TO_CHAR(started_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS started_at,\n    status,\n    ROUND(COALESCE(duration_seconds, 0)::numeric, 1)                       AS duration_seconds,\n    started_at                                                              AS raw_at\n  FROM heart360tk_reporting.export_run_log\n  WHERE started_at BETWEEN $__timeFrom()::timestamp AND $__timeTo()::timestamp\n),\nagg AS (\n  SELECT\n    json_agg(\n      json_build_object(\n        'started_at',       started_at,\n        'status',           status,\n        'duration_seconds', duration_seconds\n      )\n      ORDER BY raw_at\n    )::text                                   AS runs_json,\n    ROUND(AVG(duration_seconds)::numeric, 1)  AS avg_duration,\n    ROUND(MAX(duration_seconds)::numeric, 1)  AS max_duration\n  FROM period\n)\nSELECT\n  COALESCE(a.runs_json,    '[]') AS runs_json,\n  COALESCE(a.avg_duration, 0)    AS avg_duration,\n  COALESCE(a.max_duration, 0)    AS max_duration\nFROM  (SELECT 1) base\nLEFT  JOIN agg a ON true\nWHERE $UserIsAdmin = 1",
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "transparent": true,
+      "type": "marcusolsson-dynamictext-panel"
+    },
+    {
+      "datasource": {
+        "uid": "postgres-hypertension",
+        "type": "grafana-postgresql-datasource"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 18,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
+      "id": 3,
+      "links": [],
+      "options": {
+        "afterRender": "var el = context.element || context.grafana?.element; if (!el) return; var root = el.querySelector('#h3-exp-root'); if (!root) return; var allRows = []; try { allRows = JSON.parse(root.dataset.rows || '[]'); } catch(e) { allRows = []; } var tableEl = root.querySelector('#h3-exp-table'); var pageEl  = root.querySelector('#h3-exp-pagination'); var state = { page: 1, pageSize: 10, sortCol: 'started_at', sortDir: 'desc' }; var statusCfg = { success: { bg: '#dcfce7', clr: '#16a34a', label: 'Success' }, failed: { bg: '#fee2e2', clr: '#dc2626', label: 'Failed' } }; function sortIcon(col) { if (state.sortCol !== col) return ' <span style=\\'color:#a5b4fc;font-size:11px;\\'>\\u2191</span>'; return state.sortDir === 'desc' ? ' <span style=\\'color:#6366f1;font-size:11px;\\'>\\u2193</span>' : ' <span style=\\'color:#6366f1;font-size:11px;\\'>\\u2191</span>'; } function getRows() { var rows = allRows.slice(); var dir = state.sortDir === 'desc' ? -1 : 1; rows.sort(function(a, b) { var av = a[state.sortCol] || ''; var bv = b[state.sortCol] || ''; if (av < bv) return -1 * dir; if (av > bv) return 1 * dir; return 0; }); return rows; } function renderPagination(filteredRows) { if (!pageEl) return; var total = filteredRows.length; var totalPages = Math.max(1, Math.ceil(total / state.pageSize)); if (total === 0) { pageEl.innerHTML = ''; return; } var start = (state.page - 1) * state.pageSize + 1; var end = Math.min(state.page * state.pageSize, total); var html = '<span style=\\'font-size:13px;color:#6b7280;\\'>Showing ' + start + '\\u2013' + end + ' of ' + total + ' results</span>'; if (totalPages > 1) { html += '<div style=\\'display:flex;gap:4px;align-items:center;\\'>'; var prevOp = state.page === 1 ? 'opacity:0.35;cursor:default;' : 'cursor:pointer;'; html += '<button id=\\'h3-pg-prev\\' style=\\'padding:5px 12px;font-size:13px;border:1px solid #d1d5db;border-radius:6px;background:#fff;color:#374151;' + prevOp + '\\'>\\u2190 Prev</button>'; var pages = []; if (totalPages <= 7) { for (var i = 1; i <= totalPages; i++) pages.push(i); } else { pages.push(1); if (state.page > 3) pages.push('...'); var lo = Math.max(2, state.page - 1); var hi = Math.min(totalPages - 1, state.page + 1); for (var i = lo; i <= hi; i++) pages.push(i); if (state.page < totalPages - 2) pages.push('...'); pages.push(totalPages); } pages.forEach(function(pg) { if (pg === '...') { html += '<span style=\\'padding:5px 4px;font-size:13px;color:#6b7280;\\'>\\u2026</span>'; } else { var active = pg === state.page; html += '<button data-pg=\\'' + pg + '\\' style=\\'padding:5px 10px;font-size:13px;border:1px solid ' + (active ? '#6366f1' : '#d1d5db') + ';border-radius:6px;background:' + (active ? '#6366f1' : '#fff') + ';color:' + (active ? '#fff' : '#374151') + ';cursor:pointer;\\'>' + pg + '</button>'; } }); var nextOp = state.page === totalPages ? 'opacity:0.35;cursor:default;' : 'cursor:pointer;'; html += '<button id=\\'h3-pg-next\\' style=\\'padding:5px 12px;font-size:13px;border:1px solid #d1d5db;border-radius:6px;background:#fff;color:#374151;' + nextOp + '\\'>Next \\u2192</button>'; html += '</div>'; } pageEl.innerHTML = html; var prevBtn = pageEl.querySelector('#h3-pg-prev'); if (prevBtn) prevBtn.onclick = function() { if (state.page > 1) { state.page--; renderTable(); } }; var nextBtn = pageEl.querySelector('#h3-pg-next'); if (nextBtn) nextBtn.onclick = function() { var tp = Math.ceil(filteredRows.length / state.pageSize); if (state.page < tp) { state.page++; renderTable(); } }; Array.prototype.forEach.call(pageEl.querySelectorAll('[data-pg]'), function(btn) { btn.onclick = function() { state.page = parseInt(btn.dataset.pg, 10); renderTable(); }; }); } function renderTable() { var sorted = getRows(); var rows = sorted.slice((state.page - 1) * state.pageSize, state.page * state.pageSize); if (!allRows.length) { tableEl.innerHTML = '<div style=\\'padding:36px;text-align:center;color:#9ca3af;font-size:13px;\\'>No export attempts found.</div>'; if (pageEl) pageEl.innerHTML = ''; return; } var thSort = 'text-align:left;padding:10px 16px;color:#111827;font-weight:700;font-size:12px;background:#ffffff;width:25%;cursor:pointer;user-select:none;white-space:nowrap;'; var html = '<table style=\\'width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;\\'>'; html += '<thead><tr style=\\'border-bottom:1px solid #e5e7eb;background:#ffffff;\\'>'; [['started_at','Attempt time'],['status','Status'],['duration','Duration'],['failure_reason','Failure reason']].forEach(function(c){ var act=state.sortCol===c[0]?'background:#f5f3ff;':''; html+='<th data-sort=\\''+c[0]+'\\' style=\\''+thSort+act+'\\' ><b>'+c[1]+'</b>'+sortIcon(c[0])+'</th>'; }); html += '</tr></thead><tbody>'; rows.forEach(function(r) { var cfg = statusCfg[r.status] || { bg: '#f3f4f6', clr: '#6b7280', label: r.status || '\\u2014' }; html += '<tr style=\\'border-bottom:1px solid #f3f4f6;\\'>'; html += '<td style=\\'padding:12px 16px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;\\'>' + (r.attempt_time || '\\u2014') + '</td>'; html += '<td style=\\'padding:12px 16px;\\'><span style=\\'display:inline-block;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:600;background:' + cfg.bg + ';color:' + cfg.clr + ';\\'>' + cfg.label + '</span></td>'; html += '<td style=\\'padding:12px 16px;color:#374151;text-align:center;\\'>' + (r.duration || '\\u2014') + '</td>'; html += '<td style=\\'padding:12px 16px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;\\'>' + (r.failure_reason || '\\u2014') + '</td>'; html += '</tr>'; }); html += '</tbody></table>'; tableEl.innerHTML = html; renderPagination(sorted); Array.prototype.forEach.call(tableEl.querySelectorAll('[data-sort]'), function(th) { th.onclick = function() { var col = th.dataset.sort; if (state.sortCol === col) { state.sortDir = state.sortDir === 'desc' ? 'asc' : 'desc'; } else { state.sortCol = col; state.sortDir = 'desc'; } state.page = 1; renderTable(); }; }); } renderTable();",
+        "content": "<div id='h3-exp-root' data-rows=\"{{rows_json}}\"><div style='font-size:20px;font-weight:700;color:#111827;margin-bottom:14px;'>Recent export attempts</div><div id='h3-exp-table' style='border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;'></div><div id='h3-exp-pagination' style='display:flex;justify-content:space-between;align-items:center;padding:12px 2px 4px 2px;flex-wrap:wrap;gap:8px;'></div></div>",
+        "contentPartials": [],
+        "defaultContent": "",
+        "editor": {
+          "format": "auto",
+          "language": "markdown"
+        },
+        "editors": [],
+        "externalStyles": [],
+        "helpers": "",
+        "renderMode": "everyRow",
+        "styles": "",
+        "wrap": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "postgres-hypertension",
+            "type": "grafana-postgresql-datasource"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COALESCE((SELECT json_agg(row_to_json(t) ORDER BY t.started_at DESC) FROM (SELECT started_at, TO_CHAR(started_at AT TIME ZONE 'UTC', 'DD Mon HH24:MI') AS attempt_time, status, COALESCE(duration_seconds::text || 's', '—') AS duration, CASE WHEN error_message IS NULL THEN '—' WHEN error_message ~* 'sftp.*login|authentication.*fail|wrong.*password|bad.*password|ssh.*auth' THEN 'SFTP login rejected — check credentials' WHEN error_message ~* 'connection.*refused|timed.?out|network.*unreachable|no.*route' THEN 'Connection failed — check network' WHEN error_message ~* 'no such file|directory.*not.*found' THEN 'Remote path not found' WHEN error_message ~* 'permission.*denied|access.*denied' THEN 'Permission denied — check SFTP access' WHEN error_message ~* 'disk.*full|no space|quota.*exceeded' THEN 'Disk full on central node' ELSE COALESCE(LEFT(error_message, 80), '—') END AS failure_reason FROM heart360tk_reporting.export_run_log ORDER BY started_at DESC LIMIT 200) t), '[]'::json)::text AS rows_json FROM (SELECT 1) base WHERE $UserIsAdmin = 1",
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "transparent": true,
+      "type": "marcusolsson-dynamictext-panel"
+    }
+  ],
+  "preload": false,
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "tags": [
+    "admin"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allowCustomValue": true,
+        "current": {},
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "postgres-grafana"
+        },
+        "definition": "SELECT CASE WHEN (u.is_admin OR EXISTS (\n  SELECT 1 FROM team_member tm\n  JOIN team t ON tm.team_id = t.id\n  WHERE tm.user_id = u.id AND t.name LIKE '%\\_ALL' ESCAPE '\\'\n)) THEN 1 ELSE 0 END\nFROM \"user\" u WHERE u.id = ${__user.id}",
+        "hide": 2,
+        "includeAll": false,
+        "multi": false,
+        "name": "UserIsAdmin",
+        "options": [],
+        "query": "SELECT CASE WHEN (u.is_admin OR EXISTS (\n  SELECT 1 FROM team_member tm\n  JOIN team t ON tm.team_id = t.id\n  WHERE tm.user_id = u.id AND t.name LIKE '%\\_ALL' ESCAPE '\\'\n)) THEN 1 ELSE 0 END\nFROM \"user\" u WHERE u.id = ${__user.id}",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-2d",
+    "to": "now"
+  },
+  "timepicker": {
+    "hidden": false
+  },
+  "timezone": "browser",
+  "title": "Leaf Node - Monitoring Dashboard",
+  "uid": "heart360-leaf-node-monitoring",
+  "version": 1,
+  "weekStart": ""
+}
