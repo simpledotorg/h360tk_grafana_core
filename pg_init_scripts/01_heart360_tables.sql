@@ -1583,6 +1583,24 @@ CREATE INDEX IF NOT EXISTS idx_import_run_log_source_key
 GRANT INSERT, SELECT ON heart360tk_reporting.import_run_log TO heart360tk;
 GRANT USAGE ON SEQUENCE heart360tk_reporting.import_run_log_id_seq TO heart360tk;
 
+-- ============================================================================
+-- Import schedule status — single-row table kept up to date by the importer
+-- process (via APScheduler) so dashboards can show "next import in X minutes"
+-- without having to guess/parse the cron expression themselves.
+-- ============================================================================
+DROP TABLE IF EXISTS heart360tk_reporting.import_schedule_status;
+CREATE TABLE heart360tk_reporting.import_schedule_status (
+    id                     INTEGER     PRIMARY KEY DEFAULT 1,
+    cron_expression        TEXT,
+    next_run_at            TIMESTAMPTZ,
+    last_run_started_at    TIMESTAMPTZ,
+    last_run_finished_at   TIMESTAMPTZ,
+    updated_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT import_schedule_status_singleton CHECK (id = 1)
+);
+
+GRANT INSERT, UPDATE, SELECT ON heart360tk_reporting.import_schedule_status TO heart360tk;
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pat_cat_org_month ON heart360tk_reporting.HEART360_PATIENTS_CATEGORY (org_unit_id, ref_month);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pat_under_care_org_month ON heart360tk_reporting.HEART360_PATIENTS_UNDER_CARE (org_unit_id, ref_month);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pat_registered_org_month ON heart360tk_reporting.HEART360_PATIENTS_REGISTERED (org_unit_id, ref_month);
