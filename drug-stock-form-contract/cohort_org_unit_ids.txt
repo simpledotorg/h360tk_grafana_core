@@ -1,0 +1,8 @@
+# Prototype cohort: list org_units.id values eligible for the Google Form facility
+# question. One integer id per line. Lines starting with # are ignored.
+# Omit community-size sites by excluding their ids (do not infer from org_units.level).
+#
+# Replace the example ids below with leaf Postgres ids after exporting from your env.
+# Example placeholder ids (verify script seeds its own ids in CI-style runs):
+# 101
+# 102
