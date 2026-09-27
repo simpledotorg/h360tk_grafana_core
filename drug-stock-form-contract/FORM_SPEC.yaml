@@ -1,0 +1,46 @@
+# Google Form build spec for ops (Story 1.2). Do not commit Sheet IDs or credentials.
+# Facility choices: run pg_init_scripts/export_drug_stock_form_choices.sh and paste
+# into the Form as multiple choice options (label = display_name, value = org_unit_id).
+
+form_title: "Drug Stock — monthly In-Stock submission"
+form_description: >
+  Report on-shelf stock for protocol drugs at your facility for the selected reporting month.
+  Leave a drug blank if unknown; enter 0 if the shelf is empty.
+
+success_confirmation: >
+  Thank you — your stock report was submitted. You may close this form or submit another month.
+
+questions:
+  - order: 1
+    id: facility
+    type: multiple_choice
+    title: "Facility"
+    required: true
+    stored_value: org_units.id
+    display_label: org_units.name
+    choices_source_script: pg_init_scripts/export_drug_stock_form_choices.sh
+    choices_source_data: drug-stock-form-contract/cohort_org_unit_ids.txt
+
+  - order: 2
+    id: reporting_month
+    type: date
+    title: "Reporting month"
+    required: true
+    helper_text: "Select the calendar month you are reporting stock for."
+
+  - order: 3
+    id: in_stock_template
+    type: short_answer
+    title_pattern: "In-Stock: {drug_name} {dosage}"
+    required: false
+    validation: number
+    helper_text: "Leave blank if unknown. Enter 0 if none on shelf."
+    repeat_per_row_from: heart360tk_schema.active_stock_tracked_drugs
+    sort_order:
+      - drug_category: [CCB, ARB, Diuretic, Other]
+      - drug_name: ascending
+      - dosage: ascending
+    sheet_mapping:
+      drug_code_column: drug_code
+      drug_code_value: rxnorm_code
+      in_stock_column: in_stock
