@@ -116,6 +116,29 @@ def log_import_run(
     except Exception as e:
         log.warning('Could not write import run log to DB (non-fatal): %s', e)
 
+def update_import_source_control(source_key, data_status):
+    try:
+        with psycopg2.connect(**DB_CONNECTION_PARAMS) as conn:
+            conn.autocommit = True
+
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO heart360tk_reporting.import_source_control
+                        (source_key, data_status)
+                    VALUES (%s, %s)
+                    ON CONFLICT (source_key) DO UPDATE SET
+                        data_status = EXCLUDED.data_status
+                    """,
+                    (source_key, data_status),
+                )
+        log.info(
+            "Import source status updated — source_key=%s, data_status=%s", 
+            source_key,
+            data_status
+        )
+    except Exception as e:
+        log.warning("Could not update import source status in DB (non-fatal): %s",e)
 
 def update_schedule_status(
     next_run_at=None,
@@ -455,6 +478,7 @@ def run_import():
                     status='success',
                     duration_seconds=duration,
                 )
+                update_import_source_control(source_key, 'data_loaded')
                 imported_count += 1
                 log.info(
                     '  Imported %s (source_key=%s) in %.2fs',
@@ -479,6 +503,7 @@ def run_import():
                     duration_seconds=duration,
                     error_message=str(e),
                 )
+                update_import_source_control(source_key or os.path.splitext(zip_name)[0], 'no_data')
 
         if imported_count == 0:
             log.error('No zip files were imported successfully.')
@@ -507,7 +532,6 @@ def run_import():
             duration_seconds=round(time.time() - job_start, 2),
             error_message=str(e),
         )
-
     finally:
         if conn is not None:
             conn.close()
