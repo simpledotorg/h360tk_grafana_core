@@ -177,8 +177,20 @@ def generate_csvs(conn):
                 raise
 
         orgunit_path = os.path.join(tmp_dir, 'orgunit.csv')
+        # Include the optional Kemendagri administrative code when the column
+        # exists so it travels to the central node inside orgunit.csv.
         cur.execute(
-            'SELECT id, name, level, parent_id FROM heart360tk_schema.org_units ORDER BY level, id'
+            """
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'heart360tk_schema'
+              AND table_name = 'org_units'
+              AND column_name = 'code'
+            """
+        )
+        _has_code = cur.fetchone() is not None
+        _orgunit_cols = 'id, name, level, parent_id' + (', code' if _has_code else '')
+        cur.execute(
+            f'SELECT {_orgunit_cols} FROM heart360tk_schema.org_units ORDER BY level, id'
         )
         rows = cur.fetchall()
         col_names = [desc[0] for desc in cur.description]

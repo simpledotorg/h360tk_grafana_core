@@ -40,11 +40,13 @@ class BaseImportVersion:
             reader = csv.DictReader(csv_file)
             for row in reader:
                 parent_raw = (row.get('parent_id') or '').strip()
+                code_raw = (row.get('code') or '').strip()
                 rows.append({
                     'leaf_id': int(row['id']),
                     'name': row['name'].strip(),
                     'level': int(row['level']),
                     'leaf_parent_id': int(parent_raw) if parent_raw else None,
+                    'code': code_raw or None,
                 })
         rows.sort(key=lambda item: (item['level'], item['leaf_id']))
         return rows
@@ -98,6 +100,20 @@ class BaseImportVersion:
         leaf_to_central: dict[int, int] = {}
 
         with conn.cursor() as cur:
+            # Detect the 4-argument upsert_org_unit(name, level, parent, code)
+            # overload once; when present, Kemendagri codes from orgunit.csv are
+            # stored on the central org_units too. Older DB images keep working.
+            cur.execute(
+                '''
+                SELECT 1 FROM pg_proc p
+                JOIN pg_namespace n ON n.oid = p.pronamespace
+                WHERE n.nspname = 'heart360tk_schema'
+                  AND p.proname = 'upsert_org_unit'
+                  AND p.pronargs = 4
+                '''
+            )
+            has_code_fn = cur.fetchone() is not None
+
             cur.execute(
                 '''
                 DELETE FROM heart360tk_reporting.import_facility_mapping
@@ -111,6 +127,7 @@ class BaseImportVersion:
                 name = row['name']
                 level = row['level']
                 leaf_parent_id = row['leaf_parent_id']
+                code = row.get('code')
 
                 central_parent_id = None
                 if leaf_parent_id is not None:
@@ -121,10 +138,16 @@ class BaseImportVersion:
                             f'was not processed before its child (source_key={source_key})'
                         )
 
-                cur.execute(
-                    'SELECT heart360tk_schema.upsert_org_unit(%s, %s, %s)',
-                    (name, level, central_parent_id),
-                )
+                if has_code_fn:
+                    cur.execute(
+                        'SELECT heart360tk_schema.upsert_org_unit(%s, %s, %s, %s)',
+                        (name, level, central_parent_id, code),
+                    )
+                else:
+                    cur.execute(
+                        'SELECT heart360tk_schema.upsert_org_unit(%s, %s, %s)',
+                        (name, level, central_parent_id),
+                    )
                 central_id = cur.fetchone()[0]
                 if central_id is None:
                     raise ValueError(

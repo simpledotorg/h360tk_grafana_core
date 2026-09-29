@@ -40,6 +40,14 @@ COL_BS_VALUE = 'Blood Sugar Value'
 COL_DIAGNOSIS_1 = 'Diagnosis 1'
 COL_DIAGNOSIS_2 = 'Diagnosis 2'
 
+# Kemendagri administrative codes (optional). One code is attached per
+# hierarchy level: kode prov -> level 1 (Region), kode kab -> level 2 (District),
+# kode kec -> level 3 (Facility), kode desa -> level 4 (Sub-Facility).
+COL_KODE_PROV = 'kode prov'
+COL_KODE_KAB = 'kode kab'
+COL_KODE_KEC = 'kode kec'
+COL_KODE_DESA = 'kode desa'
+
 
 CSV_DATE_FORMATS = ["%Y-%m-%d", "%d-%m-%Y", "%d/%m/%y", "%d-%m-%Y %H:%M:%S", "%Y-%m-%d %H:%M:%S", "%d/%m/%y %H:%M:%S"]
 DATE_FORMAT_OUT = "%Y-%m-%d"
@@ -65,10 +73,10 @@ SP_REGION_VALUE = 'Demo Region'
 #                  only levels 6+ need this (e.g. level_6, level_7).
 #   default      – fallback value when column is empty (None = skip level)
 HIERARCHY_LEVELS = [
-    {'level': 1, 'column': [COL_REGION], 'display_name': 'Region', 'var_name': 'region', 'default': SP_REGION_VALUE},
-    {'level': 2, 'column': [COL_DISTRICT], 'display_name': 'District', 'var_name': 'district', 'default': None},
-    {'level': 3, 'column': [COL_PHC], 'display_name': 'Facility', 'var_name': 'facility', 'default': 'UNKNOWN'},
-    {'level': 4, 'column': [COL_SHC], 'display_name': 'Sub-Facility', 'var_name': 'sub_facility', 'default': None},
+    {'level': 1, 'column': [COL_REGION], 'display_name': 'Region', 'var_name': 'region', 'default': SP_REGION_VALUE, 'code_column': COL_KODE_PROV},
+    {'level': 2, 'column': [COL_DISTRICT], 'display_name': 'District', 'var_name': 'district', 'default': None, 'code_column': COL_KODE_KAB},
+    {'level': 3, 'column': [COL_PHC], 'display_name': 'Facility', 'var_name': 'facility', 'default': 'UNKNOWN', 'code_column': COL_KODE_KEC},
+    {'level': 4, 'column': [COL_SHC], 'display_name': 'Sub-Facility', 'var_name': 'sub_facility', 'default': None, 'code_column': COL_KODE_DESA},
 ]
 
 # --- ALLOWED BLOOD SUGAR TYPES ---
@@ -137,8 +145,25 @@ def build_patient_name(row):
 
     return " ".join(name_parts)
 
+def _clean_code(value):
+    """Normalise a Kemendagri code cell to a plain string or None."""
+    code = safe_str(value)
+    if code is None:
+        return None
+    code = code.strip()
+    if code.endswith('.0'):
+        code = code[:-2]
+    if code == '' or code.lower() == 'nan':
+        return None
+    return code
+
+
 def build_hierarchy_from_row(row):
-    """Build (name, level) tuples for upsert_org_unit_chain from HIERARCHY_LEVELS."""
+    """Build (name, level, code) tuples for upsert_org_unit_chain from HIERARCHY_LEVELS.
+
+    code is the optional Kemendagri administrative code for that level
+    (kode prov/kab/kec/desa); None when the column is absent or empty.
+    """
     hierarchy = []
     for hlvl in HIERARCHY_LEVELS:
         value = None
@@ -148,8 +173,12 @@ def build_hierarchy_from_row(row):
                 break
         if not value:
             value = hlvl.get('default')
+        code = None
+        code_col = hlvl.get('code_column')
+        if code_col:
+            code = _clean_code(row.get(code_col))
         if value:
-            hierarchy.append((value, hlvl['level']))
+            hierarchy.append((value, hlvl['level'], code))
     return hierarchy
 
 def sync_hierarchy_config(cur):
@@ -218,15 +247,40 @@ def to_sql_literal(value, target_type=None):
 
 def execute_upsert_org_unit_chain(cur, hierarchy):
     """Upsert org_unit hierarchy chain and return leaf org_unit_id.
-    hierarchy: list of (name, level) tuples from top to bottom.
-    Skips entries with None names.
+    hierarchy: list of (name, level[, code]) tuples from top to bottom.
+    Skips entries with None names. When Kemendagri codes are present and the
+    database provides the 3-argument upsert_org_unit_chain(names, levels, codes)
+    overload, the codes are stored on each org_unit; otherwise it transparently
+    falls back to the original 2-argument function so older DB images keep working.
     """
-    names = [h[0] for h in hierarchy if h[0] is not None]
-    levels = [h[1] for h in hierarchy if h[0] is not None]
+    rows = [h for h in hierarchy if h[0] is not None]
+    names = [h[0] for h in rows]
+    levels = [h[1] for h in rows]
+    codes = [h[2] if len(h) > 2 else None for h in rows]
     if not names:
         return None
     names_literal = "ARRAY[" + ",".join(to_sql_literal(n) for n in names) + "]"
     levels_literal = "ARRAY[" + ",".join(str(l) for l in levels) + "]"
+
+    if any(c is not None for c in codes):
+        codes_literal = "ARRAY[" + ",".join(to_sql_literal(c) for c in codes) + "]"
+        sql = (
+            f"SELECT upsert_org_unit_chain("
+            f"{names_literal}::VARCHAR[], {levels_literal}::INTEGER[], {codes_literal}::VARCHAR[]);"
+        )
+        try:
+            cur.execute(sql)
+            return cur.fetchone()[0]
+        except psycopg2.Error as e:
+            if e.pgcode != errorcodes.UNDEFINED_FUNCTION:
+                raise
+            print(
+                'Warning: upsert_org_unit_chain(names, levels, codes) not found; '
+                'Kemendagri codes not stored. Upgrade the DB image / run the '
+                '0.5.1_add_kemendagri_codes migration to capture codes.',
+                file=sys.stderr,
+            )
+
     sql = f"SELECT upsert_org_unit_chain({names_literal}::VARCHAR[], {levels_literal}::INTEGER[]);"
     cur.execute(sql)
     return cur.fetchone()[0]
