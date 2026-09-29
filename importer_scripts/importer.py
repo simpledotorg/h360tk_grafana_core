@@ -151,6 +151,29 @@ def log_import_run(
     except Exception as e:
         log.warning('Could not write import run log to DB (non-fatal): %s', e)
 
+def update_import_source_control(source_key, data_status):
+    try:
+        with psycopg2.connect(**DB_CONNECTION_PARAMS) as conn:
+            conn.autocommit = True
+
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO heart360tk_reporting.import_source_control
+                        (source_key, data_status)
+                    VALUES (%s, %s)
+                    ON CONFLICT (source_key) DO UPDATE SET
+                        data_status = EXCLUDED.data_status
+                    """,
+                    (source_key, data_status),
+                )
+        log.info(
+            "Import source status updated — source_key=%s, data_status=%s", 
+            source_key,
+            data_status
+        )
+    except Exception as e:
+        log.warning("Could not update import source status in DB (non-fatal): %s",e)
 
 def _log_import_failure(source_key: str, log_type: str, started_at: float, error) -> None:
     log_import_run(
@@ -575,6 +598,7 @@ def run_import():
                     log_type=LOG_TYPE_LEAF_NODE,
                     duration_seconds=duration,
                 )
+                update_import_source_control(source_key, 'data_loaded')
                 imported_count += 1
                 log.info(
                     '  Imported %s (source_key=%s) in %.2fs',
@@ -596,6 +620,7 @@ def run_import():
                     zip_start,
                     e,
                 )
+                update_import_source_control(source_key or os.path.splitext(zip_name)[0], 'no_data')
 
         if imported_count == 0:
             log.error('No zip files were imported successfully.')
@@ -616,7 +641,6 @@ def run_import():
         layer = e.layer if isinstance(e, InfrastructureError) else SOURCE_IMPORTER
         log.error('Import job failed (source_key=%s): %s', layer, e, exc_info=True)
         log_infrastructure_failure(layer, job_start, e)
-
     finally:
         if conn is not None:
             conn.close()
