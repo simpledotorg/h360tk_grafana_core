@@ -1,0 +1,43 @@
+h360tk_demo:
+  mappings: 
+    - sourceOrgUnitId: "1"
+      targetOrgUnitId: "2"
+      targetOrgUnitHierarchy:
+        - "Region"
+      
+    - sourceOrgUnitName: "Facility-B"
+      targetOrgUnitId: "3"
+      targetOrgUnitHierarchy:
+        - "Region"
+        - "District"
+    
+    - sourceOrgUnitId: "3"
+      targetOrgUnitId: "4"
+      targetOrgUnitHierarchy:
+        - "Region"
+        - "District"
+        - "Facility"
+
+h360tk_philippines:
+  mappings:
+    - sourceOrgUnitName: "Facility-C"
+      targetOrgUnitId: "3"
+      targetOrgUnitName: "Facility"   # optional
+      targetOrgUnitHierarchy:
+        - "Region"
+        - "District"
+
+    - sourceOrgUnitId: "2"
+      targetOrgUnitId: "4"
+      targetOrgUnitHierarchy:
+        - "Region"
+        - "District"
+        - "Facility"
+    
+    - sourceOrgUnitName: "Village-C"
+      targetOrgUnitName: "Village"
+      targetOrgUnitHierarchy:
+        - "Region"
+        - "District"
+        - "Facility"
+        - "Subfacility"
