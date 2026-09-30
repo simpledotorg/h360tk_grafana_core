@@ -87,6 +87,7 @@ def log_import_run(
     status,
     duration_seconds=None,
     error_message=None,
+    log_type='leaf_node'
 ):
     try:
         with psycopg2.connect(**DB_CONNECTION_PARAMS) as conn:
@@ -96,8 +97,8 @@ def log_import_run(
                     '''
                     INSERT INTO heart360tk_reporting.import_run_log
                         (source_key, started_at, finished_at, status,
-                         duration_seconds, error_message)
-                    VALUES (%s, %s, NOW(), %s, %s, %s)
+                         duration_seconds, error_message, log_type)
+                    VALUES (%s, %s, NOW(), %s, %s, %s,%s)
                     ''',
                     (
                         source_key,
@@ -105,6 +106,7 @@ def log_import_run(
                         status,
                         duration_seconds,
                         error_message,
+                        log_type
                     ),
                 )
         log.info(
@@ -531,6 +533,7 @@ def run_import():
             status='failed',
             duration_seconds=round(time.time() - job_start, 2),
             error_message=str(e),
+            log_type="infrastructure"
         )
     finally:
         if conn is not None:
@@ -567,6 +570,7 @@ def scheduled_import_job(scheduler):
             status='failed',
             duration_seconds=round(time.time() - job_start, 2),
             error_message=str(e),
+            log_type="infrastructure"
         )
     finally:
         last_run_finished_at = datetime.now(timezone.utc)
