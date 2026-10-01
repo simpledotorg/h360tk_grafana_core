@@ -1543,6 +1543,8 @@ CREATE INDEX IF NOT EXISTS idx_import_facility_mapping_leaf_node_key ON heart360
 -- ============================================================================
 -- Export run audit log — one row per exporter execution (success or failure).
 -- Allows detecting leaf nodes that have stopped exporting.
+-- log_type: 'leaf_node' = this node's own export (source_key = its SOURCE_KEY);
+--           'infrastructure' = exporter config failure (source_key = 'Exporter').
 -- ============================================================================
 DROP TABLE IF EXISTS heart360tk_reporting.export_run_log;
 CREATE TABLE heart360tk_reporting.export_run_log (
@@ -1553,7 +1555,9 @@ CREATE TABLE heart360tk_reporting.export_run_log (
     status           TEXT            NOT NULL CHECK (status IN ('success', 'failed')),
     duration_seconds NUMERIC(10, 2),
     destination      TEXT,
-    error_message    TEXT
+    error_message    TEXT,
+    log_type         TEXT            NOT NULL DEFAULT 'leaf_node'
+                                     CHECK (log_type IN ('leaf_node', 'infrastructure'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_export_run_log_source_key
@@ -1565,6 +1569,9 @@ GRANT USAGE ON SEQUENCE heart360tk_reporting.export_run_log_id_seq TO heart360tk
 -- ============================================================================
 -- Importer run audit log — one row per import execution (success or failure).
 -- Allows detecting leaf nodes for which import fails.
+-- log_type: 'leaf_node' = tied to one source's data (source_key = its key);
+--           'infrastructure' = not tied to a leaf node (source_key names the
+--           layer: 'SFTP', 'Postgres', 'Mapping file', 'Importer').
 -- ============================================================================
 DROP TABLE IF EXISTS heart360tk_reporting.import_run_log;
 CREATE TABLE heart360tk_reporting.import_run_log (
@@ -1574,7 +1581,9 @@ CREATE TABLE heart360tk_reporting.import_run_log (
     finished_at      TIMESTAMPTZ,
     status           TEXT            NOT NULL CHECK (status IN ('success', 'failed')),
     duration_seconds NUMERIC(10, 2),
-    error_message    TEXT
+    error_message    TEXT,
+    log_type         TEXT            NOT NULL DEFAULT 'leaf_node'
+                                     CHECK (log_type IN ('leaf_node', 'infrastructure'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_import_run_log_source_key
