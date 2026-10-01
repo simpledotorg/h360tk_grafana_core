@@ -39,21 +39,26 @@ class MappingRule:
     """One rule from a source key's ``mappings`` list.
 
     Exactly one of the two source selectors is set; the other is None.
-    The target is the central record with target_org_unit_id when that is set
-    (target_org_unit_name then only names a record that has to be created).
-    Without an id the target is found — or created — by target_org_unit_name
-    under the hierarchy.
+    The target is the central record with target_org_unit_id when that is set,
+    created if it does not exist yet.  Without an id the target is found — or
+    created — by target_org_unit_name at its position.
+
+    Only the target fields a rule lists are applied: target_org_unit_name sets
+    the record's name and target_org_unit_hierarchy its position (an empty
+    tuple is the top level).  A field left out is None and changes nothing.
     """
 
     source_org_unit_id: int | None
     source_org_unit_name: str | None
     target_org_unit_id: int | None
     target_org_unit_name: str | None
-    target_org_unit_hierarchy: tuple[str, ...]
+    target_org_unit_hierarchy: tuple[str, ...] | None
 
     @property
-    def target_level(self) -> int:
-        """Level the mapped record sits at — one below its last ancestor."""
+    def target_level(self) -> int | None:
+        """Level the hierarchy places the record at, or None when none is listed."""
+        if self.target_org_unit_hierarchy is None:
+            return None
         return len(self.target_org_unit_hierarchy) + 1
 
     def describe(self) -> str:
@@ -61,10 +66,14 @@ class MappingRule:
             selector = f'{ID_SELECTOR}={self.source_org_unit_id}'
         else:
             selector = f'{NAME_SELECTOR}={self.source_org_unit_name!r}'
-        if self.target_org_unit_id is not None:
+        if self.target_org_unit_id is None:
+            target = f'name {self.target_org_unit_name!r}'
+        elif self.target_org_unit_name is None:
             target = f'id {self.target_org_unit_id}'
         else:
-            target = f'name {self.target_org_unit_name!r}'
+            target = f'id {self.target_org_unit_id} named {self.target_org_unit_name!r}'
+        if self.target_org_unit_hierarchy is None:
+            return f'[{selector} -> {target}]'
         under = ' > '.join(self.target_org_unit_hierarchy) or '(root)'
         return f'[{selector} -> {target} under {under}]'
 
@@ -170,8 +179,10 @@ def _parse_rule(raw_rule, where: str) -> MappingRule:
     )
 
 
-def _parse_hierarchy(raw_rule: dict, where: str) -> tuple[str, ...]:
-    raw_hierarchy = raw_rule.get(TARGET_HIERARCHY) or []
+def _parse_hierarchy(raw_rule: dict, where: str) -> tuple[str, ...] | None:
+    raw_hierarchy = raw_rule.get(TARGET_HIERARCHY)
+    if raw_hierarchy is None:
+        return None
     if not isinstance(raw_hierarchy, list):
         raise OrgUnitMappingError(
             f'{where} {TARGET_HIERARCHY} must be a list of names, top first'

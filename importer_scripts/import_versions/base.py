@@ -139,41 +139,63 @@ class BaseImportVersion:
             '''
         )
 
+    def _leaf_placement(
+        self,
+        row: dict,
+        parent: ResolvedOrgUnit | None,
+    ) -> tuple[int, int | None]:
+        """(level, parent id) the leaf node's own hierarchy gives an org unit."""
+        central_level = row['level'] + (parent.level_shift if parent else 0)
+        if central_level < 1:
+            raise ValueError(
+                f'Org unit {row["name"]!r} (leaf id {row["leaf_id"]}) would land at '
+                f'level {central_level} — a mapping rule placed an ancestor too '
+                'high in the central hierarchy'
+            )
+        return central_level, parent.central_id if parent else None
+
+    def _rule_placement(self, cur, rule: MappingRule) -> tuple[int, int | None] | None:
+        """(level, parent id) targetOrgUnitHierarchy asks for; None if it is not listed."""
+        if rule.target_org_unit_hierarchy is None:
+            return None
+        parent_id = self._resolve_target_hierarchy(cur, rule.target_org_unit_hierarchy)
+        return rule.target_level, parent_id
+
     def _place_mapped_org_unit(
         self,
         cur,
         rule: MappingRule,
-        leaf_name: str,
+        row: dict,
+        parent: ResolvedOrgUnit | None,
     ) -> tuple[int, int]:
         """Pin an org unit onto the central record the rule names.
 
-        The record sits directly under the last entry of targetOrgUnitHierarchy.
-        With targetOrgUnitId it is that record; without one it is the record
-        named targetOrgUnitName at that spot, created on first use and reused
-        by later imports.
+        With targetOrgUnitId the record is that id: created when it does not
+        exist, otherwise the leaf org unit is merged into it.  Without one it is
+        the record named targetOrgUnitName at its position, created on first use.
+
+        Only what the rule lists is applied — targetOrgUnitName sets the name,
+        targetOrgUnitHierarchy the position.  Anything left out keeps the
+        existing record's value, or for a new record the leaf node's own.
         Returns its (central id, central level).
         """
-        parent_id = self._resolve_target_hierarchy(cur, rule.target_org_unit_hierarchy)
-        if rule.target_org_unit_id is None:
-            central_id = self._upsert_org_unit(
-                cur, rule.target_org_unit_name, rule.target_level, parent_id
-            )
-        else:
-            central_id = self._place_org_unit_by_id(cur, rule, leaf_name, parent_id)
-        return central_id, rule.target_level
+        placement = self._rule_placement(cur, rule)
+        if rule.target_org_unit_id is not None:
+            return self._place_org_unit_by_id(cur, rule, row, parent, placement)
+
+        level, parent_id = placement or self._leaf_placement(row, parent)
+        central_id = self._upsert_org_unit(cur, rule.target_org_unit_name, level, parent_id)
+        return central_id, level
 
     def _place_org_unit_by_id(
         self,
         cur,
         rule: MappingRule,
-        leaf_name: str,
-        parent_id: int | None,
-    ) -> int:
-        """Create or move the record with id targetOrgUnitId under parent_id.
-
-        An existing record always keeps its own name; targetOrgUnitName only
-        names a record created here.
-        """
+        row: dict,
+        parent: ResolvedOrgUnit | None,
+        placement: tuple[int, int | None] | None,
+    ) -> tuple[int, int]:
+        """Create the record with id targetOrgUnitId, or update the fields the rule lists."""
         target_id = rule.target_org_unit_id
 
         cur.execute(
@@ -187,42 +209,71 @@ class BaseImportVersion:
         existing = cur.fetchone()
 
         if existing is None:
-            # New record: use targetOrgUnitName if provided, otherwise the leaf name.
-            name = rule.target_org_unit_name or leaf_name
-            placement = (name, rule.target_level, parent_id)
+            name = rule.target_org_unit_name or row['name']
+            level, parent_id = placement or self._leaf_placement(row, parent)
+            self._check_name_free(cur, target_id, name, level, parent_id)
             cur.execute(
                 '''
                 INSERT INTO heart360tk_schema.org_units (id, name, level, parent_id)
                 VALUES (%s, %s, %s, %s)
                 ''',
-                (target_id, *placement),
+                (target_id, name, level, parent_id),
             )
             self._sync_org_unit_id_sequence(cur)
             action = 'Created'
         else:
-            # Existing record: always keep the central name as-is; targetOrgUnitName
-            # is ignored so the central admin owns the name, not the leaf node.
-            name = existing[0]
-            placement = (name, rule.target_level, parent_id)
-            if placement != tuple(existing):
-                cur.execute(
-                    '''
-                    UPDATE heart360tk_schema.org_units
-                    SET level = %s, parent_id = %s
-                    WHERE id = %s
-                    ''',
-                    (rule.target_level, parent_id, target_id),
-                )
-                action = 'Moved'
-            else:
-                action = None
-
-        if action is not None:
-            log.info(
-                '    %s central org unit id=%d (%s, level=%d, parent_id=%s)',
-                action, target_id, *placement,
+            name = rule.target_org_unit_name or existing[0]
+            level, parent_id = placement or (existing[1], existing[2])
+            if (name, level, parent_id) == tuple(existing):
+                return target_id, level
+            self._check_name_free(cur, target_id, name, level, parent_id)
+            cur.execute(
+                '''
+                UPDATE heart360tk_schema.org_units
+                SET name = %s, level = %s, parent_id = %s
+                WHERE id = %s
+                ''',
+                (name, level, parent_id, target_id),
             )
-        return target_id
+            action = 'Updated'
+
+        log.info(
+            '    %s central org unit id=%d (%s, level=%d, parent_id=%s)',
+            action, target_id, name, level, parent_id,
+        )
+        return target_id, level
+
+    def _check_name_free(
+        self,
+        cur,
+        target_id: int,
+        name: str,
+        level: int,
+        parent_id: int | None,
+    ) -> None:
+        """Fail clearly when a different record already holds this name at this spot.
+
+        org_units allows one name per (level, parent); without this check the
+        write fails on the unique index with a much less helpful message.
+        """
+        cur.execute(
+            '''
+            SELECT id
+            FROM heart360tk_schema.org_units
+            WHERE name = %s
+              AND level = %s
+              AND parent_id IS NOT DISTINCT FROM %s
+              AND id <> %s
+            ''',
+            (name, level, parent_id, target_id),
+        )
+        clash = cur.fetchone()
+        if clash is not None:
+            raise ValueError(
+                f'Cannot give central org unit id={target_id} the name {name!r} at '
+                f'level {level} under parent_id={parent_id}: id {clash[0]} already '
+                'has that name there'
+            )
 
     def _place_leaf_org_unit(
         self,
@@ -234,17 +285,8 @@ class BaseImportVersion:
 
         Returns its (central id, central level).
         """
-        central_level = row['level'] + (parent.level_shift if parent else 0)
-        if central_level < 1:
-            raise ValueError(
-                f'Org unit {row["name"]!r} (leaf id {row["leaf_id"]}) would land at '
-                f'level {central_level} — a mapping rule placed an ancestor too '
-                'high in the central hierarchy'
-            )
-        central_id = self._upsert_org_unit(
-            cur, row['name'], central_level, parent.central_id if parent else None
-        )
-        return central_id, central_level
+        level, parent_id = self._leaf_placement(row, parent)
+        return self._upsert_org_unit(cur, row['name'], level, parent_id), level
 
     def _resolve_parent(
         self,
@@ -308,7 +350,7 @@ class BaseImportVersion:
 
                 if rule is not None:
                     central_id, central_level = self._place_mapped_org_unit(
-                        cur, rule, name
+                        cur, rule, row, parent
                     )
                 else:
                     central_id, central_level = self._place_leaf_org_unit(
