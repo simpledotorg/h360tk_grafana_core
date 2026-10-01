@@ -1592,6 +1592,23 @@ CREATE INDEX IF NOT EXISTS idx_import_run_log_source_key
 GRANT INSERT, SELECT ON heart360tk_reporting.import_run_log TO heart360tk;
 GRANT USAGE ON SEQUENCE heart360tk_reporting.import_run_log_id_seq TO heart360tk;
 
+
+-- =============================================================
+-- Import source control table — one row per source_key, to track import status and allow pausing imports for specific sources.
+-- stored details about the import source, such as whether it is paused, when the state last changed, and any review notes.
+-- =============================================================
+
+CREATE TABLE IF NOT EXISTS heart360tk_reporting.import_source_control (
+    source_key        TEXT        NOT NULL,
+    data_status       TEXT        NOT NULL DEFAULT 'no_data'  CHECK (data_status IN ('no_data', 'data_loaded')),
+    is_paused         BOOLEAN     NOT NULL DEFAULT FALSE,
+    paused_changed_at TIMESTAMPTZ,
+    last_purged_at    TIMESTAMPTZ,
+    review_note       TEXT,
+
+    CONSTRAINT uq_import_source_control_source_key UNIQUE (source_key)
+);
+
 -- ============================================================================
 -- Import schedule status — single-row table kept up to date by the importer
 -- process (via APScheduler) so dashboards can show "next import in X minutes"
@@ -1703,6 +1720,194 @@ BEGIN
 END;
 $$;
 
+-- =======================================================================================
+-- Function to delete all reporting data for a given leaf node (source key).
+-- Deletes all rows in reporting tables for org units used only by the leaf node.
+-- Deletes leaf-node mapping and orphaned org units.
+-- Returns a JSON object with success status and message.
+-- =======================================================================================
+
+CREATE OR REPLACE FUNCTION heart360tk_reporting.delete_leaf_node_data(
+    p_source_keys text[],
+    p_delete_hierarchy boolean DEFAULT false
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_source_key text;
+    v_org_unit_id integer;
+    v_table_name text;
+    v_central_org_unit_ids integer[];
+    v_hierarchy_org_unit_ids integer[];
+    v_successful_leaf_nodes text[] := ARRAY[]::text[];
+    v_failed_leaf_nodes text[] := ARRAY[]::text[];
+    v_error_message text;
+
+    v_report_tables text[] := ARRAY[
+        'heart360_patients_category',
+        'heart360_patients_under_care',
+        'heart360_patients_registered',
+        'heart360_blood_sugar_controlled',
+        'heart360_blood_sugar_severity',
+        'heart360_blood_sugar_missed_visits',
+        'heart360_dm_bp_control',
+        'heart360_dm_patients_under_care',
+        'heart360_overdue_patients',
+        'heart360_overdue_start_of_month',
+        'heart360_overdue_patients_called',
+        'heart360_overdue_returned_to_care',
+        'heart360_cohort_patient_details',
+        'heart360_dm_patients_catagory'
+    ];
+
+BEGIN
+    -- At least one leaf node is required.
+    IF p_source_keys IS NULL OR cardinality(p_source_keys) = 0 THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'message', 'At least one leaf node is required',
+            'failed_count', 0
+        );
+    END IF;
+
+    FOREACH v_source_key IN ARRAY p_source_keys
+    LOOP
+        BEGIN
+            SELECT ARRAY_AGG(DISTINCT central_org_unit_id)
+            INTO v_central_org_unit_ids
+            FROM heart360tk_reporting.import_facility_mapping
+            WHERE leaf_node_key = v_source_key;
+
+            IF v_central_org_unit_ids IS NULL
+               OR cardinality(v_central_org_unit_ids) = 0 THEN
+
+                RAISE EXCEPTION 'No central org unit mapping found for leaf node: %', v_source_key;
+            END IF;
+
+            -- Delete imported reporting data.
+            FOREACH v_table_name IN ARRAY v_report_tables
+            LOOP
+                EXECUTE format(
+                    'DELETE FROM heart360tk_reporting.%I
+                     WHERE org_unit_id = ANY ($1)',
+                    v_table_name
+                )
+                USING v_central_org_unit_ids;
+            END LOOP;
+
+            -- Delete hierarchy only when explicitly requested.
+            IF p_delete_hierarchy THEN
+
+                WITH RECURSIVE selected_hierarchy AS (
+                    SELECT
+                        ou.id,
+                        ou.parent_id
+                    FROM heart360tk_schema.org_units ou
+                    WHERE ou.id = ANY(v_central_org_unit_ids)
+
+                    UNION
+
+                    SELECT
+                        parent_ou.id,
+                        parent_ou.parent_id
+                    FROM heart360tk_schema.org_units parent_ou
+                    JOIN selected_hierarchy h
+                        ON parent_ou.id = h.parent_id
+                ),
+                other_hierarchy AS (
+                    SELECT
+                        ou.id,
+                        ou.parent_id
+                    FROM heart360tk_reporting.import_facility_mapping other_ifm
+                    JOIN heart360tk_schema.org_units ou
+                        ON ou.id = other_ifm.central_org_unit_id
+                    WHERE other_ifm.leaf_node_key <> v_source_key
+
+                    UNION
+
+                    SELECT
+                        parent_ou.id,
+                        parent_ou.parent_id
+                    FROM heart360tk_schema.org_units parent_ou
+                    JOIN other_hierarchy h
+                        ON parent_ou.id = h.parent_id
+                )
+                SELECT ARRAY_AGG(h.id)
+                INTO v_hierarchy_org_unit_ids
+                FROM selected_hierarchy h
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM other_hierarchy oh
+                    WHERE oh.id = h.id
+                );
+
+                -- Remove leaf mapping first.
+                DELETE FROM heart360tk_reporting.import_facility_mapping
+                WHERE leaf_node_key = v_source_key;
+
+                -- Delete only unshared hierarchy nodes.
+                IF v_hierarchy_org_unit_ids IS NOT NULL THEN
+
+                    FOR v_org_unit_id IN
+                        SELECT ou.id
+                        FROM heart360tk_schema.org_units ou
+                        WHERE ou.id = ANY(v_hierarchy_org_unit_ids)
+                        ORDER BY ou.level DESC, ou.id DESC
+                    LOOP
+                        DELETE FROM heart360tk_schema.org_units
+                        WHERE id = v_org_unit_id;
+                    END LOOP;
+
+                END IF;
+
+            ELSE
+                -- Data-only purge.
+                DELETE FROM heart360tk_reporting.import_facility_mapping
+                WHERE leaf_node_key = v_source_key;
+            END IF;
+
+            UPDATE heart360tk_reporting.import_source_control
+            SET
+                data_status = 'no_data',
+                last_purged_at = NOW()
+            WHERE source_key = v_source_key;
+
+            v_successful_leaf_nodes := array_append(
+                v_successful_leaf_nodes,
+                v_source_key
+            );
+
+        EXCEPTION
+            WHEN OTHERS THEN
+                v_error_message := SQLERRM;
+                v_failed_leaf_nodes := array_append( v_failed_leaf_nodes, v_source_key || ': ' || v_error_message );
+        END;
+    END LOOP;
+
+    RETURN jsonb_build_object(
+        'success', cardinality(v_failed_leaf_nodes) = 0,
+        'message',
+        CASE
+            WHEN cardinality(v_failed_leaf_nodes) = 0 AND p_delete_hierarchy THEN
+                'Data and hierarchy deleted successfully for leaf node: ' || array_to_string( v_successful_leaf_nodes, ', ')
+            WHEN cardinality(v_failed_leaf_nodes) = 0 THEN
+                'Data deleted successfully for leaf nodes: ' || array_to_string(v_successful_leaf_nodes, ', ')
+            WHEN cardinality(v_successful_leaf_nodes) = 0 THEN
+                'Data deletion failed for leaf nodes: ' || array_to_string( v_failed_leaf_nodes, ', ')
+            ELSE
+                'Data deletion completed. Successful: ' || array_to_string( v_successful_leaf_nodes, ', ' ) || '. Failed: ' || array_to_string( v_failed_leaf_nodes, ', ')
+        END,
+        'failed_count',
+        cardinality(v_failed_leaf_nodes)
+    );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION heart360tk_reporting.delete_leaf_node_data(
+    text[],
+    boolean
+) TO heart360tk;
 -- =======================================================================================
 -- Single-row status table for the data refresh dashboard: tracks the most recent refresh attempt
 -- and serves as the queue gate for manual triggers.
