@@ -1,4 +1,4 @@
-h360tk_demo:
+h360tk_philippines:
   mappings: 
     - sourceOrgUnitId: "1"
       targetOrgUnitId: "2"
@@ -18,7 +18,7 @@ h360tk_demo:
         - "District"
         - "Facility"
 
-h360tk_philippines:
+h360tk_indonesia:
   mappings:
     - sourceOrgUnitName: "Facility-C"
       targetOrgUnitId: "3"
