@@ -1909,7 +1909,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "select * from org_units ",
+                        "rawSql": "SELECT * FROM org_units UNION ALL SELECT NULL, 'No data', NULL, NULL WHERE NOT EXISTS (SELECT 1 FROM org_units) ORDER BY parent_id NULLS FIRST, name",
                         "sql": {
                           "columns": [
                             {
@@ -1935,7 +1935,23 @@
                 }
               ],
               "queryOptions": {},
-              "transformations": []
+              "transformations": [
+                {
+                  "id": "filterByValue",
+                  "options": {
+                    "filters": [
+                      {
+                        "fieldName": "id",
+                        "config": {
+                          "id": "isNotNull"
+                        }
+                      }
+                    ],
+                    "type": "include",
+                    "match": "all"
+                  }
+                }
+              ]
             }
           },
           "description": "",
