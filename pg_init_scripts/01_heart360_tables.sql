@@ -1574,7 +1574,8 @@ CREATE TABLE heart360tk_reporting.import_run_log (
     finished_at      TIMESTAMPTZ,
     status           TEXT            NOT NULL CHECK (status IN ('success', 'failed')),
     duration_seconds NUMERIC(10, 2),
-    error_message    TEXT
+    error_message    TEXT,
+    log_type         TEXT            NOT NULL DEFAULT 'leaf_node' CHECK (log_type IN ('leaf_node', 'infrastructure'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_import_run_log_source_key
