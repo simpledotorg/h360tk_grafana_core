@@ -169,20 +169,20 @@ DECLARE
     v_id INTEGER;
 BEGIN
     IF p_parent_id IS NULL THEN
-        INSERT INTO org_units (name, level, parent_id)
+        INSERT INTO heart360tk_schema.org_units (name, level, parent_id)
         VALUES (p_name, p_level, NULL)
         ON CONFLICT (name, level) WHERE parent_id IS NULL
         DO NOTHING;
 
-        SELECT ou.id INTO v_id FROM org_units ou
+        SELECT ou.id INTO v_id FROM heart360tk_schema.org_units ou
         WHERE ou.name = p_name AND ou.level = p_level AND ou.parent_id IS NULL;
     ELSE
-        INSERT INTO org_units (name, level, parent_id)
+        INSERT INTO heart360tk_schema.org_units (name, level, parent_id)
         VALUES (p_name, p_level, p_parent_id)
         ON CONFLICT (name, level, parent_id) WHERE parent_id IS NOT NULL
         DO NOTHING;
 
-        SELECT ou.id INTO v_id FROM org_units ou
+        SELECT ou.id INTO v_id FROM heart360tk_schema.org_units ou
         WHERE ou.name = p_name AND ou.level = p_level AND ou.parent_id = p_parent_id;
     END IF;
 
@@ -203,7 +203,7 @@ DECLARE
     i INTEGER;
 BEGIN
     FOR i IN 1..array_length(p_names, 1) LOOP
-        v_id := upsert_org_unit(p_names[i], p_levels[i], v_parent_id);
+        v_id := heart360tk_schema.upsert_org_unit(p_names[i], p_levels[i], v_parent_id);
         v_parent_id := v_id;
     END LOOP;
     RETURN v_id;
@@ -1622,6 +1622,7 @@ CREATE TABLE heart360tk_reporting.import_schedule_status (
     last_run_started_at    TIMESTAMPTZ,
     last_run_finished_at   TIMESTAMPTZ,
     updated_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+    force_import_requested BOOLEAN     DEFAULT false,
     CONSTRAINT import_schedule_status_singleton CHECK (id = 1)
 );
 
