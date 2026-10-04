@@ -5,13 +5,18 @@ leaf node's ``source_key``.  Each block lists rules that pin one org unit coming
 from that leaf node's ``orgunit.csv`` onto an explicit central ``org_units``
 record, placed under a named hierarchy.
 
+``targetOrgUnitHierarchy`` lists ancestor names top first.  It may spell out
+the full chain from the top level, or start part-way down at an org unit that
+another rule in the same block places — ``["District-1"]`` then means "under
+District-1, wherever the District-1 rule puts it" — see _complete_hierarchies.
+
 If the file is missing or empty there is nothing to map and the importer keeps
 its existing behaviour.
 """
 
 import logging
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import yaml
 
@@ -46,6 +51,8 @@ class MappingRule:
     Only the target fields a rule lists are applied: target_org_unit_name sets
     the record's name and target_org_unit_hierarchy its position (an empty
     tuple is the top level).  A field left out is None and changes nothing.
+    Rules returned by load_mapping_config always hold the full ancestor chain
+    from the top level, even where mapping.yaml lists only the nearest ones.
     """
 
     source_org_unit_id: int | None
@@ -146,10 +153,128 @@ def _parse_rules(path: str, source_key: str, block) -> list[MappingRule]:
     if not isinstance(raw_rules, list):
         raise OrgUnitMappingError(f"{path}: '{source_key}.mappings' must be a list")
 
-    return [
-        _parse_rule(raw_rule, f'{path}: {source_key}.mappings[{position}]')
+    where = f'{path}: {source_key}.mappings'
+    rules = [
+        _parse_rule(raw_rule, f'{where}[{position}]')
         for position, raw_rule in enumerate(raw_rules, start=1)
     ]
+    return _complete_hierarchies(rules, where)
+
+
+def _complete_hierarchies(rules: list[MappingRule], where: str) -> list[MappingRule]:
+    """Give every rule its full ancestor chain from the top level.
+
+    When the first name in a rule's targetOrgUnitHierarchy is the
+    targetOrgUnitName of another rule in the same block that lists a hierarchy,
+    that rule's ancestors are put in front, repeatedly up to the top level.
+
+    A list is kept exactly as written — the meaning it had before partial lists
+    were allowed — when:
+      * no other rule targets its first name, or the only ones that do list no
+        hierarchy (their position is not known until import);
+      * it already starts with that rule's full path, e.g. a full chain, or a
+        first name whose rule is at the top level;
+      * the only rules with that name sit under this rule's own position, as
+        when a region, district and facility share one name.
+
+    Raises OrgUnitMappingError rather than guess when the first name matches
+    rules at different positions, or when rules place each other in a loop.
+    """
+    completed: dict[int, tuple[str, ...] | None] = {}
+    in_progress: list[int] = []
+
+    def label(index: int) -> str:
+        return f'mappings[{index + 1}] ({rules[index].target_org_unit_name!r})'
+
+    def complete(index: int) -> tuple[str, ...] | None:
+        if index not in completed:
+            in_progress.append(index)
+            try:
+                completed[index] = completed_hierarchy(index)
+            finally:
+                in_progress.pop()
+        return completed[index]
+
+    def completed_hierarchy(index: int) -> tuple[str, ...] | None:
+        rule = rules[index]
+        hierarchy = rule.target_org_unit_hierarchy
+        if not hierarchy:
+            return hierarchy
+
+        top = hierarchy[0]
+        candidates = [
+            other
+            for other, candidate in enumerate(rules)
+            if other != index
+            and candidate.target_org_unit_name == top
+            and candidate.target_org_unit_hierarchy is not None
+            and not _same_target(candidate, rule)
+        ]
+        if any(
+            _starts_with(hierarchy, rules[other].target_org_unit_hierarchy + (top,))
+            for other in candidates
+        ):
+            return hierarchy
+
+        own_path = (
+            hierarchy + (rule.target_org_unit_name,)
+            if rule.target_org_unit_name is not None
+            else None
+        )
+        placements: dict[tuple[str, ...], list[int]] = {}
+        for other in candidates:
+            if other in in_progress:
+                loop = in_progress[in_progress.index(other):] + [other]
+                raise OrgUnitMappingError(
+                    f'{where}: targetOrgUnitHierarchy entries place these rules '
+                    f'under each other in a loop: {" -> ".join(map(label, loop))} '
+                    '— list the full chain from the top level in one of them'
+                )
+            ancestors = complete(other)
+            if own_path is not None and _starts_with(ancestors, own_path):
+                continue
+            if _starts_with(hierarchy, ancestors + (top,)):
+                return hierarchy
+            placements.setdefault(ancestors, []).append(other)
+
+        if not placements:
+            return hierarchy
+        if len(placements) > 1:
+            options = '; '.join(
+                f'{" > ".join(ancestors + (top,))} by '
+                f'{", ".join(map(label, others))}'
+                for ancestors, others in placements.items()
+            )
+            raise OrgUnitMappingError(
+                f'{where}[{index + 1}] starts targetOrgUnitHierarchy at {top!r}, '
+                f'which rules place in more than one position ({options}) — '
+                'list the full chain from the top level'
+            )
+
+        (ancestors, others), = placements.items()
+        log.info(
+            '%s[%d] targetOrgUnitHierarchy %s completed to %s from %s',
+            where, index + 1, list(hierarchy), list(ancestors + hierarchy),
+            label(others[0]),
+        )
+        return ancestors + hierarchy
+
+    return [
+        replace(rule, target_org_unit_hierarchy=complete(index))
+        for index, rule in enumerate(rules)
+    ]
+
+
+def _same_target(first: MappingRule, second: MappingRule) -> bool:
+    """True when two rules name the same org unit at the same written position."""
+    return (
+        first.target_org_unit_name == second.target_org_unit_name
+        and first.target_org_unit_hierarchy == second.target_org_unit_hierarchy
+    )
+
+
+def _starts_with(names: tuple[str, ...], prefix: tuple[str, ...]) -> bool:
+    return names[:len(prefix)] == prefix
 
 
 def _parse_rule(raw_rule, where: str) -> MappingRule:
