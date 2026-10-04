@@ -28,6 +28,19 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
+# Suppress APScheduler's verbose job execution logs so the 5s poller doesn't flood stdout
+apscheduler_logger = logging.getLogger('apscheduler')
+apscheduler_logger.setLevel(logging.WARNING)
+apscheduler_logger.propagate = False
+
+apscheduler_exec_logger = logging.getLogger('apscheduler.executors.default')
+apscheduler_exec_logger.setLevel(logging.WARNING)
+apscheduler_exec_logger.propagate = False
+
+apscheduler_sched_logger = logging.getLogger('apscheduler.scheduler')
+apscheduler_sched_logger.setLevel(logging.WARNING)
+apscheduler_sched_logger.propagate = False
+
 # import_run_log.log_type values (enforced by a CHECK constraint).
 LOG_TYPE_LEAF_NODE = 'leaf_node'
 LOG_TYPE_INFRASTRUCTURE = 'infrastructure'
@@ -151,6 +164,29 @@ def log_import_run(
     except Exception as e:
         log.warning('Could not write import run log to DB (non-fatal): %s', e)
 
+def update_import_source_control(source_key, data_status):
+    try:
+        with psycopg2.connect(**DB_CONNECTION_PARAMS) as conn:
+            conn.autocommit = True
+
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO heart360tk_reporting.import_source_control
+                        (source_key, data_status)
+                    VALUES (%s, %s)
+                    ON CONFLICT (source_key) DO UPDATE SET
+                        data_status = EXCLUDED.data_status
+                    """,
+                    (source_key, data_status),
+                )
+        log.info(
+            "Import source status updated — source_key=%s, data_status=%s", 
+            source_key,
+            data_status
+        )
+    except Exception as e:
+        log.warning("Could not update import source status in DB (non-fatal): %s",e)
 
 def _log_import_failure(source_key: str, log_type: str, started_at: float, error) -> None:
     log_import_run(
@@ -575,6 +611,7 @@ def run_import():
                     log_type=LOG_TYPE_LEAF_NODE,
                     duration_seconds=duration,
                 )
+                update_import_source_control(source_key, 'data_loaded')
                 imported_count += 1
                 log.info(
                     '  Imported %s (source_key=%s) in %.2fs',
@@ -596,6 +633,7 @@ def run_import():
                     zip_start,
                     e,
                 )
+                update_import_source_control(source_key or os.path.splitext(zip_name)[0], 'no_data')
 
         if imported_count == 0:
             log.error('No zip files were imported successfully.')
@@ -616,7 +654,6 @@ def run_import():
         layer = e.layer if isinstance(e, InfrastructureError) else SOURCE_IMPORTER
         log.error('Import job failed (source_key=%s): %s', layer, e, exc_info=True)
         log_infrastructure_failure(layer, job_start, e)
-
     finally:
         if conn is not None:
             conn.close()
@@ -651,6 +688,32 @@ def scheduled_import_job(scheduler):
         )
 
 
+def poll_for_force_import(scheduler):
+    try:
+        requested = False
+        with psycopg2.connect(**DB_CONNECTION_PARAMS) as conn:
+            conn.autocommit = True
+            with conn.cursor() as cur:
+                cur.execute('SELECT force_import_requested FROM heart360tk_reporting.import_schedule_status WHERE id = 1')
+                row = cur.fetchone()
+                if row and row[0]:
+                    requested = True
+                    # Set it to false immediately so we don't double-trigger
+                    cur.execute('UPDATE heart360tk_reporting.import_schedule_status SET force_import_requested = false WHERE id = 1')
+        
+        if requested:
+            log.info('Force import requested via dashboard. Triggering import now...')
+            import_job = scheduler.get_job('import_job')
+            if import_job:
+                # Modifying the next_run_time forces APScheduler to run the existing job immediately.
+                # Because max_instances=1 on import_job, this natively prevents it from running 
+                # concurrently with a scheduled cron execution!
+                import_job.modify(next_run_time=datetime.now(timezone.utc))
+            
+    except Exception as e:
+        log.warning('Error polling for force import (non-fatal): %s', e)
+
+
 def start_scheduler():
     try:
         trigger = CronTrigger.from_crontab(IMPORT_CRON)
@@ -665,7 +728,19 @@ def start_scheduler():
         trigger,
         id='import_job',
         name='h360tk import',
+        max_instances=1,
     )
+    
+    # Fast polling job for manual force imports
+    scheduler.add_job(
+        lambda: poll_for_force_import(scheduler),
+        'interval',
+        seconds=5,
+        id='poll_force_import',
+        name='h360tk force import poller',
+        max_instances=1,
+    )
+    
     log.info("Scheduler started. Import will run on cron: '%s'", IMPORT_CRON)
     update_schedule_status(next_run_at=_get_next_run_time(scheduler))
 
