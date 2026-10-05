@@ -177,29 +177,52 @@ def log_import_run(
     except Exception as e:
         log.warning('Could not write import run log to DB (non-fatal): %s', e)
 
-def update_import_source_control(source_key, data_status):
+def update_import_source_control(source_key, data_status, review_note=None):
     try:
         with psycopg2.connect(**DB_CONNECTION_PARAMS) as conn:
             conn.autocommit = True
-
             with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    INSERT INTO heart360tk_reporting.import_source_control
-                        (source_key, data_status)
-                    VALUES (%s, %s)
-                    ON CONFLICT (source_key) DO UPDATE SET
-                        data_status = EXCLUDED.data_status
-                    """,
-                    (source_key, data_status),
-                )
+                if review_note is not None:
+                    cur.execute(
+                        """
+                        INSERT INTO heart360tk_reporting.import_source_control
+                            (source_key, data_status, review_note)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (source_key) DO UPDATE SET
+                            data_status = EXCLUDED.data_status,
+                            review_note = EXCLUDED.review_note
+                        """,
+                        (source_key, data_status, review_note),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        INSERT INTO heart360tk_reporting.import_source_control
+                            (source_key, data_status)
+                        VALUES (%s, %s)
+                        ON CONFLICT (source_key) DO UPDATE SET
+                            data_status = EXCLUDED.data_status
+                        """,
+                        (source_key, data_status),
+                    )
         log.info(
-            "Import source status updated — source_key=%s, data_status=%s", 
-            source_key,
-            data_status
+            "Import source status updated — source_key=%s, data_status=%s, review_note=%s", 
+            source_key, data_status, review_note
         )
     except Exception as e:
-        log.warning("Could not update import source status in DB (non-fatal): %s",e)
+        log.warning("Could not update import source status in DB (non-fatal): %s", e)
+
+def set_global_review_note(review_note: str):
+    try:
+        with psycopg2.connect(**DB_CONNECTION_PARAMS) as conn:
+            conn.autocommit = True
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE heart360tk_reporting.import_source_control SET review_note = %s",
+                    (review_note,)
+                )
+    except Exception as e:
+        log.warning("Could not set global review note: %s", e)
 
 def _log_import_failure(source_key: str, log_type: str, started_at: float, error) -> None:
     log_import_run(
@@ -528,8 +551,17 @@ def run_import():
 
         # Read up front so a broken mapping file stops the job before anything
         # is downloaded or truncated.
-        with infrastructure_layer(SOURCE_MAPPING_FILE):
-            mapping_config = load_mapping_config()
+        mapping_config = {}
+        mapping_is_empty = True
+        try:
+            with infrastructure_layer(SOURCE_MAPPING_FILE):
+                mapping_config = load_mapping_config()
+                mapping_is_empty = len(mapping_config) == 0
+        except Exception as e:
+            from orgunit_mapping import OrgUnitMappingError
+            if isinstance(e, OrgUnitMappingError) or (hasattr(e, 'layer') and isinstance(e.__cause__, OrgUnitMappingError)):
+                set_global_review_note('Invalid mapping rule')
+            raise
 
         with infrastructure_layer(SOURCE_POSTGRES):
             paused_keys = get_paused_source_keys()
@@ -637,7 +669,14 @@ def run_import():
                     log_type=LOG_TYPE_LEAF_NODE,
                     duration_seconds=duration,
                 )
-                update_import_source_control(source_key, 'data_loaded')
+                if mapping_is_empty:
+                    review_note = 'Unmapped by design'
+                elif source_key in mapping_config:
+                    review_note = 'Mapped'
+                else:
+                    review_note = 'Missing central mapping'
+                
+                update_import_source_control(source_key, 'data_loaded', review_note)
                 imported_count += 1
                 log.info(
                     '  Imported %s (source_key=%s) in %.2fs',
@@ -659,7 +698,7 @@ def run_import():
                     zip_start,
                     e,
                 )
-                update_import_source_control(source_key or os.path.splitext(zip_name)[0], 'no_data')
+                update_import_source_control(source_key or os.path.splitext(zip_name)[0], 'no_data', 'Not imported yet')
 
         if imported_count == 0:
             log.error('No zip files were imported successfully.')
