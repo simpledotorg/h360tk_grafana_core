@@ -125,6 +125,19 @@ def is_import_enabled():
     return True
 
 
+def get_paused_source_keys() -> set[str]:
+    paused_keys = set()
+    try:
+        with psycopg2.connect(**DB_CONNECTION_PARAMS) as conn:
+            with conn.cursor() as cur:
+                cur.execute('SELECT source_key FROM heart360tk_reporting.import_source_control WHERE is_paused = true')
+                for row in cur.fetchall():
+                    paused_keys.add(row[0])
+    except Exception as e:
+        log.warning('Could not fetch paused source keys from DB: %s', e)
+    return paused_keys
+
+
 def log_import_run(
     source_key,
     started_at,
@@ -518,6 +531,9 @@ def run_import():
         with infrastructure_layer(SOURCE_MAPPING_FILE):
             mapping_config = load_mapping_config()
 
+        with infrastructure_layer(SOURCE_POSTGRES):
+            paused_keys = get_paused_source_keys()
+
         with infrastructure_layer(SOURCE_SFTP):
             zip_names = fetch_sftp_zip_names()
         if not zip_names:
@@ -530,6 +546,11 @@ def run_import():
         log.info('Phase 1 — Downloading %d zip file(s)...', len(zip_names))
         downloaded: list[tuple[str, str]] = []
         for zip_name in zip_names:
+            guessed_source_key = os.path.splitext(zip_name)[0]
+            if guessed_source_key in paused_keys:
+                log.info('  [SKIPPED] %s (paused in dashboard)', zip_name)
+                continue
+
             local_zip_path = os.path.join(work_dir, zip_name)
             download_start = time.time()
             try:
@@ -600,6 +621,11 @@ def run_import():
 
             try:
                 source_key = read_zip_source_key(local_zip_path)
+
+                if source_key in paused_keys:
+                    log.info('  [SKIPPED] %s (source_key=%s is paused)', zip_name, source_key)
+                    continue
+
                 import_zip_file(conn, local_zip_path, source_key, mapping_config)
                 conn.commit()
 
