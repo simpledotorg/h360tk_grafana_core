@@ -257,6 +257,14 @@ GRANT EXECUTE ON FUNCTION heart360tk_reporting.delete_leaf_node_data(
     boolean
 ) TO heart360tk;
 
+-- 8. Update build_drill_url to point to heart360_showcase
+CREATE OR REPLACE FUNCTION heart360tk_schema.build_drill_url(p_child_id INTEGER)
+RETURNS TEXT
+LANGUAGE sql STABLE
+AS $$
+    SELECT '/d/heart360_showcase/hypertension-and-diabetes-program?var-org_unit=' || p_child_id::text;
+$$;
+
 RESET ROLE;
 
 COMMIT;
