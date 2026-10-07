@@ -7674,7 +7674,7 @@
       "timezone": "browser",
       "to": "now"
     },
-    "title": "Hypertension & Diabetes Program (Tree Panel V2)",
+    "title": "Hypertension and Diabetes Program",
     "variables": [
       {
         "kind": "QueryVariable",
