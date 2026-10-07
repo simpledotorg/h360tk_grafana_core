@@ -288,14 +288,7 @@ CREATE OR REPLACE FUNCTION build_drill_url(p_child_id INTEGER)
 RETURNS TEXT
 LANGUAGE sql STABLE
 AS $$
-    SELECT '/d/heart360_drilldown?' ||
-           string_agg(
-               'var-' || hc.var_name || '=' || lin.ancestor_id::text,
-               '&' ORDER BY hc.level
-           )
-    FROM org_unit_lineage lin
-    JOIN hierarchy_config hc ON lin.ancestor_level = hc.level
-    WHERE lin.org_unit_id = p_child_id;
+    SELECT '/d/heart360_showcase/hypertension-and-diabetes-program?var-org_unit=' || p_child_id::text;
 $$;
 
 -- ============================================================================
