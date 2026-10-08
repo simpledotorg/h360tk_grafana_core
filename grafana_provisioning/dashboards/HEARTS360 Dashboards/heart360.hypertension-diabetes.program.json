@@ -1955,7 +1955,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT * FROM org_units UNION ALL SELECT NULL, 'No data', NULL, NULL WHERE NOT EXISTS (SELECT 1 FROM org_units) ORDER BY parent_id NULLS FIRST, name",
+                        "rawSql": "SELECT 0 as id, 'All Locations' as name, 0 as level, NULL::integer as parent_id WHERE EXISTS (SELECT 1 FROM org_units) UNION ALL SELECT id, name, level, COALESCE(parent_id, 0) as parent_id FROM org_units UNION ALL SELECT NULL, 'No data', NULL, NULL WHERE NOT EXISTS (SELECT 1 FROM org_units) ORDER BY parent_id NULLS FIRST, name",
                         "sql": {
                           "columns": [
                             {
