@@ -1723,7 +1723,8 @@ $$;
 
 CREATE OR REPLACE FUNCTION heart360tk_reporting.delete_leaf_node_data(
     p_source_keys text[],
-    p_delete_hierarchy boolean DEFAULT false
+    p_delete_hierarchy boolean DEFAULT false,
+    p_purge_everything boolean DEFAULT false
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -1755,6 +1756,44 @@ DECLARE
     ];
 
 BEGIN
+    -- delete everything if requested
+    IF p_purge_everything THEN
+        BEGIN
+            -- 1. Delete all reporting data
+            FOREACH v_table_name IN ARRAY v_report_tables
+            LOOP
+                EXECUTE format( 'TRUNCATE TABLE heart360tk_reporting.%I', v_table_name );
+            END LOOP;
+
+            -- 2. Delete all leaf-node mappings
+            TRUNCATE TABLE heart360tk_reporting.import_facility_mapping;
+
+            -- 3. Delete complete hierarchy
+            TRUNCATE TABLE heart360tk_schema.org_units CASCADE;
+
+            -- 4. Reset hierarchy sequence
+            ALTER SEQUENCE heart360tk_schema.org_units_id_seq RESTART WITH 1;
+
+            -- 5. Reset source status
+            UPDATE heart360tk_reporting.import_source_control SET data_status = 'no_data', last_purged_at = NOW();
+
+            RETURN jsonb_build_object(
+                'success', true,
+                'purge_everything', true,
+                'message', 'All reporting data, facility mappings and hierarchy data purged successfully',
+                'failed_count', 0
+            );
+
+        EXCEPTION WHEN OTHERS THEN
+            RETURN jsonb_build_object(
+                'success', false,
+                'purge_everything', true,
+                'message', 'Failed to purge all data: ' || SQLERRM,
+                'failed_count', 0
+            );
+        END;
+    END IF;
+
     -- At least one leaf node is required.
     IF p_source_keys IS NULL OR cardinality(p_source_keys) = 0 THEN
         RETURN jsonb_build_object(
@@ -1889,6 +1928,7 @@ $$;
 
 GRANT EXECUTE ON FUNCTION heart360tk_reporting.delete_leaf_node_data(
     text[],
+    boolean,
     boolean
 ) TO heart360tk;
 -- =======================================================================================
