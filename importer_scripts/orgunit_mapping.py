@@ -48,9 +48,10 @@ class MappingRule:
     created if it does not exist yet.  Without an id the target is found — or
     created — by target_org_unit_name at its position.
 
-    Only the target fields a rule lists are applied: target_org_unit_name sets
-    the record's name and target_org_unit_hierarchy its position (an empty
-    tuple is the top level).  A field left out is None and changes nothing.
+    Only the target fields a rule lists are applied: target_org_unit_name names
+    a record being created (an existing record keeps its name) and
+    target_org_unit_hierarchy sets its position (an empty tuple is the top
+    level).  A field left out is None and changes nothing.
     Rules returned by load_mapping_config always hold the full ancestor chain
     from the top level, even where mapping.yaml lists only the nearest ones.
     """

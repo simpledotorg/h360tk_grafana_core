@@ -174,8 +174,9 @@ class BaseImportVersion:
         exist, otherwise the leaf org unit is merged into it.  Without one it is
         the record named targetOrgUnitName at its position, created on first use.
 
-        Only what the rule lists is applied — targetOrgUnitName sets the name,
-        targetOrgUnitHierarchy the position.  Anything left out keeps the
+        Only what the rule lists is applied.  targetOrgUnitName names a record
+        that is being created; an existing record is never renamed.
+        targetOrgUnitHierarchy sets the position.  Anything left out keeps the
         existing record's value, or for a new record the leaf node's own.
         Returns its (central id, central level).
         """
@@ -195,7 +196,7 @@ class BaseImportVersion:
         parent: ResolvedOrgUnit | None,
         placement: tuple[int, int | None] | None,
     ) -> tuple[int, int]:
-        """Create the record with id targetOrgUnitId, or update the fields the rule lists."""
+        """Create the record with id targetOrgUnitId, or re-place the existing one (name unchanged)."""
         target_id = rule.target_org_unit_id
 
         cur.execute(
@@ -222,7 +223,8 @@ class BaseImportVersion:
             self._sync_org_unit_id_sequence(cur)
             action = 'Created'
         else:
-            name = rule.target_org_unit_name or existing[0]
+            # An existing record keeps its name; targetOrgUnitName only names a new one.
+            name = existing[0]
             level, parent_id = placement or (existing[1], existing[2])
             if (name, level, parent_id) == tuple(existing):
                 return target_id, level
