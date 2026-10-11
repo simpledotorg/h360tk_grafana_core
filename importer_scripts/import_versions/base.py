@@ -232,7 +232,8 @@ class BaseImportVersion:
 
         With targetOrgUnitId the record is that id: created when it does not
         exist, otherwise the leaf org unit is merged into it.  Without one it is
-        the record named targetOrgUnitName at its position, created on first use.
+        the record named targetOrgUnitName at its position, created on first use;
+        a rule listing only targetOrgUnitHierarchy uses the leaf org unit's own name.
 
         Only what the rule lists is applied.  targetOrgUnitName names a record
         that is being created; an existing record is never renamed.
@@ -245,7 +246,8 @@ class BaseImportVersion:
             return self._place_org_unit_by_id(cur, rule, row, parent, placement)
 
         level, parent_id = placement or self._leaf_placement(row, parent)
-        central_id = self._upsert_org_unit(cur, rule.target_org_unit_name, level, parent_id)
+        name = rule.target_org_unit_name or row['name']
+        central_id = self._upsert_org_unit(cur, name, level, parent_id)
         return central_id, level
 
     def _place_org_unit_by_id(

@@ -46,7 +46,8 @@ class MappingRule:
     Exactly one of the two source selectors is set; the other is None.
     The target is the central record with target_org_unit_id when that is set,
     created if it does not exist yet.  Without an id the target is found — or
-    created — by target_org_unit_name at its position.
+    created — by target_org_unit_name at its position, or by the leaf org
+    unit's own name when the rule only lists a hierarchy.
 
     Only the target fields a rule lists are applied: target_org_unit_name names
     a record being created (an existing record keeps its name) and
@@ -74,7 +75,9 @@ class MappingRule:
             selector = f'{ID_SELECTOR}={self.source_org_unit_id}'
         else:
             selector = f'{NAME_SELECTOR}={self.source_org_unit_name!r}'
-        if self.target_org_unit_id is None:
+        if self.target_org_unit_id is None and self.target_org_unit_name is None:
+            target = 'own name'
+        elif self.target_org_unit_id is None:
             target = f'name {self.target_org_unit_name!r}'
         elif self.target_org_unit_name is None:
             target = f'id {self.target_org_unit_id}'
@@ -291,9 +294,15 @@ def _parse_rule(raw_rule, where: str) -> MappingRule:
 
     target_org_unit_id = _optional_int(raw_rule, TARGET_ID, where)
     target_org_unit_name = _text(raw_rule.get(TARGET_NAME))
-    if target_org_unit_id is None and target_org_unit_name is None:
+    target_org_unit_hierarchy = _parse_hierarchy(raw_rule, where)
+    if (
+        target_org_unit_id is None
+        and target_org_unit_name is None
+        and target_org_unit_hierarchy is None
+    ):
         raise OrgUnitMappingError(
-            f'{where} sets neither {TARGET_ID} nor {TARGET_NAME} — at least one is required'
+            f'{where} sets none of {TARGET_ID}, {TARGET_NAME} or {TARGET_HIERARCHY} '
+            '— at least one is required'
         )
 
     return MappingRule(
@@ -301,7 +310,7 @@ def _parse_rule(raw_rule, where: str) -> MappingRule:
         source_org_unit_name=_text(raw_rule.get(NAME_SELECTOR)),
         target_org_unit_id=target_org_unit_id,
         target_org_unit_name=target_org_unit_name,
-        target_org_unit_hierarchy=_parse_hierarchy(raw_rule, where),
+        target_org_unit_hierarchy=target_org_unit_hierarchy,
     )
 
 
