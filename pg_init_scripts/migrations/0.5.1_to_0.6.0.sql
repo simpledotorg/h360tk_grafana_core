@@ -85,6 +85,11 @@ CREATE TABLE IF NOT EXISTS heart360tk_reporting.import_schedule_status (
 
 GRANT INSERT, UPDATE, SELECT ON heart360tk_reporting.import_schedule_status TO heart360tk;
 
+-- 6b. Flag leaf org units that carry numbers; the importer refuses to put two of
+--     them on one central org unit
+ALTER TABLE heart360tk_reporting.import_facility_mapping
+ADD COLUMN IF NOT EXISTS carries_data boolean NOT NULL DEFAULT false;
+
 -- 7. Create delete_leaf_node_data function
 CREATE OR REPLACE FUNCTION heart360tk_reporting.delete_leaf_node_data(
     p_source_keys text[],

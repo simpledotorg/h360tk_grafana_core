@@ -1513,7 +1513,9 @@ CREATE TABLE IF NOT EXISTS heart360tk_reporting.IMPORT_FACILITY_MAPPING (
     leaf_org_unit_id integer,
     central_org_unit_id integer,
     last_updated_date timestamp,
-    last_extract_date timestamp
+    last_extract_date timestamp,
+    -- true when the leaf org unit has numbers (or no children); such units may not share a central org unit
+    carries_data boolean NOT NULL DEFAULT false
 );
 
 CREATE TABLE IF NOT EXISTS heart360tk_reporting.HEART360_PATIENTS_CATEGORY AS SELECT * FROM heart360tk_schema.HEART360_PATIENTS_CATEGORY where 1=0;

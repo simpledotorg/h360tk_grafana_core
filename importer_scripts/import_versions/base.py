@@ -80,6 +80,7 @@ class BaseImportVersion:
         leaf_org_unit_id: int,
         central_org_unit_id: int,
         metadata: dict,
+        carries_data: bool,
     ) -> None:
         """Persist leaf→central org_unit id mapping (all hierarchy levels)."""
         extract_epoch = metadata.get('generated_at_epoch')
@@ -94,11 +95,70 @@ class BaseImportVersion:
                 '''
                 INSERT INTO heart360tk_reporting.import_facility_mapping
                     (leaf_node_key, leaf_org_unit_id, central_org_unit_id,
-                     last_updated_date, last_extract_date)
-                VALUES (%s, %s, %s, NOW(), %s)
+                     last_updated_date, last_extract_date, carries_data)
+                VALUES (%s, %s, %s, NOW(), %s, %s)
                 ''',
-                (source_key, leaf_org_unit_id, central_org_unit_id, last_extract_date),
+                (source_key, leaf_org_unit_id, central_org_unit_id,
+                 last_extract_date, carries_data),
             )
+
+    def _org_unit_ids_with_data(self, extract_dir: str) -> set[int]:
+        """Leaf org unit ids that have rows in this zip's reporting CSVs."""
+        ids = set()
+        for filename in os.listdir(extract_dir):
+            if filename in self.SKIP_FILES or self.csv_to_table_name(filename) is None:
+                continue
+            with open(os.path.join(extract_dir, filename), 'r', encoding='utf-8') as csv_file:
+                for row in csv.DictReader(csv_file):
+                    value = (row.get('org_unit_id') or '').strip()
+                    if value:
+                        ids.add(int(value))
+        return ids
+
+    def _check_central_org_unit_free(
+        self,
+        cur,
+        source_key: str,
+        row: dict,
+        central_id: int,
+        carries_data: bool,
+        used_by_this_leaf: dict[int, tuple[int, str, bool]],
+    ) -> None:
+        """Refuse to put two leaf org units on one central org unit when either carries numbers.
+
+        Their numbers would otherwise be added together on one record.  Parents
+        that carry no numbers of their own (a shared region or district) may be shared.
+        """
+        owner = None
+        same_leaf = used_by_this_leaf.get(central_id)
+        if same_leaf is not None and (carries_data or same_leaf[2]):
+            owner = f'org unit "{same_leaf[1]}" (id {same_leaf[0]}) of this leaf node'
+        else:
+            cur.execute(
+                '''
+                SELECT leaf_node_key, leaf_org_unit_id
+                FROM heart360tk_reporting.import_facility_mapping
+                WHERE central_org_unit_id = %s
+                  AND leaf_node_key <> %s
+                  AND (carries_data OR %s)
+                ORDER BY leaf_node_key, leaf_org_unit_id
+                LIMIT 1
+                ''',
+                (central_id, source_key, carries_data),
+            )
+            other = cur.fetchone()
+            if other is not None:
+                owner = f'{other[0]} (its org unit id {other[1]})'
+
+        if owner is None:
+            return
+        cur.execute('SELECT name FROM heart360tk_schema.org_units WHERE id = %s', (central_id,))
+        central_name = cur.fetchone()[0]
+        raise ValueError(
+            f'Mapping conflict: "{central_name}" (central id {central_id}) is already used by '
+            f'{owner}. Use a different name or id for your org unit "{row["name"]}" '
+            f'(id {row["leaf_id"]}) for mapping on central.'
+        )
 
     def _upsert_org_unit(self, cur, name: str, level: int, parent_id: int | None) -> int:
         """Match or create one central org unit and return its id."""
@@ -335,6 +395,11 @@ class BaseImportVersion:
         org_rows = self._read_orgunit_rows(csv_path)
         mapping_rules = mapping_rules or []
         resolved: dict[int, ResolvedOrgUnit] = {}
+        # A unit with no children still counts, so a facility with no patients
+        # yet cannot be merged before its numbers arrive.
+        parent_ids = {row['leaf_parent_id'] for row in org_rows}
+        data_ids = self._org_unit_ids_with_data(extract_dir)
+        used_by_this_leaf: dict[int, tuple[int, str, bool]] = {}
 
         with conn.cursor() as cur:
             cur.execute(
@@ -359,9 +424,15 @@ class BaseImportVersion:
                         cur, row, parent
                     )
 
+                carries_data = leaf_id in data_ids or leaf_id not in parent_ids
+                self._check_central_org_unit_free(
+                    cur, source_key, row, central_id, carries_data, used_by_this_leaf
+                )
+                used_by_this_leaf.setdefault(central_id, (leaf_id, name, carries_data))
+
                 resolved[leaf_id] = ResolvedOrgUnit(central_id, central_level - level)
                 self._upsert_org_unit_mapping(
-                    conn, source_key, leaf_id, central_id, metadata
+                    conn, source_key, leaf_id, central_id, metadata, carries_data
                 )
                 log.info(
                     '  Mapped org unit leaf_id=%d -> central_id=%d (%s, level=%d)%s',
