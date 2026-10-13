@@ -8207,10 +8207,10 @@
         "spec": {
           "allowCustomValue": false,
           "current": {
-            "text": "2800",
-            "value": "2800"
+            "text": "14500",
+            "value": "14500"
           },
-          "definition": "SELECT 2800 AS __value",
+          "definition": "SELECT 14500 AS __value",
           "hide": "hideVariable",
           "includeAll": false,
           "multi": false,
@@ -8226,7 +8226,7 @@
               "editorMode": "code",
               "format": "table",
               "rawQuery": true,
-              "rawSql": "SELECT 2800 AS __value",
+              "rawSql": "SELECT 14500 AS __value",
               "refId": "tempvar",
               "sql": {
                 "columns": [

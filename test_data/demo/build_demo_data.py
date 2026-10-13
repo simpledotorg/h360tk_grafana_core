@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 
 RNG_SEED = 42
-TARGET_PATIENTS = 1500
+TARGET_PATIENTS = 8000
 DEFAULT_AS_OF = datetime(2026, 10, 13)
 
 DATE_FMT = "%d-%m-%Y %H:%M:%S"
@@ -368,7 +368,7 @@ DECLARE
   v_under_care_pct numeric;
   v_controlled_pct numeric;
   v_quarter_count integer;
-  est_pop numeric := 2800;
+  est_pop numeric := 14500;
 BEGIN
   SELECT MAX(ref_month) INTO v_ref_month
   FROM heart360tk_reporting.heart360_patients_category;
