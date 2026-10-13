@@ -163,6 +163,385 @@
           }
         }
       },
+      "panel-cascade": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "postgres-hypertension-cached"
+                      },
+                      "group": "grafana-postgresql-datasource",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "dataset": "metrics_db",
+                        "editorMode": "code",
+                        "format": "table",
+                        "rawQuery": true,
+                        "rawSql": "SELECT * FROM (\n  SELECT\n    cat.ref_month,\n    100.0 AS estimated_people_with_hypertension_pct,\n    (SUM(reg.cumulative_number_of_patients)::numeric / NULLIF(${estimated_htn_population}::numeric, 0) * 100.0) AS registered_pct_of_estimated,\n    (SUM(cat.nb_patients_under_care_registered_before_the_past_3_months)::numeric / NULLIF(${estimated_htn_population}::numeric, 0) * 100.0) AS under_care_pct_of_estimated,\n    (SUM(cat.nb_patients_controlled)::numeric / NULLIF(${estimated_htn_population}::numeric, 0) * 100.0) AS controlled_pct_of_estimated\n  FROM heart360_patients_category cat\n  JOIN heart360_patients_registered reg\n    ON reg.ref_month = cat.ref_month AND reg.org_unit_id = cat.org_unit_id\n  WHERE cat.ref_month = to_timestamp(${reference_month}/1000.0)\n    AND cat.org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  GROUP BY 1\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+                        "sql": {
+                          "columns": [
+                            {
+                              "parameters": [],
+                              "type": "function"
+                            }
+                          ],
+                          "groupBy": [
+                            {
+                              "property": {
+                                "type": "string"
+                              },
+                              "type": "groupBy"
+                            }
+                          ],
+                          "limit": 50
+                        }
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "Estimated population with hypertension is derived from Community Survey.\n\nPatients under care are patients with hypertension with at least 1 visit in the past 12 months.",
+          "id": 10,
+          "links": [],
+          "title": "Hypertension treatment cascade",
+          "vizConfig": {
+            "group": "barchart",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "fillOpacity": 80,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "lineWidth": 1,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "estimated_people_with_hypertension_pct"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "#dae0e1",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "registered_pct_of_estimated"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "blue",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "under_care_pct_of_estimated"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "purple",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "controlled_pct_of_estimated"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "green",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "options": {
+                "barRadius": 0,
+                "barWidth": 0.97,
+                "fullHighlight": false,
+                "groupWidth": 0.7,
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "orientation": "auto",
+                "showValue": "auto",
+                "stacking": "none",
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "single",
+                  "sort": "none"
+                },
+                "xTickLabelRotation": 0,
+                "xTickLabelSpacing": 0
+              }
+            },
+            "version": "13.2.1"
+          }
+        }
+      },
+      "panel-cohort": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "postgres-hypertension-cached"
+                      },
+                      "group": "grafana-postgresql-datasource",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "dataset": "metrics_db",
+                        "editorMode": "code",
+                        "format": "table",
+                        "rawQuery": true,
+                        "rawSql": "SELECT * FROM (\nWITH quarters AS (\n  SELECT generate_series(\n    date_trunc('quarter', $__timeFrom()::timestamp),\n    date_trunc('quarter', $__timeTo()::timestamp),\n    interval '3 months'\n  )::date AS q\n)\nSELECT\n  'Q' || EXTRACT(QUARTER FROM q.q)::int || '-' || EXTRACT(YEAR FROM q.q)::int\n  AS quarter_label,\n\n  COALESCE(SUM(CASE WHEN c.status_at_end_of_interval = 'controlled' THEN 1 END), 0)\n  AS \"% Controlled BP at latest visit in following quarter\",\n\n  COALESCE(SUM(CASE WHEN c.status_at_end_of_interval = 'uncontrolled' THEN 1 END), 0)\n  AS \"% Uncontrolled BP at latest visit in following quarter\",\n\n  COALESCE(SUM(CASE WHEN c.status_at_end_of_interval = 'missed visit' THEN 1 END), 0)\n  AS \"% Patients with no visit in following quarter\"\n\nFROM quarters q\nLEFT JOIN HEART360_COHORT_PATIENT_DETAILS c\n  ON c.registration_quarter = q.q\n  AND c.org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\nGROUP BY q.q\nORDER BY q.q\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+                        "sql": {
+                          "columns": [
+                            {
+                              "parameters": [],
+                              "type": "function"
+                            }
+                          ],
+                          "groupBy": [
+                            {
+                              "property": {
+                                "type": "string"
+                              },
+                              "type": "groupBy"
+                            }
+                          ],
+                          "limit": 50
+                        }
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "",
+          "id": 20,
+          "links": [],
+          "title": "Cohort Report",
+          "vizConfig": {
+            "group": "barchart",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.3,
+                    "drawStyle": "bars",
+                    "fillOpacity": 100,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 5,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "mappings": [],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "% Patients with no visit in following quarter"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "orange",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "% Uncontrolled BP at latest visit in following quarter"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "yellow",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "% Controlled BP at latest visit in following quarter"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "green",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "options": {
+                "barRadius": 0,
+                "barWidth": 0.26,
+                "fullHighlight": false,
+                "groupWidth": 0.7,
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "orientation": "auto",
+                "showValue": "auto",
+                "stacking": "percent",
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "single",
+                  "sort": "none"
+                },
+                "xField": "quarter_label",
+                "xTickLabelRotation": 0,
+                "xTickLabelSpacing": 0
+              }
+            },
+            "version": "13.2.1"
+          }
+        }
+      },
       "panel-12": {
         "kind": "Panel",
         "spec": {
@@ -3237,50 +3616,50 @@
                     ]
                   },
                   {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Historical"
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Historical"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "green",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
                   },
-                  "properties": [
-                    {
-                      "id": "color",
-                      "value": {
-                        "fixedColor": "green",
-                        "mode": "fixed"
-                      }
-                    }
-                  ]
-                },
-                {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "Current Month"
-                  },
-                  "properties": [
-                    {
-                      "id": "color",
-                      "value": {
-                        "fixedColor": "green",
-                        "mode": "fixed"
-                      }
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Current Month"
                     },
-                    {
-                      "id": "custom.lineStyle",
-                      "value": {
-                        "fill": "dash"
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "green",
+                          "mode": "fixed"
+                        }
+                      },
+                      {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "fill": "dash"
+                        }
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
+                      },
+                      {
+                        "id": "custom.gradientMode",
+                        "value": "opacity"
                       }
-                    },
-                    {
-                      "id": "custom.fillOpacity",
-                      "value": 0
-                    },
-                    {
-                      "id": "custom.gradientMode",
-                      "value": "opacity"
-                    }
-                  ]
-                }
-              ]
+                    ]
+                  }
+                ]
               },
               "options": {
                 "legend": {
@@ -4497,7 +4876,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql":  "SELECT * FROM (\nWITH selected_org AS (\n  SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1)))\n),\nmonthly_data AS (\n  SELECT\n    uc.ref_month,\n    SUM(COALESCE(uc.nb_new_dm_patients, 0)) AS nb_new_dm_patients,\n    SUM(COALESCE(uc.nb_dm_patients_under_care, 0)) AS nb_dm_patients_under_care\n  FROM HEART360_DM_PATIENTS_UNDER_CARE uc\n  WHERE uc.org_unit_id IN (SELECT id FROM selected_org)\n  GROUP BY uc.ref_month\n)\nSELECT\n  ref_month,\n  SUM(nb_new_dm_patients) OVER (ORDER BY ref_month) AS cumulative_dm_patients,\n  nb_dm_patients_under_care,\n  nb_new_dm_patients\nFROM monthly_data\nORDER BY ref_month\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+                        "rawSql": "SELECT * FROM (\nWITH selected_org AS (\n  SELECT id FROM get_descendant_ids(((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1)))\n),\nmonthly_data AS (\n  SELECT\n    uc.ref_month,\n    SUM(COALESCE(uc.nb_new_dm_patients, 0)) AS nb_new_dm_patients,\n    SUM(COALESCE(uc.nb_dm_patients_under_care, 0)) AS nb_dm_patients_under_care\n  FROM HEART360_DM_PATIENTS_UNDER_CARE uc\n  WHERE uc.org_unit_id IN (SELECT id FROM selected_org)\n  GROUP BY uc.ref_month\n)\nSELECT\n  ref_month,\n  SUM(nb_new_dm_patients) OVER (ORDER BY ref_month) AS cumulative_dm_patients,\n  nb_dm_patients_under_care,\n  nb_new_dm_patients\nFROM monthly_data\nORDER BY ref_month\n) AS master_access_control WHERE '${isAllowed}' = '1'",
                         "refId": "A",
                         "dataset": "metrics_db",
                         "sql": {
@@ -7149,8 +7528,21 @@
                                               "name": "panel-1"
                                             },
                                             "height": 10,
-                                            "width": 24,
+                                            "width": 16,
                                             "x": 0,
+                                            "y": 0
+                                          }
+                                        },
+                                        {
+                                          "kind": "GridLayoutItem",
+                                          "spec": {
+                                            "element": {
+                                              "kind": "ElementReference",
+                                              "name": "panel-cascade"
+                                            },
+                                            "height": 10,
+                                            "width": 8,
+                                            "x": 16,
                                             "y": 0
                                           }
                                         }
@@ -7315,6 +7707,33 @@
                                     }
                                   },
                                   "title": "Program management indicators"
+                                }
+                              },
+                              {
+                                "kind": "RowsLayoutRow",
+                                "spec": {
+                                  "collapse": false,
+                                  "layout": {
+                                    "kind": "GridLayout",
+                                    "spec": {
+                                      "items": [
+                                        {
+                                          "kind": "GridLayoutItem",
+                                          "spec": {
+                                            "element": {
+                                              "kind": "ElementReference",
+                                              "name": "panel-cohort"
+                                            },
+                                            "height": 13,
+                                            "width": 24,
+                                            "x": 0,
+                                            "y": 0
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "title": "Cohort"
                                 }
                               },
                               {
@@ -7777,6 +8196,59 @@
             "version": "v0"
           },
           "refresh": "onTimeRangeChanged",
+          "regex": "",
+          "regexApplyTo": "value",
+          "skipUrlSync": true,
+          "sort": "disabled"
+        }
+      },
+      {
+        "kind": "QueryVariable",
+        "spec": {
+          "allowCustomValue": false,
+          "current": {
+            "text": "2800",
+            "value": "2800"
+          },
+          "definition": "SELECT 2800 AS __value",
+          "hide": "hideVariable",
+          "includeAll": false,
+          "multi": false,
+          "name": "estimated_htn_population",
+          "options": [],
+          "query": {
+            "datasource": {
+              "name": "postgres-hypertension"
+            },
+            "group": "grafana-postgresql-datasource",
+            "kind": "DataQuery",
+            "spec": {
+              "editorMode": "code",
+              "format": "table",
+              "rawQuery": true,
+              "rawSql": "SELECT 2800 AS __value",
+              "refId": "tempvar",
+              "sql": {
+                "columns": [
+                  {
+                    "parameters": [],
+                    "type": "function"
+                  }
+                ],
+                "groupBy": [
+                  {
+                    "property": {
+                      "type": "string"
+                    },
+                    "type": "groupBy"
+                  }
+                ],
+                "limit": 50
+              }
+            },
+            "version": "v0"
+          },
+          "refresh": "onDashboardLoad",
           "regex": "",
           "regexApplyTo": "value",
           "skipUrlSync": true,
