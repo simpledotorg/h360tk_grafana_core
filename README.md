@@ -8,7 +8,7 @@ docker compose up -d
 
 Then just go to this url:
 
-http://localhost:3000/d/heart360_drilldown/hearts360-hypertension-dashboard
+http://localhost:3000/d/heart360_showcase
 
 to upload file:
 

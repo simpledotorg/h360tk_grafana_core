@@ -139,6 +139,8 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - ./config/orgunit_mapping:/config/orgunit_mapping:ro
 
 volumes:
   pgadmin_data:
