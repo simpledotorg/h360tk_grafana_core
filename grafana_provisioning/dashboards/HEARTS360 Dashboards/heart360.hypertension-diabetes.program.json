@@ -323,7 +323,7 @@
                   "calcs": [],
                   "displayMode": "list",
                   "placement": "bottom",
-                  "showLegend": false
+                  "showLegend": true
                 },
                 "orientation": "auto",
                 "showValue": "always",
@@ -7452,66 +7452,6 @@
             "version": "6.2.0"
           }
         }
-      },
-      "panel-cascade-labels": {
-        "kind": "Panel",
-        "spec": {
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "postgres-hypertension-cached"
-                      },
-                      "group": "grafana-postgresql-datasource",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "dataset": "metrics_db",
-                        "editorMode": "code",
-                        "format": "table",
-                        "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\n\n  WITH base AS (\n    SELECT\n      ${estimated_htn_population}::numeric AS est,\n      COALESCE(SUM(reg.cumulative_number_of_patients), 0)::numeric AS registered,\n      COALESCE(SUM(cat.nb_patients_under_care_registered_before_the_past_3_months), 0)::numeric AS under_care,\n      COALESCE(SUM(cat.nb_patients_controlled), 0)::numeric AS controlled\n    FROM heart360_patients_category cat\n    JOIN heart360_patients_registered reg\n      ON reg.ref_month = cat.ref_month AND reg.org_unit_id = cat.org_unit_id\n    WHERE cat.ref_month = to_timestamp(${reference_month}/1000.0)\n      AND cat.org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  )\n\n  SELECT\n    est,\n    registered,\n    under_care,\n    controlled,\n    round(registered / NULLIF(est, 0) * 100, 1) AS registered_pct,\n    round(under_care / NULLIF(est, 0) * 100, 1) AS under_care_pct,\n    round(controlled / NULLIF(est, 0) * 100, 1) AS controlled_pct\n  FROM base\n) AS master_access_control WHERE '${isAllowed}' = '1'\n",
-                        "refId": "A"
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "A"
-                  }
-                }
-              ],
-              "queryOptions": {
-                "percentile": 75
-              },
-              "transformations": []
-            }
-          },
-          "description": "",
-          "id": 21,
-          "links": [],
-          "title": "",
-          "vizConfig": {
-            "group": "marcusolsson-dynamictext-panel",
-            "kind": "VizConfig",
-            "spec": {
-              "fieldConfig": {
-                "defaults": {},
-                "overrides": []
-              },
-              "options": {
-                "content": "<div style=\"display:flex;justify-content:space-between;gap:6px;padding:2px 0 0;text-align:center;\">\n  <div style=\"flex:1;border-right:1px solid #dde3e8;padding:0 4px;\">\n    <div style=\"font-size:20px;font-weight:600;line-height:1.15;color:#111827;\">{{est | formatNumber}} <span style=\"font-size:13px;font-weight:500;color:#6b7280;\">(100%)</span></div>\n    <div style=\"font-size:11px;color:#6b7280;margin-top:4px;line-height:1.25;\">Estimated people with hypertension</div>\n  </div>\n  <div style=\"flex:1;border-right:1px solid #dde3e8;padding:0 4px;\">\n    <div style=\"font-size:20px;font-weight:600;line-height:1.15;color:#111827;\">{{registered | formatNumber}} <span style=\"font-size:13px;font-weight:500;color:#6b7280;\">({{registered_pct}}%)</span></div>\n    <div style=\"font-size:11px;color:#6b7280;margin-top:4px;line-height:1.25;\">Cumulative registered patients</div>\n  </div>\n  <div style=\"flex:1;border-right:1px solid #dde3e8;padding:0 4px;\">\n    <div style=\"font-size:20px;font-weight:600;line-height:1.15;color:#111827;\">{{under_care | formatNumber}} <span style=\"font-size:13px;font-weight:500;color:#6b7280;\">({{under_care_pct}}%)</span></div>\n    <div style=\"font-size:11px;color:#6b7280;margin-top:4px;line-height:1.25;\">Patients under care</div>\n  </div>\n  <div style=\"flex:1;padding:0 4px;\">\n    <div style=\"font-size:20px;font-weight:600;line-height:1.15;color:#111827;\">{{controlled | formatNumber}} <span style=\"font-size:13px;font-weight:500;color:#6b7280;\">({{controlled_pct}}%)</span></div>\n    <div style=\"font-size:11px;color:#6b7280;margin-top:4px;line-height:1.25;\">Patients with BP controlled</div>\n  </div>\n</div>\n",
-                "defaultContent": "Loading cascade summary\u2026",
-                "editors": [],
-                "everyRow": true
-              }
-            },
-            "version": "6.1.0"
-          }
-        }
       }
     },
     "layout": {
@@ -7586,25 +7526,12 @@
                                           "spec": {
                                             "element": {
                                               "kind": "ElementReference",
-                                              "name": "panel-cascade-labels"
+                                              "name": "panel-cascade"
                                             },
-                                            "height": 3,
+                                            "height": 10,
                                             "width": 8,
                                             "x": 16,
                                             "y": 0
-                                          }
-                                        },
-                                        {
-                                          "kind": "GridLayoutItem",
-                                          "spec": {
-                                            "element": {
-                                              "kind": "ElementReference",
-                                              "name": "panel-cascade"
-                                            },
-                                            "height": 7,
-                                            "width": 8,
-                                            "x": 16,
-                                            "y": 3
                                           }
                                         }
                                       ]
