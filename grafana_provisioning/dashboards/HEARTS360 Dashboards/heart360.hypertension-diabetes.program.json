@@ -5666,7 +5666,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\nSELECT\n  patient_id,\n  patient_name,\n  registration_date,\n  birth_date,\n  gender,\n  phone_number,\n  (SELECT name FROM org_units WHERE id = h.org_unit_id) AS facility,\n  last_visit_date,\n  last_bp_diastolic,\n  last_bp_systolic,\n  last_call_date,\n  last_call_result AS result_type,\n  COALESCE(removed_reason, '-') AS removed_reason,\n  EXTRACT(YEAR FROM AGE(birth_date)) AS age_years,\n  (CURRENT_DATE - last_visit_date::date) AS days_since_last_visit,\n  CASE\n    WHEN last_bp_systolic IS NOT NULL AND last_bp_diastolic IS NOT NULL\n      THEN CONCAT(\n        last_bp_systolic::int,\n        '/',\n        last_bp_diastolic::int\n      )\n    ELSE NULL\n  END AS last_bp\nFROM HEART360_OVERDUE_PATIENTS h\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  AND last_visit_date < now() - interval '45 days'\n  AND ${selected_level} IN (3, 4, 10)\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+                        "rawSql": "SELECT * FROM (\nSELECT\n  patient_id,\n  patient_name,\n  registration_date,\n  birth_date,\n  gender,\n  phone_number,\n  (SELECT name FROM org_units WHERE id = h.org_unit_id) AS facility,\n  last_visit_date,\n  last_bp_diastolic,\n  last_bp_systolic,\n  last_call_date,\n  last_call_result AS result_type,\n  COALESCE(removed_reason, '-') AS removed_reason,\n  EXTRACT(YEAR FROM AGE(birth_date)) AS age_years,\n  (CURRENT_DATE - last_visit_date::date) AS days_since_last_visit,\n  CASE\n    WHEN last_bp_systolic IS NOT NULL AND last_bp_diastolic IS NOT NULL\n      THEN CONCAT(\n        last_bp_systolic::int,\n        '/',\n        last_bp_diastolic::int\n      )\n    ELSE NULL\n  END AS last_bp\nFROM HEART360_OVERDUE_PATIENTS h\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  AND last_visit_date < now() - interval '45 days'\n    AND ${selected_level} IN (3, 4, 10)\n  AND COALESCE(current_setting('app.is_central_node', true), 'false') <> 'true'\n) AS master_access_control WHERE '${isAllowed}' = '1'",
                         "refId": "A",
                         "dataset": "metrics_db",
                         "sql": {
@@ -7008,7 +7008,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT\n  CASE WHEN COALESCE(NULLIF('${selected_level}',''),'0')::int IN (3, 4, 10) THEN 1 ELSE 0 END AS \"isAccessible\",\n  COALESCE(NULLIF('$isAllowed', ''), '0')::int AS \"isAllowed\",\n  '${requiredGroups}' AS \"requiredGroups\" ",
+                        "rawSql": "SELECT\n  CASE WHEN COALESCE(NULLIF('${selected_level}',''),'0')::int IN (3, 4, 10) THEN 1 ELSE 0 END AS \"isAccessible\",\n  COALESCE(NULLIF('$isAllowed', ''), '0')::int AS \"isAllowed\",\n  COALESCE(NULLIF('${isCentralNode}', ''), '0')::int AS \"isCentralNode\",\n  '${requiredGroups}' AS \"requiredGroups\" ",
                         "refId": "A",
                         "sql": {
                           "columns": [
@@ -7067,7 +7067,7 @@
               },
               "options": {
                 "afterRender": "",
-                "content": "{{#if (eq isAccessible 0)}}\n  <div style=\"color: #e02424; background: rgba(224, 36, 36, 0.05); border-left: 4px solid #e02424; padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 8px; border-radius: 2px; line-height: 1.4; width: 100%;\">\n    <span>\u26a0\ufe0f</span>\n    <span>\n      <strong>Overdue patient list is available only at the facility and sub-facility levels.</strong>\n    </span>\n  </div>\n{{else if (eq isAllowed 0)}}\n  <div style=\"color: #e02424; background: rgba(224, 36, 36, 0.05); border-left: 4px solid #e02424; padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 8px; border-radius: 2px; line-height: 1.4; width: 100%;\">\n    <span>\u26a0\ufe0f</span>\n    <span>\n      <strong>Access Denied:</strong> Ask admin to add to one of these teams: {{{requiredGroups}}}\n    </span>\n  </div>\n{{/if}}",
+                "content": "{{#if (eq isCentralNode 1)}}\n  <div style=\"color: #e02424; background: rgba(224, 36, 36, 0.05); border-left: 4px solid #e02424; padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 8px; border-radius: 2px; line-height: 1.4; width: 100%;\">\n    <span>\u26a0\ufe0f</span>\n    <span>\n      <strong>Patient-level data is not available for this instance, so the Overdue List cannot be displayed.</strong>\n    </span>\n  </div>\n{{else if (eq isAccessible 0)}}\n  <div style=\"color: #e02424; background: rgba(224, 36, 36, 0.05); border-left: 4px solid #e02424; padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 8px; border-radius: 2px; line-height: 1.4; width: 100%;\">\n    <span>\u26a0\ufe0f</span>\n    <span>\n      <strong>Overdue patient list is available only at the facility and sub-facility levels.</strong>\n    </span>\n  </div>\n{{else if (eq isAllowed 0)}}\n  <div style=\"color: #e02424; background: rgba(224, 36, 36, 0.05); border-left: 4px solid #e02424; padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 8px; border-radius: 2px; line-height: 1.4; width: 100%;\">\n    <span>\u26a0\ufe0f</span>\n    <span>\n      <strong>Access Denied:</strong> Ask admin to add to one of these teams: {{{requiredGroups}}}\n    </span>\n  </div>\n{{/if}}",
                 "contentPartials": [],
                 "defaultContent": "The query didn't return any results.",
                 "editor": {
@@ -7607,33 +7607,80 @@
                       "kind": "TabsLayoutTab",
                       "spec": {
                         "layout": {
-                          "kind": "GridLayout",
+                          "kind": "RowsLayout",
                           "spec": {
-                            "items": [
+                            "rows": [
                               {
-                                "kind": "GridLayoutItem",
+                                "kind": "RowsLayoutRow",
                                 "spec": {
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-ov-50"
-                                  },
-                                  "height": 2,
-                                  "width": 24,
-                                  "x": 0,
-                                  "y": 0
+                                  "collapse": false,
+                                  "hideHeader": true,
+                                  "title": "",
+                                  "layout": {
+                                    "kind": "GridLayout",
+                                    "spec": {
+                                      "items": [
+                                        {
+                                          "kind": "GridLayoutItem",
+                                          "spec": {
+                                            "element": {
+                                              "kind": "ElementReference",
+                                              "name": "panel-ov-50"
+                                            },
+                                            "height": 2,
+                                            "width": 24,
+                                            "x": 0,
+                                            "y": 0
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
                                 }
                               },
                               {
-                                "kind": "GridLayoutItem",
+                                "kind": "RowsLayoutRow",
                                 "spec": {
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-ov-1"
+                                  "collapse": false,
+                                  "hideHeader": true,
+                                  "title": "",
+                                  "conditionalRendering": {
+                                    "kind": "ConditionalRenderingGroup",
+                                    "spec": {
+                                      "visibility": "show",
+                                      "condition": "and",
+                                      "items": [
+                                        {
+                                          "kind": "ConditionalRenderingVariable",
+                                          "spec": {
+                                            "variable": "isCentralNode",
+                                            "operator": "equals",
+                                            "value": "0"
+                                          }
+                                        }
+                                      ]
+                                    }
                                   },
-                                  "height": 26,
-                                  "width": 24,
-                                  "x": 0,
-                                  "y": 2
+                                  "layout": {
+                                    "kind": "GridLayout",
+                                    "spec": {
+                                      "items": [
+                                        {
+                                          "kind": "GridLayoutItem",
+                                          "spec": {
+                                            "element": {
+                                              "kind": "ElementReference",
+                                              "name": "panel-ov-1"
+                                            },
+                                            "height": 26,
+                                            "width": 24,
+                                            "x": 0,
+                                            "y": 0
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
                                 }
                               }
                             ]
@@ -8042,6 +8089,37 @@
             "version": "v0"
           },
           "refresh": "onTimeRangeChanged",
+          "regex": "",
+          "regexApplyTo": "value",
+          "skipUrlSync": true,
+          "sort": "disabled"
+        }
+      },
+      {
+        "kind": "QueryVariable",
+        "spec": {
+          "allowCustomValue": false,
+          "current": { "text": "0", "value": "0" },
+          "definition": "SELECT CASE WHEN COALESCE(current_setting('app.is_central_node', true), 'false') = 'true' THEN 1 ELSE 0 END AS __value",
+          "hide": "hideVariable",
+          "includeAll": false,
+          "multi": false,
+          "name": "isCentralNode",
+          "options": [],
+          "query": {
+            "datasource": { "name": "postgres-hypertension" },
+            "group": "grafana-postgresql-datasource",
+            "kind": "DataQuery",
+            "spec": {
+              "editorMode": "code",
+              "format": "table",
+              "rawQuery": true,
+              "rawSql": "SELECT CASE WHEN COALESCE(current_setting('app.is_central_node', true), 'false') = 'true' THEN 1 ELSE 0 END AS __value",
+              "refId": "tempvar"
+            },
+            "version": "v0"
+          },
+          "refresh": "onDashboardLoad",
           "regex": "",
           "regexApplyTo": "value",
           "skipUrlSync": true,
