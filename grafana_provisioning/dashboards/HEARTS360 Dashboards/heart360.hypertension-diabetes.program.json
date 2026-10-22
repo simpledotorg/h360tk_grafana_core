@@ -7085,12 +7085,104 @@
             "version": "6.2.0"
           }
         }
+      },
+      "panel-no-access": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [{
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": { "name": "postgres-hypertension-cached" },
+                    "group": "grafana-postgresql-datasource",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "dataset": "heart360tk_database",
+                      "editorMode": "code",
+                      "format": "table",
+                      "rawQuery": true,
+                      "rawSql": "SELECT 0 AS \"hasAnyAccess\" WHERE NULLIF(TRIM(BOTH FROM '${userAccess}'), '') IS NULL",
+                      "refId": "A"
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "A"
+                }
+              }],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "",
+          "id": 460,
+          "links": [],
+          "title": "",
+          "transparent": true,
+          "vizConfig": {
+            "group": "marcusolsson-dynamictext-panel",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": { "defaults": {}, "overrides": [] },
+              "options": {
+                "afterRender": "",
+                "content": "<div style=\"color: #e02424; background: rgba(224, 36, 36, 0.05); border-left: 4px solid #e02424; padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 8px; border-radius: 2px; line-height: 1.4; width: 100%;\">\n  <span>⚠️</span>\n  <span>\n    <strong>Access Denied:</strong> You don't have access rights to any location in this dashboard. Please ask your administrator to add you to an access team, e.g. <code>heart360tk_view_aggregated_&lt;location&gt;</code> or <code>heart360tk_view_patients_&lt;location&gt;</code>.\n  </span>\n</div>",
+                "contentPartials": [],
+                "defaultContent": "",
+                "editor": { "format": "auto", "language": "markdown" },
+                "editors": [],
+                "externalStyles": [],
+                "helpers": "",
+                "renderMode": "everyRow",
+                "styles": "",
+                "wrap": true
+              }
+            },
+            "version": "6.2.0"
+          }
+        }
       }
     },
     "layout": {
       "kind": "RowsLayout",
       "spec": {
         "rows": [
+          {
+            "kind": "RowsLayoutRow",
+            "spec": {
+              "collapse": false,
+              "hideHeader": true,
+              "title": "",
+              "conditionalRendering": {
+                "kind": "ConditionalRenderingGroup",
+                "spec": {
+                  "visibility": "show",
+                  "condition": "and",
+                  "items": [
+                    {
+                      "kind": "ConditionalRenderingVariable",
+                      "spec": { "variable": "userAccess", "operator": "equals", "value": "" }
+                    }
+                  ]
+                }
+              },
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [{
+                    "kind": "GridLayoutItem",
+                    "spec": {
+                      "element": { "kind": "ElementReference", "name": "panel-no-access" },
+                      "height": 2, "width": 24, "x": 0, "y": 0
+                    }
+                  }]
+                }
+              }
+            }
+          },
           {
             "kind": "RowsLayoutRow",
             "spec": {
