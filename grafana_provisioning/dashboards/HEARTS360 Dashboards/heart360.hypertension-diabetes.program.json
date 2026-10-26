@@ -7885,7 +7885,7 @@
           "options": [],
           "query": {
             "datasource": {
-              "name": "postgres-hypertension"
+              "name": "postgres-hypertension-cached"
             },
             "group": "grafana-postgresql-datasource",
             "kind": "DataQuery",
