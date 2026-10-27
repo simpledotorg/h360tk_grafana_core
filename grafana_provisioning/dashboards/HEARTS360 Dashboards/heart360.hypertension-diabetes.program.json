@@ -552,7 +552,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\nSELECT\n    child_ou.id as child_id,\n    child_ou.name as child_name,\n    build_drill_url(child_ou.id) as drill_url,\n    CASE WHEN child_ou.level >= 5 THEN\n      '/d/heart360_facility?var-Region=' || COALESCE((SELECT lin2.ancestor_id::text FROM org_unit_lineage lin2 WHERE lin2.org_unit_id = child_ou.id AND lin2.ancestor_level = 1), '') ||\n      '&var-District=' || COALESCE((SELECT lin2.ancestor_id::text FROM org_unit_lineage lin2 WHERE lin2.org_unit_id = child_ou.id AND lin2.ancestor_level = 2), '') ||\n      '&var-Facility=' || COALESCE((SELECT lin2.ancestor_id::text FROM org_unit_lineage lin2 WHERE lin2.org_unit_id = child_ou.id AND lin2.ancestor_level = 3), '') ||\n      '&var-Sub_Facility=' || COALESCE((SELECT lin2.ancestor_id::text FROM org_unit_lineage lin2 WHERE lin2.org_unit_id = child_ou.id AND lin2.ancestor_level = 4), '')\n    ELSE NULL END as facility_url,\n    SUM(COALESCE(uc.nb_patients_under_care, 0)) AS nb_patients_under_care,\n    SUM(COALESCE(nb_new_patients, 0)) AS nb_patients_newly_registered,\n    SUM(cat.nb_patients_controlled) AS nb_patients_controlled,\n    ROUND(100.0 * SUM(cat.nb_patients_controlled) / NULLIF(GREATEST(0, SUM(cat.TOTAL_NUMBER_OF_PATIENTS) - SUM(cat.NB_PATIENTS_NEWLY_REGISTERED) - SUM(cat.NB_PATIENTS_LOST_TO_FOLLOW_UP)), 0)) AS per_patients_controlled,\n    SUM(cat.nb_patients_uncontrolled) AS nb_patients_uncontrolled,\n    ROUND(100.0 * SUM(cat.nb_patients_uncontrolled) / NULLIF(GREATEST(0, SUM(cat.TOTAL_NUMBER_OF_PATIENTS) - SUM(cat.NB_PATIENTS_NEWLY_REGISTERED) - SUM(cat.NB_PATIENTS_LOST_TO_FOLLOW_UP)), 0)) AS per_patients_uncontrolled,\n    SUM(cat.nb_patients_no_visit) AS nb_patients_no_visit,\n    ROUND(100.0 * SUM(cat.nb_patients_no_visit) / NULLIF(GREATEST(0, SUM(cat.TOTAL_NUMBER_OF_PATIENTS) - SUM(cat.NB_PATIENTS_NEWLY_REGISTERED) - SUM(cat.NB_PATIENTS_LOST_TO_FOLLOW_UP)), 0)) AS per_patients_no_visit\nFROM HEART360_PATIENTS_CATEGORY cat\nJOIN org_unit_lineage lin ON cat.org_unit_id = lin.org_unit_id\nJOIN org_units child_ou ON lin.ancestor_id = child_ou.id AND child_ou.parent_id = ((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))\nLEFT JOIN heart360_patients_registered\n    ON cat.ref_month = heart360_patients_registered.ref_month\n    AND cat.org_unit_id = heart360_patients_registered.org_unit_id\nLEFT JOIN HEART360_PATIENTS_UNDER_CARE uc\n    ON cat.ref_month = uc.ref_month\n    AND cat.org_unit_id = uc.org_unit_id\nWHERE cat.ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_PATIENTS_CATEGORY\n    WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n    AND $__timeFilter(ref_month)\n)\nGROUP BY child_ou.id, child_ou.name, child_ou.level\nORDER BY child_ou.name\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+                        "rawSql": "SELECT * FROM (\nSELECT\n    child_ou.id as child_id,\n    child_ou.name as child_name,\n    build_drill_url(child_ou.id) as drill_url,\n    CASE WHEN child_ou.level >= 5 THEN\n      '/d/heart360_facility?var-Region=' || COALESCE((SELECT lin2.ancestor_id::text FROM org_unit_lineage lin2 WHERE lin2.org_unit_id = child_ou.id AND lin2.ancestor_level = 1), '') ||\n      '&var-District=' || COALESCE((SELECT lin2.ancestor_id::text FROM org_unit_lineage lin2 WHERE lin2.org_unit_id = child_ou.id AND lin2.ancestor_level = 2), '') ||\n      '&var-Facility=' || COALESCE((SELECT lin2.ancestor_id::text FROM org_unit_lineage lin2 WHERE lin2.org_unit_id = child_ou.id AND lin2.ancestor_level = 3), '') ||\n      '&var-Sub_Facility=' || COALESCE((SELECT lin2.ancestor_id::text FROM org_unit_lineage lin2 WHERE lin2.org_unit_id = child_ou.id AND lin2.ancestor_level = 4), '')\n    ELSE NULL END as facility_url,\n    SUM(COALESCE(uc.nb_patients_under_care, 0)) AS nb_patients_under_care,\n    SUM(COALESCE(nb_new_patients, 0)) AS nb_patients_newly_registered,\n    SUM(cat.nb_patients_controlled) AS nb_patients_controlled,\n    ROUND(100.0 * SUM(cat.nb_patients_controlled) / NULLIF(GREATEST(0, SUM(cat.TOTAL_NUMBER_OF_PATIENTS) - SUM(cat.NB_PATIENTS_NEWLY_REGISTERED) - SUM(cat.NB_PATIENTS_LOST_TO_FOLLOW_UP)), 0)) AS per_patients_controlled,\n    SUM(cat.nb_patients_uncontrolled) AS nb_patients_uncontrolled,\n    ROUND(100.0 * SUM(cat.nb_patients_uncontrolled) / NULLIF(GREATEST(0, SUM(cat.TOTAL_NUMBER_OF_PATIENTS) - SUM(cat.NB_PATIENTS_NEWLY_REGISTERED) - SUM(cat.NB_PATIENTS_LOST_TO_FOLLOW_UP)), 0)) AS per_patients_uncontrolled,\n    SUM(cat.nb_patients_no_visit) AS nb_patients_no_visit,\n    ROUND(100.0 * SUM(cat.nb_patients_no_visit) / NULLIF(GREATEST(0, SUM(cat.TOTAL_NUMBER_OF_PATIENTS) - SUM(cat.NB_PATIENTS_NEWLY_REGISTERED) - SUM(cat.NB_PATIENTS_LOST_TO_FOLLOW_UP)), 0)) AS per_patients_no_visit\nFROM HEART360_PATIENTS_CATEGORY cat\nJOIN org_unit_lineage lin ON cat.org_unit_id = lin.org_unit_id\nJOIN org_units child_ou ON lin.ancestor_id = child_ou.id AND child_ou.parent_id IS NOT DISTINCT FROM ((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))\nLEFT JOIN heart360_patients_registered\n    ON cat.ref_month = heart360_patients_registered.ref_month\n    AND cat.org_unit_id = heart360_patients_registered.org_unit_id\nLEFT JOIN HEART360_PATIENTS_UNDER_CARE uc\n    ON cat.ref_month = uc.ref_month\n    AND cat.org_unit_id = uc.org_unit_id\nWHERE cat.ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_PATIENTS_CATEGORY\n    WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n    AND $__timeFilter(ref_month)\n)\nGROUP BY child_ou.id, child_ou.name, child_ou.level\nORDER BY child_ou.name\n) AS master_access_control WHERE '${isAllowed}' = '1'",
                         "sql": {
                           "columns": [
                             {
@@ -5107,7 +5107,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\nWITH latest_month AS (\n    SELECT MAX(ref_month) AS ref_month FROM HEART360_BLOOD_SUGAR_CONTROLLED\n    WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n    AND $__timeFilter(ref_month)\n)\nSELECT\n    child_ou.id AS child_id,\n    child_ou.name AS child_name,\n    build_drill_url(child_ou.id) AS drill_url,\n    SUM(COALESCE(uc.nb_dm_patients_under_care, 0)) AS nb_patients_under_care,\n    SUM(COALESCE(uc.nb_new_dm_patients, 0)) AS nb_patients_newly_registered,\n    SUM(COALESCE(bsc.diabetes_controlled, 0)) AS nb_patients_controlled,\n    ROUND(100.0 * SUM(COALESCE(bsc.diabetes_controlled, 0)) / NULLIF(SUM(COALESCE(bsc.diabetes_patients_under_care, 0)), 0)) AS per_patients_controlled,\n    SUM(COALESCE(bss.uncontrolled_moderate, 0) + COALESCE(bss.uncontrolled_high, 0)) AS nb_patients_uncontrolled,\n    ROUND(100.0 * SUM(COALESCE(bss.uncontrolled_moderate, 0) + COALESCE(bss.uncontrolled_high, 0)) / NULLIF(SUM(COALESCE(bss.diabetes_patients_under_care, 0)), 0)) AS per_patients_uncontrolled,\n    SUM(COALESCE(bsm.missed_visit, 0)) AS nb_patients_no_visit,\n    ROUND(100.0 * SUM(COALESCE(bsm.missed_visit, 0)) / NULLIF(SUM(COALESCE(bsm.diabetes_patients_under_care, 0)), 0)) AS per_patients_no_visit\nFROM org_unit_lineage lin\nJOIN org_units child_ou ON lin.ancestor_id = child_ou.id AND child_ou.parent_id = ((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))\nLEFT JOIN HEART360_DM_PATIENTS_UNDER_CARE uc ON uc.org_unit_id = lin.org_unit_id AND uc.ref_month = (SELECT ref_month FROM latest_month)\nLEFT JOIN HEART360_BLOOD_SUGAR_CONTROLLED bsc ON bsc.org_unit_id = lin.org_unit_id AND bsc.ref_month = (SELECT ref_month FROM latest_month)\nLEFT JOIN HEART360_BLOOD_SUGAR_SEVERITY bss ON bss.org_unit_id = lin.org_unit_id AND bss.ref_month = (SELECT ref_month FROM latest_month)\nLEFT JOIN HEART360_BLOOD_SUGAR_MISSED_VISITS bsm ON bsm.org_unit_id = lin.org_unit_id AND bsm.ref_month = (SELECT ref_month FROM latest_month)\nGROUP BY child_ou.id, child_ou.name\nORDER BY child_ou.name\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+                        "rawSql": "SELECT * FROM (\nWITH latest_month AS (\n    SELECT MAX(ref_month) AS ref_month FROM HEART360_BLOOD_SUGAR_CONTROLLED\n    WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n    AND $__timeFilter(ref_month)\n)\nSELECT\n    child_ou.id AS child_id,\n    child_ou.name AS child_name,\n    build_drill_url(child_ou.id) AS drill_url,\n    SUM(COALESCE(uc.nb_dm_patients_under_care, 0)) AS nb_patients_under_care,\n    SUM(COALESCE(uc.nb_new_dm_patients, 0)) AS nb_patients_newly_registered,\n    SUM(COALESCE(bsc.diabetes_controlled, 0)) AS nb_patients_controlled,\n    ROUND(100.0 * SUM(COALESCE(bsc.diabetes_controlled, 0)) / NULLIF(SUM(COALESCE(bsc.diabetes_patients_under_care, 0)), 0)) AS per_patients_controlled,\n    SUM(COALESCE(bss.uncontrolled_moderate, 0) + COALESCE(bss.uncontrolled_high, 0)) AS nb_patients_uncontrolled,\n    ROUND(100.0 * SUM(COALESCE(bss.uncontrolled_moderate, 0) + COALESCE(bss.uncontrolled_high, 0)) / NULLIF(SUM(COALESCE(bss.diabetes_patients_under_care, 0)), 0)) AS per_patients_uncontrolled,\n    SUM(COALESCE(bsm.missed_visit, 0)) AS nb_patients_no_visit,\n    ROUND(100.0 * SUM(COALESCE(bsm.missed_visit, 0)) / NULLIF(SUM(COALESCE(bsm.diabetes_patients_under_care, 0)), 0)) AS per_patients_no_visit\nFROM org_unit_lineage lin\nJOIN org_units child_ou ON lin.ancestor_id = child_ou.id AND child_ou.parent_id IS NOT DISTINCT FROM ((SELECT ou.id FROM org_units ou WHERE ou.id::text = NULLIF(TRIM(BOTH FROM '${org_unit}'), '') LIMIT 1))\nLEFT JOIN HEART360_DM_PATIENTS_UNDER_CARE uc ON uc.org_unit_id = lin.org_unit_id AND uc.ref_month = (SELECT ref_month FROM latest_month)\nLEFT JOIN HEART360_BLOOD_SUGAR_CONTROLLED bsc ON bsc.org_unit_id = lin.org_unit_id AND bsc.ref_month = (SELECT ref_month FROM latest_month)\nLEFT JOIN HEART360_BLOOD_SUGAR_SEVERITY bss ON bss.org_unit_id = lin.org_unit_id AND bss.ref_month = (SELECT ref_month FROM latest_month)\nLEFT JOIN HEART360_BLOOD_SUGAR_MISSED_VISITS bsm ON bsm.org_unit_id = lin.org_unit_id AND bsm.ref_month = (SELECT ref_month FROM latest_month)\nGROUP BY child_ou.id, child_ou.name\nORDER BY child_ou.name\n) AS master_access_control WHERE '${isAllowed}' = '1'",
                         "refId": "A",
                         "dataset": "metrics_db",
                         "sql": {
@@ -7452,6 +7452,90 @@
             "version": "6.2.0"
           }
         }
+      },
+      "panel-screening": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "postgres-hypertension-cached"
+                      },
+                      "group": "grafana-postgresql-datasource",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "dataset": "metrics_db",
+                        "editorMode": "code",
+                        "format": "table",
+                        "rawQuery": true,
+                        "rawSql": "SELECT * FROM (\n  SELECT\n    (SELECT eligible_adults FROM demo_screening_cascade WHERE id = 1) AS eligible_adults,\n    COALESCE(SUM(reg.cumulative_number_of_patients), 0)::numeric AS screened_adults,\n    'Jan\u2013Dec ' || to_char(to_timestamp(${reference_month}/1000.0), 'YYYY') AS period_label\n  FROM heart360_patients_registered reg\n  WHERE reg.ref_month = to_timestamp(${reference_month}/1000.0)\n    AND reg.org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n) AS master_access_control WHERE '${isAllowed}' = '1'\n",
+                        "refId": "A"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {
+                "percentile": 75
+              },
+              "transformations": []
+            }
+          },
+          "description": "Eligible adults is the demo catchment (100%). Screened adults is registered patients as a percent of that catchment. The gold line is the 45% target. The large number is people screened in Jan\u2013Dec of the reference year.",
+          "id": 90,
+          "links": [],
+          "title": "Screened adults",
+          "vizConfig": {
+            "group": "volkovlabs-echarts-panel",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              },
+              "options": {
+                "baidu": {
+                  "callback": "bmapReady",
+                  "key": ""
+                },
+                "editor": {
+                  "format": "auto"
+                },
+                "editorMode": "code",
+                "gaode": {
+                  "key": "",
+                  "plugin": "AMap.Scale,AMap.ToolBar"
+                },
+                "getOption": "const frame = (context.panel.data.series || [])[0];\nfunction field(name) {\n  if (!frame) { return 0; }\n  const f = frame.fields.find((x) => x.name === name);\n  if (!f) { return 0; }\n  const raw = (f.values && f.values.buffer) ? f.values.buffer : f.values;\n  return raw && raw.length ? raw[0] : 0;\n}\nconst eligible = Number(field('eligible_adults')) || 0;\nconst screened = Number(field('screened_adults')) || 0;\nconst period = field('period_label') || 'Jan\u2013Dec 2026';\nconst pct = eligible > 0 ? Math.round((screened / eligible) * 100) : 0;\nfunction fmt(n) {\n  return Math.round(Number(n)).toLocaleString('en-US');\n}\nreturn {\n  backgroundColor: 'transparent',\n  title: {\n    text: fmt(screened),\n    subtext: 'screened ' + period + ' \u00b7 of ' + fmt(eligible) + ' eligible',\n    left: 'center',\n    top: 0,\n    textStyle: { fontSize: 30, fontWeight: 600, color: '#e65100', lineHeight: 34 },\n    subtextStyle: { fontSize: 11, color: '#5f6b70', lineHeight: 15 }\n  },\n  grid: { left: 6, right: 32, top: 86, bottom: 26, containLabel: true },\n  tooltip: {\n    trigger: 'axis',\n    formatter: function (items) {\n      const it = items && items[0];\n      if (!it) { return ''; }\n      if (it.dataIndex === 0) { return 'Eligible adults: 100% (' + fmt(eligible) + ')'; }\n      return 'Screened adults: ' + pct + '% (' + fmt(screened) + ')';\n    }\n  },\n  xAxis: {\n    type: 'category',\n    data: ['Eligible adults', 'Screened adults'],\n    axisTick: { show: false },\n    axisLine: { lineStyle: { color: '#c5cdd0' } },\n    axisLabel: { color: '#5f6b70', fontSize: 11, interval: 0 }\n  },\n  yAxis: {\n    type: 'value',\n    min: 0,\n    max: 100,\n    interval: 20,\n    axisLabel: { color: '#5f6b70', fontSize: 10, formatter: '{value}%' },\n    splitLine: { lineStyle: { color: '#eef1f2' } }\n  },\n  series: [{\n    type: 'bar',\n    barWidth: '48%',\n    data: [\n      {\n        value: 100,\n        itemStyle: { color: '#c5cdd0' },\n        label: { show: true, position: 'insideTop', color: '#1b2429', fontSize: 12, fontWeight: 600, formatter: '100%' }\n      },\n      {\n        value: pct,\n        itemStyle: { color: '#e65100' },\n        label: { show: true, position: 'top', distance: 4, color: '#1b2429', fontSize: 12, fontWeight: 600, formatter: pct + '%' }\n      }\n    ],\n    markLine: {\n      silent: true,\n      symbol: 'none',\n      precision: 0,\n      lineStyle: { type: 'dashed', color: '#c9a227', width: 2 },\n      label: {\n        formatter: '45%',\n        color: '#c9a227',\n        fontSize: 11,\n        fontWeight: 600,\n        position: 'end'\n      },\n      data: [{ yAxis: 45 }]\n    }\n  }]\n};\n",
+                "google": {
+                  "callback": "gmapReady",
+                  "key": ""
+                },
+                "map": "none",
+                "renderer": "canvas",
+                "themeEditor": {
+                  "config": "{}",
+                  "name": "default"
+                },
+                "visualEditor": {
+                  "code": "return {\n  dataset: context.editor.dataset,\n  series: context.editor.series\n}\n",
+                  "dataset": [],
+                  "series": []
+                }
+              }
+            },
+            "version": "7.2.5"
+          }
+        }
       }
     },
     "layout": {
@@ -7516,8 +7600,21 @@
                                               "name": "panel-1"
                                             },
                                             "height": 10,
-                                            "width": 16,
+                                            "width": 10,
                                             "x": 0,
+                                            "y": 0
+                                          }
+                                        },
+                                        {
+                                          "kind": "GridLayoutItem",
+                                          "spec": {
+                                            "element": {
+                                              "kind": "ElementReference",
+                                              "name": "panel-screening"
+                                            },
+                                            "height": 10,
+                                            "width": 6,
+                                            "x": 10,
                                             "y": 0
                                           }
                                         },
