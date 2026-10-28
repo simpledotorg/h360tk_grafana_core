@@ -81,85 +81,50 @@
               "transformations": []
             }
           },
-          "description": "",
+          "description": "Patients protected from heart attacks and strokes with world-class treatment. Patients with BP <140/90 at their latest visit, by month. The headline is the latest month in the line.",
           "id": 1,
           "links": [],
-          "title": "Patients protected from heart attacks and strokes with world-class treatment",
+          "title": "Patients protected from heart attacks and strokes",
           "vizConfig": {
-            "group": "timeseries",
+            "group": "volkovlabs-echarts-panel",
             "kind": "VizConfig",
+            "version": "7.2.5",
             "spec": {
               "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "mode": "palette-classic"
-                  },
-                  "custom": {
-                    "axisBorderShow": false,
-                    "axisCenteredZero": false,
-                    "axisColorMode": "text",
-                    "axisLabel": "",
-                    "axisPlacement": "auto",
-                    "barAlignment": 0,
-                    "barWidthFactor": 0.6,
-                    "drawStyle": "line",
-                    "fillOpacity": 25,
-                    "gradientMode": "opacity",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "insertNulls": false,
-                    "lineInterpolation": "linear",
-                    "lineWidth": 2,
-                    "pointSize": 6,
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "showPoints": "auto",
-                    "showValues": true,
-                    "spanNulls": false,
-                    "stacking": {
-                      "group": "A",
-                      "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  },
-                  "displayName": "Patients with BP <140/90:",
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      },
-                      {
-                        "color": "red",
-                        "value": 80
-                      }
-                    ]
-                  }
-                },
+                "defaults": {},
                 "overrides": []
               },
               "options": {
-                "legend": {
-                  "calcs": [],
-                  "displayMode": "list",
-                  "placement": "bottom",
-                  "showLegend": false
+                "baidu": {
+                  "callback": "bmapReady",
+                  "key": ""
                 },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "single",
-                  "sort": "none"
-                }
+                "editor": {
+                  "format": "auto"
+                },
+                "editorMode": "code",
+                "gaode": {
+                  "key": "",
+                  "plugin": "AMap.Scale,AMap.ToolBar"
+                },
+                "google": {
+                  "callback": "gmapReady",
+                  "key": ""
+                },
+                "map": "none",
+                "renderer": "canvas",
+                "themeEditor": {
+                  "config": "{}",
+                  "name": "default"
+                },
+                "visualEditor": {
+                  "code": "return {}",
+                  "dataset": [],
+                  "series": []
+                },
+                "getOption": "const frame = (context.panel.data.series || [])[0];\nfunction vals(f) { if (!f) { return []; } return Array.from(f.values && f.values.buffer ? f.values.buffer : f.values); }\nconst tField = frame && frame.fields.find((f) => f.type === 'time' || f.name === 'ref_month');\nconst vField = frame && frame.fields.find((f) => f.name === 'nb_patients_controlled');\nconst tr = context.panel.data.timeRange;\nconst from = tr ? tr.from.valueOf() : -Infinity;\nconst to = tr ? tr.to.valueOf() : Infinity;\nconst pts = vals(tField).map((t, i) => [Number(t), Number(vals(vField)[i]) || 0])\n  .filter((p) => p[0] >= from && p[0] <= to)\n  .sort((a, b) => a[0] - b[0]);\nconst last = pts.length ? pts[pts.length - 1] : null;\nconst months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];\nconst mLabel = (ms) => { const d = new Date(ms); return months[d.getUTCMonth()] + ' ' + d.getUTCFullYear(); };\nconst muted = '#6e7f8d';\nconst green = '#73BF69';\nreturn {\n  animation: false,\n  graphic: [\n    { type: 'text', left: 4, top: 0, style: { text: last ? last[1].toLocaleString('en-US') + ' patients' : 'No data', fontSize: 30, fontWeight: 700, fill: green } },\n    { type: 'text', left: 4, top: 40, style: { text: 'Patients with BP <140/90' + (last ? ' \u00b7 ' + mLabel(last[0]) : ''), fontSize: 13, fill: muted } }\n  ],\n  grid: { left: 44, right: 16, top: 72, bottom: 26 },\n  tooltip: { trigger: 'axis', valueFormatter: (v) => Number(v).toLocaleString('en-US') + ' patients' },\n  xAxis: { type: 'time', axisLabel: { color: muted, fontSize: 11, hideOverlap: true, formatter: (v) => mLabel(v) }, axisLine: { lineStyle: { color: 'rgba(128,128,128,0.4)' } }, splitLine: { show: false } },\n  yAxis: { type: 'value', min: 0, splitNumber: 3, axisLabel: { color: muted, fontSize: 11, formatter: (v) => v >= 1000 ? (v / 1000) + 'k' : v }, splitLine: { lineStyle: { color: 'rgba(128,128,128,0.15)' } } },\n  series: [{\n    type: 'line', name: 'Patients with BP <140/90', data: pts, showSymbol: true, symbolSize: 5,\n    lineStyle: { color: green, width: 2 }, itemStyle: { color: green },\n    areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(115,191,105,0.35)' }, { offset: 1, color: 'rgba(115,191,105,0.02)' }] } },\n    markPoint: last ? { symbol: 'circle', symbolSize: 9, itemStyle: { color: green }, label: { show: false }, data: [{ coord: last }] } : undefined\n  }]\n};"
               }
-            },
-            "version": "13.2.1"
+            }
           }
         }
       },
@@ -7453,7 +7418,7 @@
           }
         }
       },
-      "panel-screening": {
+      "panel-stc": {
         "kind": "Panel",
         "spec": {
           "data": {
@@ -7475,7 +7440,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\n  SELECT\n    (SELECT eligible_adults FROM demo_screening_cascade WHERE id = 1) AS eligible_adults,\n    COALESCE(SUM(reg.cumulative_number_of_patients), 0)::numeric AS screened_adults,\n    'Jan\u2013Dec ' || to_char(to_timestamp(${reference_month}/1000.0), 'YYYY') AS period_label\n  FROM heart360_patients_registered reg\n  WHERE reg.ref_month = to_timestamp(${reference_month}/1000.0)\n    AND reg.org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n) AS master_access_control WHERE '${isAllowed}' = '1'\n",
+                        "rawSql": "SELECT * FROM (\n  SELECT\n    to_char(s.eligible_adults, 'FM999,999,999') AS eligible_n,\n    to_char(s.screened_adults, 'FM999,999,999') AS screened_n,\n    to_char(s.suspected_htn, 'FM999,999,999') AS suspected_n,\n    ROUND(100.0 * s.screened_adults / NULLIF(s.eligible_adults, 0))::int AS screened_pct,\n    ROUND(100.0 * s.suspected_htn / NULLIF(s.eligible_adults, 0))::int AS suspected_pct,\n    s.screening_target_pct AS target_pct,\n    to_char(${estimated_htn_population}::numeric, 'FM999,999,999') AS estimated_n,\n    to_char(COALESCE(t.registered, 0), 'FM999,999,999') AS registered_n,\n    to_char(COALESCE(t.under_care, 0), 'FM999,999,999') AS under_care_n,\n    to_char(COALESCE(t.controlled, 0), 'FM999,999,999') AS controlled_n,\n    ROUND(100.0 * COALESCE(t.registered, 0) / NULLIF(${estimated_htn_population}::numeric, 0))::int AS registered_pct,\n    ROUND(100.0 * COALESCE(t.under_care, 0) / NULLIF(${estimated_htn_population}::numeric, 0))::int AS under_care_pct,\n    ROUND(100.0 * COALESCE(t.controlled, 0) / NULLIF(${estimated_htn_population}::numeric, 0))::int AS controlled_pct,\n    to_char(to_timestamp(${reference_month}/1000.0), 'Mon YYYY') AS month_label\n  FROM demo_screening_cascade s\n  LEFT JOIN (\n    SELECT\n      SUM(reg.cumulative_number_of_patients)::numeric AS registered,\n      SUM(cat.nb_patients_under_care_registered_before_the_past_3_months)::numeric AS under_care,\n      SUM(cat.nb_patients_controlled)::numeric AS controlled\n    FROM heart360_patients_category cat\n    JOIN heart360_patients_registered reg\n      ON reg.ref_month = cat.ref_month AND reg.org_unit_id = cat.org_unit_id\n    WHERE cat.ref_month = to_timestamp(${reference_month}/1000.0)\n      AND cat.org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  ) t ON TRUE\n  WHERE s.id = 1\n) AS master_access_control WHERE '${isAllowed}' = '1'",
                         "refId": "A"
                       },
                       "version": "v0"
@@ -7490,50 +7455,38 @@
               "transformations": []
             }
           },
-          "description": "Eligible adults is the demo catchment (100%). Screened adults is registered patients as a percent of that catchment. The gold line is the 45% target. The large number is people screened in Jan\u2013Dec of the reference year.",
-          "id": 90,
+          "description": "Screening cascade: demo seed (demo_screening_cascade), nationwide, over eligible adults aged 15+. Treatment cascade: live registered, under care, and BP controlled for the selected place and month, over estimated adults with hypertension (${estimated_htn_population}).",
+          "id": 91,
           "links": [],
-          "title": "Screened adults",
+          "title": "Screening-to-treatment cascade",
           "vizConfig": {
-            "group": "volkovlabs-echarts-panel",
+            "group": "marcusolsson-dynamictext-panel",
             "kind": "VizConfig",
+            "version": "6.3.0",
             "spec": {
               "fieldConfig": {
                 "defaults": {},
                 "overrides": []
               },
               "options": {
-                "baidu": {
-                  "callback": "bmapReady",
-                  "key": ""
-                },
+                "afterRender": "",
+                "content": "<div class=\"stc\">\n  <section class=\"stc-col\">\n    <div class=\"stc-head\">\n      <h3>Screening cascade</h3>\n      <div class=\"stc-den\">Denominator: eligible adults aged 15+</div>\n      <div class=\"stc-tagline\"><span class=\"stc-tag\">Demo data &middot; nationwide</span><span class=\"stc-ref\"><b>100%</b> = <b>{{eligible_n}}</b></span></div>\n    </div>\n    <div class=\"stc-rows\">\n    <div class=\"stc-row\">\n      <div class=\"stc-label\">Eligible for screening (aged 15+)</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-eligible\" style=\"width: min(100%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">100%</div><div class=\"stc-cnt\">{{eligible_n}}</div></div>\n    </div>\n    <div class=\"stc-row stc-row-target\">\n      <div class=\"stc-label\">Actually screened</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-screened\" style=\"width: min({{screened_pct}}%, 100%);\"></div><div class=\"stc-target\" style=\"left: {{target_pct}}%;\"></div><div class=\"stc-target-label\" style=\"left: {{target_pct}}%;\">&#9660; Target: {{target_pct}}%</div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{screened_pct}}%</div><div class=\"stc-cnt\">{{screened_n}}</div></div>\n    </div>\n    <div class=\"stc-row\">\n      <div class=\"stc-label\">Suspected hypertension</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-suspected\" style=\"width: min({{suspected_pct}}%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{suspected_pct}}%</div><div class=\"stc-cnt\">{{suspected_n}}</div></div><div class=\"stc-caption\">Screened, not diagnosed, BP &gt; 140/90 mmHg</div>\n    </div>\n    </div>\n  </section>\n  <div class=\"stc-divider\"></div>\n  <section class=\"stc-col stc-treatment\">\n    <div class=\"stc-head\">\n      <h3>Treatment cascade</h3>\n      <div class=\"stc-den\">Denominator: estimated adults with hypertension</div>\n      <div class=\"stc-tagline\"><span class=\"stc-tag\">Live data &middot; {{month_label}}</span><span class=\"stc-ref\"><b>100%</b> = <b>{{estimated_n}}</b></span></div>\n    </div>\n    <div class=\"stc-rows\">\n    <div class=\"stc-row\">\n      <div class=\"stc-label\">Registered patients</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-registered\" style=\"width: min({{registered_pct}}%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{registered_pct}}%</div><div class=\"stc-cnt\">{{registered_n}}</div></div>\n    </div>\n    <div class=\"stc-row\">\n      <div class=\"stc-label\">Patients under care</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-undercare\" style=\"width: min({{under_care_pct}}%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{under_care_pct}}%</div><div class=\"stc-cnt\">{{under_care_n}}</div></div>\n    </div>\n    <div class=\"stc-row\">\n      <div class=\"stc-label\">Patients with BP controlled</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-controlled\" style=\"width: min({{controlled_pct}}%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{controlled_pct}}%</div><div class=\"stc-cnt\">{{controlled_n}}</div></div>\n    </div>\n    </div>\n  </section>\n</div>",
+                "contentPartials": [],
+                "defaultContent": "No data for this place and month.",
                 "editor": {
-                  "format": "auto"
+                  "format": "auto",
+                  "language": "html"
                 },
-                "editorMode": "code",
-                "gaode": {
-                  "key": "",
-                  "plugin": "AMap.Scale,AMap.ToolBar"
-                },
-                "getOption": "const frame = (context.panel.data.series || [])[0];\nfunction field(name) {\n  if (!frame) { return 0; }\n  const f = frame.fields.find((x) => x.name === name);\n  if (!f) { return 0; }\n  const raw = (f.values && f.values.buffer) ? f.values.buffer : f.values;\n  return raw && raw.length ? raw[0] : 0;\n}\nconst eligible = Number(field('eligible_adults')) || 0;\nconst screened = Number(field('screened_adults')) || 0;\nconst period = field('period_label') || 'Jan\u2013Dec 2026';\nconst pct = eligible > 0 ? Math.round((screened / eligible) * 100) : 0;\nfunction fmt(n) {\n  return Math.round(Number(n)).toLocaleString('en-US');\n}\nreturn {\n  backgroundColor: 'transparent',\n  title: {\n    text: fmt(screened),\n    subtext: 'screened ' + period + ' \u00b7 of ' + fmt(eligible) + ' eligible',\n    left: 'center',\n    top: 0,\n    textStyle: { fontSize: 30, fontWeight: 600, color: '#e65100', lineHeight: 34 },\n    subtextStyle: { fontSize: 11, color: '#5f6b70', lineHeight: 15 }\n  },\n  grid: { left: 6, right: 32, top: 86, bottom: 26, containLabel: true },\n  tooltip: {\n    trigger: 'axis',\n    formatter: function (items) {\n      const it = items && items[0];\n      if (!it) { return ''; }\n      if (it.dataIndex === 0) { return 'Eligible adults: 100% (' + fmt(eligible) + ')'; }\n      return 'Screened adults: ' + pct + '% (' + fmt(screened) + ')';\n    }\n  },\n  xAxis: {\n    type: 'category',\n    data: ['Eligible adults', 'Screened adults'],\n    axisTick: { show: false },\n    axisLine: { lineStyle: { color: '#c5cdd0' } },\n    axisLabel: { color: '#5f6b70', fontSize: 11, interval: 0 }\n  },\n  yAxis: {\n    type: 'value',\n    min: 0,\n    max: 100,\n    interval: 20,\n    axisLabel: { color: '#5f6b70', fontSize: 10, formatter: '{value}%' },\n    splitLine: { lineStyle: { color: '#eef1f2' } }\n  },\n  series: [{\n    type: 'bar',\n    barWidth: '48%',\n    data: [\n      {\n        value: 100,\n        itemStyle: { color: '#c5cdd0' },\n        label: { show: true, position: 'insideTop', color: '#1b2429', fontSize: 12, fontWeight: 600, formatter: '100%' }\n      },\n      {\n        value: pct,\n        itemStyle: { color: '#e65100' },\n        label: { show: true, position: 'top', distance: 4, color: '#1b2429', fontSize: 12, fontWeight: 600, formatter: pct + '%' }\n      }\n    ],\n    markLine: {\n      silent: true,\n      symbol: 'none',\n      precision: 0,\n      lineStyle: { type: 'dashed', color: '#c9a227', width: 2 },\n      label: {\n        formatter: '45%',\n        color: '#c9a227',\n        fontSize: 11,\n        fontWeight: 600,\n        position: 'end'\n      },\n      data: [{ yAxis: 45 }]\n    }\n  }]\n};\n",
-                "google": {
-                  "callback": "gmapReady",
-                  "key": ""
-                },
-                "map": "none",
-                "renderer": "canvas",
-                "themeEditor": {
-                  "config": "{}",
-                  "name": "default"
-                },
-                "visualEditor": {
-                  "code": "return {\n  dataset: context.editor.dataset,\n  series: context.editor.series\n}\n",
-                  "dataset": [],
-                  "series": []
-                }
+                "editors": [
+                  "styles"
+                ],
+                "externalStyles": [],
+                "helpers": "",
+                "renderMode": "everyRow",
+                "styles": "\n.stc { display: flex; gap: 0; height: 100%; font-size: 13px; line-height: 1.3; padding: 2px 4px; }\n.stc-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }\n.stc-divider { width: 1px; background: rgba(128,128,128,0.25); margin: 4px 22px; }\n.stc-head h3 { font-size: 17px; font-weight: 700; margin: 0 0 2px 0; }\n.stc-den { color: #6e7f8d; font-size: 13px; }\n.stc-tag { display: inline-block; margin-top: 4px; font-size: 11px; color: #6e7f8d; border: 1px solid rgba(128,128,128,0.3); border-radius: 10px; padding: 0 8px; }\n.stc-tagline { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; margin-top: 4px; }\n.stc-tagline .stc-tag { margin-top: 0; white-space: nowrap; }\n.stc-ref { font-size: 11px; color: #6e7f8d; text-align: right; margin-right: 82px; white-space: nowrap; }\n.stc-ref b { color: inherit; font-weight: 700; }\n.stc-rows { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }\n.stc-row { display: grid; grid-template-columns: 112px 1fr 70px; align-items: center; column-gap: 12px; }\n.stc-row-target { padding-bottom: 18px; }\n.stc-label { font-size: 13px; }\n.stc-caption { grid-column: 1 / -1; font-size: 11px; color: #6e7f8d; margin-top: 3px; }\n.stc-track { position: relative; height: 22px; background: rgba(128,128,128,0.14); border-radius: 2px; }\n.stc-treatment .stc-track { border-right: 2px dashed #8a9599; }\n.stc-bar { height: 100%; border-radius: 2px; }\n.stc-eligible { background: #c3ccd2; }\n.stc-screened { background: #FF9830; }\n.stc-suspected { background: #F2495C; }\n.stc-registered { background: #5794F2; }\n.stc-undercare { background: #B877D9; }\n.stc-controlled { background: #73BF69; }\n.stc-target { position: absolute; top: -6px; bottom: -6px; border-left: 2px dashed #FA6400; transform: translateX(-1px); }\n.stc-target-label { position: absolute; top: 28px; transform: translateX(-50%); white-space: nowrap; color: #FA6400; font-size: 12px; font-weight: 600; }\n.stc-pct { font-size: 17px; font-weight: 700; }\n.stc-cnt { font-size: 13px; color: #6e7f8d; }\n",
+                "wrap": false
               }
-            },
-            "version": "7.2.5"
+            }
           }
         }
       }
@@ -7597,10 +7550,10 @@
                                           "spec": {
                                             "element": {
                                               "kind": "ElementReference",
-                                              "name": "panel-1"
+                                              "name": "panel-stc"
                                             },
-                                            "height": 10,
-                                            "width": 10,
+                                            "height": 9,
+                                            "width": 16,
                                             "x": 0,
                                             "y": 0
                                           }
@@ -7610,22 +7563,9 @@
                                           "spec": {
                                             "element": {
                                               "kind": "ElementReference",
-                                              "name": "panel-screening"
+                                              "name": "panel-1"
                                             },
-                                            "height": 10,
-                                            "width": 6,
-                                            "x": 10,
-                                            "y": 0
-                                          }
-                                        },
-                                        {
-                                          "kind": "GridLayoutItem",
-                                          "spec": {
-                                            "element": {
-                                              "kind": "ElementReference",
-                                              "name": "panel-cascade"
-                                            },
-                                            "height": 10,
+                                            "height": 9,
                                             "width": 8,
                                             "x": 16,
                                             "y": 0
