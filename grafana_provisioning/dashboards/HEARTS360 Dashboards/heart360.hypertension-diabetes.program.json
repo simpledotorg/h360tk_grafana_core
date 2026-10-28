@@ -122,7 +122,7 @@
                   "dataset": [],
                   "series": []
                 },
-                "getOption": "const frame = (context.panel.data.series || [])[0];\nfunction vals(f) { if (!f) { return []; } return Array.from(f.values && f.values.buffer ? f.values.buffer : f.values); }\nconst tField = frame && frame.fields.find((f) => f.type === 'time' || f.name === 'ref_month');\nconst vField = frame && frame.fields.find((f) => f.name === 'nb_patients_controlled');\nconst tr = context.panel.data.timeRange;\nconst from = tr ? tr.from.valueOf() : -Infinity;\nconst to = tr ? tr.to.valueOf() : Infinity;\nconst pts = vals(tField).map((t, i) => [Number(t), Number(vals(vField)[i]) || 0])\n  .filter((p) => p[0] >= from && p[0] <= to)\n  .sort((a, b) => a[0] - b[0]);\nconst last = pts.length ? pts[pts.length - 1] : null;\nconst months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];\nconst mLabel = (ms) => { const d = new Date(ms); return months[d.getUTCMonth()] + ' ' + d.getUTCFullYear(); };\nconst muted = '#6e7f8d';\nconst green = '#73BF69';\nreturn {\n  animation: false,\n  graphic: [\n    { type: 'text', left: 4, top: 0, style: { text: last ? last[1].toLocaleString('en-US') + ' patients' : 'No data', fontSize: 30, fontWeight: 700, fill: green } },\n    { type: 'text', left: 4, top: 40, style: { text: 'Patients with BP <140/90' + (last ? ' \u00b7 ' + mLabel(last[0]) : ''), fontSize: 13, fill: muted } }\n  ],\n  grid: { left: 44, right: 16, top: 72, bottom: 26 },\n  tooltip: { trigger: 'axis', valueFormatter: (v) => Number(v).toLocaleString('en-US') + ' patients' },\n  xAxis: { type: 'time', axisLabel: { color: muted, fontSize: 11, hideOverlap: true, formatter: (v) => mLabel(v) }, axisLine: { lineStyle: { color: 'rgba(128,128,128,0.4)' } }, splitLine: { show: false } },\n  yAxis: { type: 'value', min: 0, splitNumber: 3, axisLabel: { color: muted, fontSize: 11, formatter: (v) => v >= 1000 ? (v / 1000) + 'k' : v }, splitLine: { lineStyle: { color: 'rgba(128,128,128,0.15)' } } },\n  series: [{\n    type: 'line', name: 'Patients with BP <140/90', data: pts, showSymbol: true, symbolSize: 5,\n    lineStyle: { color: green, width: 2 }, itemStyle: { color: green },\n    areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(115,191,105,0.35)' }, { offset: 1, color: 'rgba(115,191,105,0.02)' }] } },\n    markPoint: last ? { symbol: 'circle', symbolSize: 9, itemStyle: { color: green }, label: { show: false }, data: [{ coord: last }] } : undefined\n  }]\n};"
+                "getOption": "const frame = (context.panel.data.series || [])[0];\nfunction vals(f) { if (!f) { return []; } return Array.from(f.values && f.values.buffer ? f.values.buffer : f.values); }\nconst tField = frame && frame.fields.find((f) => f.type === 'time' || f.name === 'ref_month');\nconst vField = frame && frame.fields.find((f) => f.name === 'nb_patients_controlled');\nconst tr = context.panel.data.timeRange;\nconst from = tr ? tr.from.valueOf() : -Infinity;\nconst to = tr ? tr.to.valueOf() : Infinity;\nconst pts = vals(tField).map((t, i) => [Number(t), Number(vals(vField)[i]) || 0])\n  .filter((p) => p[0] >= from && p[0] <= to)\n  .sort((a, b) => a[0] - b[0]);\nconst last = pts.length ? pts[pts.length - 1] : null;\nconst months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];\nconst mLabel = (ms) => { const d = new Date(ms); return months[d.getUTCMonth()] + '-' + d.getUTCFullYear(); };\nconst muted = '#6e7f8d';\nconst green = '#3bb231';\nreturn {\n  animation: false,\n  graphic: [\n    { type: 'text', left: 12, top: 2, style: { text: last ? last[1].toLocaleString('en-US') + ' patients' : 'No data', fontSize: 30, fontWeight: 700, fill: green } },\n    { type: 'text', left: 12, top: 42, style: { text: 'Patients with BP <140/90' + (last ? ' \u00b7 ' + mLabel(last[0]) : ''), fontSize: 13, fill: muted } }\n  ],\n  grid: { left: 12, right: 30, top: 76, bottom: 6, containLabel: true },\n  tooltip: { trigger: 'axis', valueFormatter: (v) => Number(v).toLocaleString('en-US') + ' patients' },\n  xAxis: { type: 'time', axisLabel: { color: muted, fontSize: 11, hideOverlap: true, formatter: (v) => mLabel(v) }, axisLine: { lineStyle: { color: 'rgba(128,128,128,0.4)' } }, splitLine: { show: false } },\n  yAxis: { type: 'value', min: 0, splitNumber: 3, axisLabel: { color: muted, fontSize: 11, formatter: (v) => Number(v).toLocaleString('en-US') }, splitLine: { lineStyle: { color: 'rgba(128,128,128,0.15)' } } },\n  series: [{\n    type: 'line', name: 'Patients with BP <140/90', data: pts, showSymbol: true, symbolSize: 5,\n    lineStyle: { color: green, width: 2 }, itemStyle: { color: green },\n    areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(59,178,49,0.22)' }, { offset: 1, color: 'rgba(59,178,49,0.03)' }] } },\n    markPoint: last ? { symbol: 'circle', symbolSize: 9, itemStyle: { color: green }, label: { show: false }, data: [{ coord: last }] } : undefined\n  }]\n};"
               }
             }
           }
@@ -328,7 +328,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\nWITH quarters AS (\n  SELECT generate_series(\n    date_trunc('quarter', $__timeFrom()::timestamp),\n    date_trunc('quarter', $__timeTo()::timestamp),\n    interval '3 months'\n  )::date AS q\n)\nSELECT\n  'Q' || EXTRACT(QUARTER FROM q.q)::int || '-' || EXTRACT(YEAR FROM q.q)::int\n  AS quarter_label,\n\n  COALESCE(SUM(CASE WHEN c.status_at_end_of_interval = 'controlled' THEN 1 END), 0)\n  AS \"% Controlled BP at latest visit in following quarter\",\n\n  COALESCE(SUM(CASE WHEN c.status_at_end_of_interval = 'uncontrolled' THEN 1 END), 0)\n  AS \"% Uncontrolled BP at latest visit in following quarter\",\n\n  COALESCE(SUM(CASE WHEN c.status_at_end_of_interval = 'missed visit' THEN 1 END), 0)\n  AS \"% Patients with no visit in following quarter\"\n\nFROM quarters q\nLEFT JOIN HEART360_COHORT_PATIENT_DETAILS c\n  ON c.registration_quarter = q.q\n  AND c.org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\nGROUP BY q.q\nORDER BY q.q\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+                        "rawSql": "SELECT * FROM (\nWITH quarters AS (\n  SELECT generate_series(\n    date_trunc('quarter', $__timeFrom()::timestamp),\n    date_trunc('quarter', $__timeTo()::timestamp),\n    interval '3 months'\n  )::date AS q\n)\nSELECT\n  'Q' || EXTRACT(QUARTER FROM q.q)::int || '-' || EXTRACT(YEAR FROM q.q)::int\n    || ' \u00b7 n=' || to_char(COUNT(c.org_unit_id), 'FM999,999,999')\n  AS quarter_label,\n\n  COALESCE(SUM(CASE WHEN c.status_at_end_of_interval = 'controlled' THEN 1 END), 0)\n  AS \"% Controlled BP at latest visit in following quarter\",\n\n  COALESCE(SUM(CASE WHEN c.status_at_end_of_interval = 'uncontrolled' THEN 1 END), 0)\n  AS \"% Uncontrolled BP at latest visit in following quarter\",\n\n  COALESCE(SUM(CASE WHEN c.status_at_end_of_interval = 'missed visit' THEN 1 END), 0)\n  AS \"% Patients with no visit in following quarter\"\n\nFROM quarters q\nLEFT JOIN HEART360_COHORT_PATIENT_DETAILS c\n  ON c.registration_quarter = q.q\n  AND c.org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\nWHERE q.q + interval '6 months'\n  <= date_trunc('month', to_timestamp(${reference_month}/1000.0)) + interval '1 month'\nGROUP BY q.q\nORDER BY q.q\n) AS master_access_control WHERE '${isAllowed}' = '1'",
                         "sql": {
                           "columns": [
                             {
@@ -357,10 +357,10 @@
               "transformations": []
             }
           },
-          "description": "",
+          "description": "The treatment outcomes for newly registered patients at the end of the following quarter. BP controlled: BP <140/90 at the latest visit in the following quarter. BP uncontrolled: BP >=140/90 at that visit. No visit in quarter: no visit in the following quarter. n = patients registered in that quarter. Cohorts whose following quarter has not ended are not shown.",
           "id": 20,
           "links": [],
-          "title": "Cohort Report",
+          "title": "Quarterly cohort reports",
           "vizConfig": {
             "group": "barchart",
             "kind": "VizConfig",
@@ -417,7 +417,10 @@
                         "value": 80
                       }
                     ]
-                  }
+                  },
+                  "decimals": 0,
+                  "min": 0,
+                  "max": 1
                 },
                 "overrides": [
                   {
@@ -429,9 +432,17 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "orange",
+                          "fixedColor": "#ed6300",
                           "mode": "fixed"
                         }
+                      },
+                      {
+                        "id": "displayName",
+                        "value": "No visit in quarter"
+                      },
+                      {
+                        "id": "custom.axisPlacement",
+                        "value": "hidden"
                       }
                     ]
                   },
@@ -444,9 +455,17 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "yellow",
+                          "fixedColor": "#eeab00",
                           "mode": "fixed"
                         }
+                      },
+                      {
+                        "id": "displayName",
+                        "value": "BP uncontrolled"
+                      },
+                      {
+                        "id": "custom.axisPlacement",
+                        "value": "hidden"
                       }
                     ]
                   },
@@ -459,9 +478,17 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "green",
+                          "fixedColor": "#3bb231",
                           "mode": "fixed"
                         }
+                      },
+                      {
+                        "id": "displayName",
+                        "value": "BP controlled"
+                      },
+                      {
+                        "id": "custom.axisPlacement",
+                        "value": "hidden"
                       }
                     ]
                   }
@@ -469,7 +496,7 @@
               },
               "options": {
                 "barRadius": 0,
-                "barWidth": 0.26,
+                "barWidth": 0.5,
                 "fullHighlight": false,
                 "groupWidth": 0.7,
                 "legend": {
@@ -479,7 +506,7 @@
                   "showLegend": true
                 },
                 "orientation": "auto",
-                "showValue": "auto",
+                "showValue": "always",
                 "stacking": "percent",
                 "tooltip": {
                   "hideZeros": false,
@@ -488,7 +515,10 @@
                 },
                 "xField": "quarter_label",
                 "xTickLabelRotation": 0,
-                "xTickLabelSpacing": 0
+                "xTickLabelSpacing": 0,
+                "text": {
+                  "valueSize": 14
+                }
               }
             },
             "version": "13.2.1"
@@ -583,7 +613,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "green",
+                          "fixedColor": "#3bb231",
                           "mode": "fixed"
                         }
                       },
@@ -606,7 +636,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "yellow",
+                          "fixedColor": "#eeab00",
                           "mode": "fixed"
                         }
                       },
@@ -629,7 +659,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "orange",
+                          "fixedColor": "#ed6300",
                           "mode": "fixed"
                         }
                       },
@@ -665,6 +695,10 @@
                       {
                         "id": "displayName",
                         "value": "HTN - Patients under care"
+                      },
+                      {
+                        "id": "unit",
+                        "value": "locale"
                       }
                     ]
                   },
@@ -677,6 +711,10 @@
                       {
                         "id": "displayName",
                         "value": "HTN - Monthly registrations"
+                      },
+                      {
+                        "id": "unit",
+                        "value": "locale"
                       }
                     ]
                   },
@@ -689,6 +727,10 @@
                       {
                         "id": "displayName",
                         "value": "# Controlled BP"
+                      },
+                      {
+                        "id": "unit",
+                        "value": "locale"
                       }
                     ]
                   },
@@ -701,6 +743,10 @@
                       {
                         "id": "displayName",
                         "value": "# Uncontrolled BP"
+                      },
+                      {
+                        "id": "unit",
+                        "value": "locale"
                       }
                     ]
                   },
@@ -713,6 +759,10 @@
                       {
                         "id": "displayName",
                         "value": "# No visit in past 3 months"
+                      },
+                      {
+                        "id": "unit",
+                        "value": "locale"
                       }
                     ]
                   }
@@ -1532,7 +1582,7 @@
               "fieldConfig": {
                 "defaults": {
                   "color": {
-                    "fixedColor": "green",
+                    "fixedColor": "#3bb231",
                     "mode": "fixed"
                   },
                   "decimals": 0,
@@ -1641,7 +1691,7 @@
               "fieldConfig": {
                 "defaults": {
                   "color": {
-                    "fixedColor": "green",
+                    "fixedColor": "#3bb231",
                     "mode": "fixed"
                   },
                   "decimals": 0,
@@ -1654,7 +1704,7 @@
                       }
                     ]
                   },
-                  "unit": "none"
+                  "unit": "locale"
                 },
                 "overrides": []
               },
@@ -1742,7 +1792,7 @@
               "fieldConfig": {
                 "defaults": {
                   "color": {
-                    "fixedColor": "light-orange",
+                    "fixedColor": "#eeab00",
                     "mode": "fixed"
                   },
                   "decimals": 0,
@@ -1843,7 +1893,7 @@
               "fieldConfig": {
                 "defaults": {
                   "color": {
-                    "fixedColor": "light-orange",
+                    "fixedColor": "#eeab00",
                     "mode": "fixed"
                   },
                   "decimals": 0,
@@ -1856,7 +1906,7 @@
                       }
                     ]
                   },
-                  "unit": "none"
+                  "unit": "locale"
                 },
                 "overrides": []
               },
@@ -1944,7 +1994,7 @@
               "fieldConfig": {
                 "defaults": {
                   "color": {
-                    "fixedColor": "dark-orange",
+                    "fixedColor": "#ed6300",
                     "mode": "fixed"
                   },
                   "decimals": 0,
@@ -2045,7 +2095,7 @@
               "fieldConfig": {
                 "defaults": {
                   "color": {
-                    "fixedColor": "dark-orange",
+                    "fixedColor": "#ed6300",
                     "mode": "fixed"
                   },
                   "decimals": 0,
@@ -2058,7 +2108,7 @@
                       }
                     ]
                   },
-                  "unit": "none"
+                  "unit": "locale"
                 },
                 "overrides": []
               },
@@ -2157,8 +2207,8 @@
                     "barAlignment": 0,
                     "barWidthFactor": 0.6,
                     "drawStyle": "line",
-                    "fillOpacity": 25,
-                    "gradientMode": "opacity",
+                    "fillOpacity": 12,
+                    "gradientMode": "none",
                     "hideFrom": {
                       "legend": false,
                       "tooltip": false,
@@ -2167,12 +2217,12 @@
                     "insertNulls": false,
                     "lineInterpolation": "linear",
                     "lineWidth": 2,
-                    "pointSize": 6,
+                    "pointSize": 5,
                     "scaleDistribution": {
                       "type": "linear"
                     },
-                    "showPoints": "auto",
-                    "showValues": true,
+                    "showPoints": "always",
+                    "showValues": false,
                     "spanNulls": false,
                     "stacking": {
                       "group": "A",
@@ -2198,7 +2248,8 @@
                         "value": 80
                       }
                     ]
-                  }
+                  },
+                  "unit": "percent"
                 },
                 "overrides": [
                   {
@@ -2210,7 +2261,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "green",
+                          "fixedColor": "#3bb231",
                           "mode": "fixed"
                         }
                       }
@@ -2225,7 +2276,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "green",
+                          "fixedColor": "#3bb231",
                           "mode": "fixed"
                         }
                       },
@@ -2242,6 +2293,14 @@
                       {
                         "id": "custom.gradientMode",
                         "value": "opacity"
+                      },
+                      {
+                        "id": "custom.hideFrom",
+                        "value": {
+                          "legend": true,
+                          "tooltip": false,
+                          "viz": false
+                        }
                       }
                     ]
                   }
@@ -2496,8 +2555,8 @@
                     "barAlignment": 0,
                     "barWidthFactor": 0.6,
                     "drawStyle": "line",
-                    "fillOpacity": 25,
-                    "gradientMode": "opacity",
+                    "fillOpacity": 12,
+                    "gradientMode": "none",
                     "hideFrom": {
                       "legend": false,
                       "tooltip": false,
@@ -2506,12 +2565,12 @@
                     "insertNulls": false,
                     "lineInterpolation": "linear",
                     "lineWidth": 2,
-                    "pointSize": 6,
+                    "pointSize": 5,
                     "scaleDistribution": {
                       "type": "linear"
                     },
-                    "showPoints": "auto",
-                    "showValues": true,
+                    "showPoints": "always",
+                    "showValues": false,
                     "spanNulls": false,
                     "stacking": {
                       "group": "A",
@@ -2537,7 +2596,8 @@
                         "value": 80
                       }
                     ]
-                  }
+                  },
+                  "unit": "percent"
                 },
                 "overrides": [
                   {
@@ -2549,7 +2609,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "light-orange",
+                          "fixedColor": "#eeab00",
                           "mode": "fixed"
                         }
                       },
@@ -2568,7 +2628,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "light-orange",
+                          "fixedColor": "#eeab00",
                           "mode": "fixed"
                         }
                       }
@@ -2583,7 +2643,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "light-orange",
+                          "fixedColor": "#eeab00",
                           "mode": "fixed"
                         }
                       },
@@ -2600,6 +2660,14 @@
                       {
                         "id": "custom.gradientMode",
                         "value": "opacity"
+                      },
+                      {
+                        "id": "custom.hideFrom",
+                        "value": {
+                          "legend": true,
+                          "tooltip": false,
+                          "viz": false
+                        }
                       }
                     ]
                   }
@@ -2696,8 +2764,8 @@
                     "barAlignment": 0,
                     "barWidthFactor": 0.6,
                     "drawStyle": "line",
-                    "fillOpacity": 25,
-                    "gradientMode": "opacity",
+                    "fillOpacity": 12,
+                    "gradientMode": "none",
                     "hideFrom": {
                       "legend": false,
                       "tooltip": false,
@@ -2706,12 +2774,12 @@
                     "insertNulls": false,
                     "lineInterpolation": "linear",
                     "lineWidth": 2,
-                    "pointSize": 6,
+                    "pointSize": 5,
                     "scaleDistribution": {
                       "type": "linear"
                     },
-                    "showPoints": "auto",
-                    "showValues": true,
+                    "showPoints": "always",
+                    "showValues": false,
                     "spanNulls": false,
                     "stacking": {
                       "group": "A",
@@ -2737,7 +2805,8 @@
                         "value": 80
                       }
                     ]
-                  }
+                  },
+                  "unit": "percent"
                 },
                 "overrides": [
                   {
@@ -2749,7 +2818,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "dark-orange",
+                          "fixedColor": "#ed6300",
                           "mode": "fixed"
                         }
                       }
@@ -2764,7 +2833,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "light-orange",
+                          "fixedColor": "#ed6300",
                           "mode": "fixed"
                         }
                       }
@@ -2779,7 +2848,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "light-orange",
+                          "fixedColor": "#ed6300",
                           "mode": "fixed"
                         }
                       },
@@ -2796,6 +2865,14 @@
                       {
                         "id": "custom.gradientMode",
                         "value": "opacity"
+                      },
+                      {
+                        "id": "custom.hideFrom",
+                        "value": {
+                          "legend": true,
+                          "tooltip": false,
+                          "viz": false
+                        }
                       }
                     ]
                   }
@@ -2907,7 +2984,7 @@
                       "type": "linear"
                     },
                     "showPoints": "auto",
-                    "showValues": true,
+                    "showValues": false,
                     "spanNulls": false,
                     "stacking": {
                       "group": "A",
@@ -2929,7 +3006,8 @@
                         "value": 80
                       }
                     ]
-                  }
+                  },
+                  "unit": "locale"
                 },
                 "overrides": [
                   {
@@ -2944,7 +3022,7 @@
                       },
                       {
                         "id": "custom.fillOpacity",
-                        "value": 32
+                        "value": 25
                       },
                       {
                         "id": "custom.gradientMode",
@@ -2957,6 +3035,13 @@
                       {
                         "id": "displayName",
                         "value": "HTN - Monthly registrations"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "#007ee4",
+                          "mode": "fixed"
+                        }
                       }
                     ]
                   },
@@ -2969,7 +3054,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "blue",
+                          "fixedColor": "#007ee4",
                           "mode": "fixed"
                         }
                       },
@@ -2988,7 +3073,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "purple",
+                          "fixedColor": "#b51bdc",
                           "mode": "fixed"
                         }
                       },
@@ -3091,8 +3176,8 @@
                     "barAlignment": 0,
                     "barWidthFactor": 0.6,
                     "drawStyle": "line",
-                    "fillOpacity": 25,
-                    "gradientMode": "opacity",
+                    "fillOpacity": 12,
+                    "gradientMode": "none",
                     "hideFrom": {
                       "legend": false,
                       "tooltip": false,
@@ -3106,7 +3191,7 @@
                       "type": "linear"
                     },
                     "showPoints": "auto",
-                    "showValues": true,
+                    "showValues": false,
                     "spanNulls": false,
                     "stacking": {
                       "group": "A",
@@ -3130,7 +3215,10 @@
                         "value": 80
                       }
                     ]
-                  }
+                  },
+                  "unit": "percent",
+                  "min": 0,
+                  "max": 100
                 },
                 "overrides": [
                   {
@@ -3142,7 +3230,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "super-light-red",
+                          "fixedColor": "#ff3355",
                           "mode": "fixed"
                         }
                       }
@@ -7470,7 +7558,7 @@
               },
               "options": {
                 "afterRender": "",
-                "content": "<div class=\"stc\">\n  <section class=\"stc-col\">\n    <div class=\"stc-head\">\n      <h3>Screening cascade</h3>\n      <div class=\"stc-den\">Denominator: eligible adults aged 15+</div>\n      <div class=\"stc-tagline\"><span class=\"stc-tag\">Demo data &middot; nationwide</span><span class=\"stc-ref\"><b>100%</b> = <b>{{eligible_n}}</b></span></div>\n    </div>\n    <div class=\"stc-rows\">\n    <div class=\"stc-row\">\n      <div class=\"stc-label\">Eligible for screening (aged 15+)</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-eligible\" style=\"width: min(100%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">100%</div><div class=\"stc-cnt\">{{eligible_n}}</div></div>\n    </div>\n    <div class=\"stc-row stc-row-target\">\n      <div class=\"stc-label\">Actually screened</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-screened\" style=\"width: min({{screened_pct}}%, 100%);\"></div><div class=\"stc-target\" style=\"left: {{target_pct}}%;\"></div><div class=\"stc-target-label\" style=\"left: {{target_pct}}%;\">&#9660; Target: {{target_pct}}%</div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{screened_pct}}%</div><div class=\"stc-cnt\">{{screened_n}}</div></div>\n    </div>\n    <div class=\"stc-row\">\n      <div class=\"stc-label\">Suspected hypertension</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-suspected\" style=\"width: min({{suspected_pct}}%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{suspected_pct}}%</div><div class=\"stc-cnt\">{{suspected_n}}</div></div><div class=\"stc-caption\">Screened, not diagnosed, BP &gt; 140/90 mmHg</div>\n    </div>\n    </div>\n  </section>\n  <div class=\"stc-divider\"></div>\n  <section class=\"stc-col stc-treatment\">\n    <div class=\"stc-head\">\n      <h3>Treatment cascade</h3>\n      <div class=\"stc-den\">Denominator: estimated adults with hypertension</div>\n      <div class=\"stc-tagline\"><span class=\"stc-tag\">Live data &middot; {{month_label}}</span><span class=\"stc-ref\"><b>100%</b> = <b>{{estimated_n}}</b></span></div>\n    </div>\n    <div class=\"stc-rows\">\n    <div class=\"stc-row\">\n      <div class=\"stc-label\">Registered patients</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-registered\" style=\"width: min({{registered_pct}}%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{registered_pct}}%</div><div class=\"stc-cnt\">{{registered_n}}</div></div>\n    </div>\n    <div class=\"stc-row\">\n      <div class=\"stc-label\">Patients under care</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-undercare\" style=\"width: min({{under_care_pct}}%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{under_care_pct}}%</div><div class=\"stc-cnt\">{{under_care_n}}</div></div>\n    </div>\n    <div class=\"stc-row\">\n      <div class=\"stc-label\">Patients with BP controlled</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-controlled\" style=\"width: min({{controlled_pct}}%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{controlled_pct}}%</div><div class=\"stc-cnt\">{{controlled_n}}</div></div>\n    </div>\n    </div>\n  </section>\n</div>",
+                "content": "<div class=\"stc\">\n  <section class=\"stc-col\">\n    <div class=\"stc-rows\">\n    <div class=\"stc-row\">\n      <div class=\"stc-label\">Eligible for screening (aged 15+)</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-eligible\" style=\"width: min(100%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">100%</div><div class=\"stc-cnt\">{{eligible_n}}</div></div>\n    </div>\n    <div class=\"stc-row stc-row-target\">\n      <div class=\"stc-label\">Actually screened</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-screened\" style=\"width: min({{screened_pct}}%, 100%);\"></div><div class=\"stc-target\" style=\"left: {{target_pct}}%;\"></div><div class=\"stc-target-label\" style=\"left: {{target_pct}}%;\">&#9660; Target: {{target_pct}}%</div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{screened_pct}}%</div><div class=\"stc-cnt\">{{screened_n}}</div></div>\n    </div>\n    <div class=\"stc-row\">\n      <div class=\"stc-label\">Suspected hypertension</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-suspected\" style=\"width: min({{suspected_pct}}%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{suspected_pct}}%</div><div class=\"stc-cnt\">{{suspected_n}}</div></div><div class=\"stc-caption\">Screened, not diagnosed, BP &gt; 140/90 mmHg</div>\n    </div>\n    </div>\n    <div class=\"stc-den\"><b>100%</b> = {{eligible_n}} eligible adults aged 15+</div>\n  </section>\n  <div class=\"stc-divider\"></div>\n  <section class=\"stc-col stc-treatment\">\n    <div class=\"stc-rows\">\n    <div class=\"stc-row\">\n      <div class=\"stc-label\">Registered patients</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-registered\" style=\"width: min({{registered_pct}}%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{registered_pct}}%</div><div class=\"stc-cnt\">{{registered_n}}</div></div>\n    </div>\n    <div class=\"stc-row stc-row-target\">\n      <div class=\"stc-label\">Patients under care</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-undercare\" style=\"width: min({{under_care_pct}}%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{under_care_pct}}%</div><div class=\"stc-cnt\">{{under_care_n}}</div></div>\n    </div>\n    <div class=\"stc-row\">\n      <div class=\"stc-label\">Patients with BP controlled</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-controlled\" style=\"width: min({{controlled_pct}}%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{controlled_pct}}%</div><div class=\"stc-cnt\">{{controlled_n}}</div></div><div class=\"stc-caption\">&nbsp;</div>\n    </div>\n    </div>\n    <div class=\"stc-den\"><b>100%</b> = {{estimated_n}} estimated adults with hypertension</div>\n  </section>\n</div>",
                 "contentPartials": [],
                 "defaultContent": "No data for this place and month.",
                 "editor": {
@@ -7483,7 +7571,7 @@
                 "externalStyles": [],
                 "helpers": "",
                 "renderMode": "everyRow",
-                "styles": "\n.stc { display: flex; gap: 0; height: 100%; font-size: 13px; line-height: 1.3; padding: 2px 4px; }\n.stc-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }\n.stc-divider { width: 1px; background: rgba(128,128,128,0.25); margin: 4px 22px; }\n.stc-head h3 { font-size: 17px; font-weight: 700; margin: 0 0 2px 0; }\n.stc-den { color: #6e7f8d; font-size: 13px; }\n.stc-tag { display: inline-block; margin-top: 4px; font-size: 11px; color: #6e7f8d; border: 1px solid rgba(128,128,128,0.3); border-radius: 10px; padding: 0 8px; }\n.stc-tagline { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; margin-top: 4px; }\n.stc-tagline .stc-tag { margin-top: 0; white-space: nowrap; }\n.stc-ref { font-size: 11px; color: #6e7f8d; text-align: right; margin-right: 82px; white-space: nowrap; }\n.stc-ref b { color: inherit; font-weight: 700; }\n.stc-rows { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }\n.stc-row { display: grid; grid-template-columns: 112px 1fr 70px; align-items: center; column-gap: 12px; }\n.stc-row-target { padding-bottom: 18px; }\n.stc-label { font-size: 13px; }\n.stc-caption { grid-column: 1 / -1; font-size: 11px; color: #6e7f8d; margin-top: 3px; }\n.stc-track { position: relative; height: 22px; background: rgba(128,128,128,0.14); border-radius: 2px; }\n.stc-treatment .stc-track { border-right: 2px dashed #8a9599; }\n.stc-bar { height: 100%; border-radius: 2px; }\n.stc-eligible { background: #c3ccd2; }\n.stc-screened { background: #FF9830; }\n.stc-suspected { background: #F2495C; }\n.stc-registered { background: #5794F2; }\n.stc-undercare { background: #B877D9; }\n.stc-controlled { background: #73BF69; }\n.stc-target { position: absolute; top: -6px; bottom: -6px; border-left: 2px dashed #FA6400; transform: translateX(-1px); }\n.stc-target-label { position: absolute; top: 28px; transform: translateX(-50%); white-space: nowrap; color: #FA6400; font-size: 12px; font-weight: 600; }\n.stc-pct { font-size: 17px; font-weight: 700; }\n.stc-cnt { font-size: 13px; color: #6e7f8d; }\n",
+                "styles": "\n.stc { display: flex; height: 100%; font-size: 13px; line-height: 1.3; padding: 4px 4px 0 4px; }\n.stc-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }\n.stc-divider { width: 1px; background: rgba(128,128,128,0.25); margin: 0 24px; }\n.stc-rows { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; gap: 16px; }\n.stc-row { display: grid; grid-template-columns: 136px 1fr 72px; align-items: center; column-gap: 12px; }\n.stc-row-target { padding-bottom: 18px; }\n.stc-label { font-size: 13px; }\n.stc-caption { grid-column: 1 / -1; font-size: 12px; color: #6e7f8d; margin-top: 4px; }\n.stc-track { position: relative; height: 22px; background: rgba(128,128,128,0.14); border-radius: 2px; }\n.stc-treatment .stc-track { border-right: 2px dashed #8a9599; }\n.stc-bar { height: 100%; border-radius: 2px; }\n.stc-eligible { background: #dae0e1; }\n.stc-screened { background: #FF9830; }\n.stc-suspected { background: #F2495C; }\n.stc-registered { background: #007ee4; }\n.stc-undercare { background: #b51bdc; }\n.stc-controlled { background: #3bb231; }\n.stc-target { position: absolute; top: -6px; bottom: -6px; border-left: 2px dashed #ed6300; transform: translateX(-1px); }\n.stc-target-label { position: absolute; top: 28px; transform: translateX(-50%); white-space: nowrap; color: #ed6300; font-size: 12px; font-weight: 600; }\n.stc-pct { font-size: 17px; font-weight: 700; }\n.stc-cnt { font-size: 13px; color: #6e7f8d; }\n.stc-den { margin-top: 12px; padding-top: 8px; border-top: 1px solid rgba(128,128,128,0.18); font-size: 12px; color: #6e7f8d; }\n.stc-den b { color: inherit; }\n",
                 "wrap": false
               }
             }
