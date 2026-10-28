@@ -81,7 +81,7 @@
               "transformations": []
             }
           },
-          "description": "Patients protected from heart attacks and strokes with world-class treatment. Patients with BP <140/90 at their latest visit, by month. The headline is the latest month in the line.",
+          "description": "Patients protected from heart attacks and strokes with world-class treatment. Patients with BP <140/90 at their latest visit, by month. The headline is the latest completed month; the current month is dashed.",
           "id": 1,
           "links": [],
           "title": "Patients protected from heart attacks and strokes",
@@ -122,7 +122,7 @@
                   "dataset": [],
                   "series": []
                 },
-                "getOption": "const frame = (context.panel.data.series || [])[0];\nfunction vals(f) { if (!f) { return []; } return Array.from(f.values && f.values.buffer ? f.values.buffer : f.values); }\nconst tField = frame && frame.fields.find((f) => f.type === 'time' || f.name === 'ref_month');\nconst vField = frame && frame.fields.find((f) => f.name === 'nb_patients_controlled');\nconst tr = context.panel.data.timeRange;\nconst from = tr ? tr.from.valueOf() : -Infinity;\nconst to = tr ? tr.to.valueOf() : Infinity;\nconst pts = vals(tField).map((t, i) => [Number(t), Number(vals(vField)[i]) || 0])\n  .filter((p) => p[0] >= from && p[0] <= to)\n  .sort((a, b) => a[0] - b[0]);\nconst last = pts.length ? pts[pts.length - 1] : null;\nconst months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];\nconst mLabel = (ms) => { const d = new Date(ms); return months[d.getUTCMonth()] + '-' + d.getUTCFullYear(); };\nconst muted = '#6e7f8d';\nconst green = '#3bb231';\nreturn {\n  animation: false,\n  graphic: [\n    { type: 'text', left: 12, top: 2, style: { text: last ? last[1].toLocaleString('en-US') + ' patients' : 'No data', fontSize: 30, fontWeight: 700, fill: green } },\n    { type: 'text', left: 12, top: 42, style: { text: 'Patients with BP <140/90' + (last ? ' \u00b7 ' + mLabel(last[0]) : ''), fontSize: 13, fill: muted } }\n  ],\n  grid: { left: 12, right: 30, top: 76, bottom: 6, containLabel: true },\n  tooltip: { trigger: 'axis', valueFormatter: (v) => Number(v).toLocaleString('en-US') + ' patients' },\n  xAxis: { type: 'time', axisLabel: { color: muted, fontSize: 11, hideOverlap: true, formatter: (v) => mLabel(v) }, axisLine: { lineStyle: { color: 'rgba(128,128,128,0.4)' } }, splitLine: { show: false } },\n  yAxis: { type: 'value', min: 0, splitNumber: 3, axisLabel: { color: muted, fontSize: 11, formatter: (v) => Number(v).toLocaleString('en-US') }, splitLine: { lineStyle: { color: 'rgba(128,128,128,0.15)' } } },\n  series: [{\n    type: 'line', name: 'Patients with BP <140/90', data: pts, showSymbol: true, symbolSize: 5,\n    lineStyle: { color: green, width: 2 }, itemStyle: { color: green },\n    areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(59,178,49,0.22)' }, { offset: 1, color: 'rgba(59,178,49,0.03)' }] } },\n    markPoint: last ? { symbol: 'circle', symbolSize: 9, itemStyle: { color: green }, label: { show: false }, data: [{ coord: last }] } : undefined\n  }]\n};"
+                "getOption": "const frame = (context.panel.data.series || [])[0];\nfunction vals(f) { if (!f) { return []; } return Array.from(f.values && f.values.buffer ? f.values.buffer : f.values); }\nconst tField = frame && frame.fields.find((f) => f.type === 'time' || f.name === 'ref_month');\nconst vField = frame && frame.fields.find((f) => f.name === 'nb_patients_controlled');\nconst tr = context.panel.data.timeRange;\nconst from = tr ? tr.from.valueOf() : -Infinity;\nconst to = tr ? tr.to.valueOf() : Infinity;\nconst pts = vals(tField).map((t, i) => [Number(t), Number(vals(vField)[i]) || 0])\n  .filter((p) => p[0] >= from && p[0] <= to)\n  .sort((a, b) => a[0] - b[0]);\n// Headline = latest completed month; the running month is drawn dashed.\nconst last = pts.length > 1 ? pts[pts.length - 2] : (pts[0] || null);\nconst months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];\nconst mLabel = (ms) => { const d = new Date(ms); return months[d.getUTCMonth()] + '-' + d.getUTCFullYear(); };\nconst muted = '#6e7f8d';\nconst green = '#3bb231';\nreturn {\n  animation: false,\n  graphic: [\n    { type: 'text', left: 12, top: 2, style: { text: last ? last[1].toLocaleString('en-US') + ' patients' : 'No data', fontSize: 30, fontWeight: 700, fill: green } },\n    { type: 'text', left: 12, top: 42, style: { text: 'Patients with BP <140/90' + (last ? ' \u00b7 ' + mLabel(last[0]) : ''), fontSize: 13, fill: muted } }\n  ],\n  grid: { left: 12, right: 24, top: 76, bottom: 14, containLabel: true },\n  tooltip: { trigger: 'axis', valueFormatter: (v) => Number(v).toLocaleString('en-US') + ' patients' },\n  xAxis: { type: 'time', axisLabel: { color: muted, fontSize: 11, hideOverlap: true, formatter: (v) => mLabel(v) }, axisLine: { lineStyle: { color: 'rgba(128,128,128,0.4)' } }, splitLine: { show: false } },\n  yAxis: { type: 'value', min: 0, splitNumber: 3, axisLabel: { color: muted, fontSize: 11, formatter: (v) => Number(v).toLocaleString('en-US') }, splitLine: { lineStyle: { color: 'rgba(128,128,128,0.15)' } } },\n  series: [{\n    type: 'line', name: 'Patients with BP <140/90', data: pts.length > 1 ? pts.slice(0, -1) : pts, showSymbol: true, symbolSize: 5,\n    lineStyle: { color: green, width: 2 }, itemStyle: { color: green },\n    areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(59,178,49,0.22)' }, { offset: 1, color: 'rgba(59,178,49,0.03)' }] } },\n    markPoint: last ? { symbol: 'circle', symbolSize: 9, itemStyle: { color: green }, label: { show: false }, data: [{ coord: last }] } : undefined\n  }, {\n    type: 'line', name: 'Patients with BP <140/90', data: pts.slice(-2), showSymbol: true, symbolSize: 5,\n    lineStyle: { color: green, width: 2, type: 'dashed' }, itemStyle: { color: green }, tooltip: { show: false }\n  }]\n};"
               }
             }
           }
@@ -328,7 +328,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\nWITH quarters AS (\n  SELECT generate_series(\n    date_trunc('quarter', $__timeFrom()::timestamp),\n    date_trunc('quarter', $__timeTo()::timestamp),\n    interval '3 months'\n  )::date AS q\n)\nSELECT\n  'Q' || EXTRACT(QUARTER FROM q.q)::int || '-' || EXTRACT(YEAR FROM q.q)::int\n    || ' \u00b7 n=' || to_char(COUNT(c.org_unit_id), 'FM999,999,999')\n  AS quarter_label,\n\n  COALESCE(SUM(CASE WHEN c.status_at_end_of_interval = 'controlled' THEN 1 END), 0)\n  AS \"% Controlled BP at latest visit in following quarter\",\n\n  COALESCE(SUM(CASE WHEN c.status_at_end_of_interval = 'uncontrolled' THEN 1 END), 0)\n  AS \"% Uncontrolled BP at latest visit in following quarter\",\n\n  COALESCE(SUM(CASE WHEN c.status_at_end_of_interval = 'missed visit' THEN 1 END), 0)\n  AS \"% Patients with no visit in following quarter\"\n\nFROM quarters q\nLEFT JOIN HEART360_COHORT_PATIENT_DETAILS c\n  ON c.registration_quarter = q.q\n  AND c.org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\nWHERE q.q + interval '6 months'\n  <= date_trunc('month', to_timestamp(${reference_month}/1000.0)) + interval '1 month'\nGROUP BY q.q\nORDER BY q.q\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+                        "rawSql": "SELECT * FROM (\nWITH quarters AS (\n  SELECT generate_series(\n    date_trunc('quarter', $__timeFrom()::timestamp),\n    date_trunc('quarter', $__timeTo()::timestamp),\n    interval '3 months'\n  )::date AS q\n),\ncounts AS (\n  SELECT\n    q.q,\n    COUNT(c.org_unit_id) AS total,\n    COALESCE(SUM(CASE WHEN c.status_at_end_of_interval = 'controlled' THEN 1 END), 0) AS controlled,\n    COALESCE(SUM(CASE WHEN c.status_at_end_of_interval = 'uncontrolled' THEN 1 END), 0) AS uncontrolled,\n    COALESCE(SUM(CASE WHEN c.status_at_end_of_interval = 'missed visit' THEN 1 END), 0) AS no_visit\n  FROM quarters q\n  LEFT JOIN HEART360_COHORT_PATIENT_DETAILS c\n    ON c.registration_quarter = q.q\n    AND c.org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  WHERE q.q + interval '6 months'\n    <= date_trunc('month', to_timestamp(${reference_month}/1000.0)) + interval '1 month'\n  GROUP BY q.q\n)\nSELECT\n  'Q' || EXTRACT(QUARTER FROM q)::int || '-' || EXTRACT(YEAR FROM q)::int || ' cohort' AS cohort_label,\n  to_char(total, 'FM999,999,999') || CASE WHEN total = 1 THEN ' patient' ELSE ' patients' END AS patients_label,\n  'Q' || EXTRACT(QUARTER FROM q + interval '3 months')::int || '-'\n    || EXTRACT(YEAR FROM q + interval '3 months')::int AS result_quarter,\n  ROUND(100.0 * controlled / NULLIF(total, 0), 2) AS controlled_h,\n  ROUND(100.0 * uncontrolled / NULLIF(total, 0), 2) AS uncontrolled_h,\n  ROUND(100.0 * no_visit / NULLIF(total, 0), 2) AS no_visit_h,\n  CASE WHEN total > 0 AND 100.0 * controlled / total >= 5\n       THEN ROUND(100.0 * controlled / total)::int || '%' ELSE '' END AS controlled_lbl,\n  CASE WHEN total > 0 AND 100.0 * uncontrolled / total >= 5\n       THEN ROUND(100.0 * uncontrolled / total)::int || '%' ELSE '' END AS uncontrolled_lbl,\n  CASE WHEN total > 0 AND 100.0 * no_visit / total >= 5\n       THEN ROUND(100.0 * no_visit / total)::int || '%' ELSE '' END AS no_visit_lbl,\n  to_char(controlled, 'FM999,999,999') AS controlled_n,\n  to_char(uncontrolled, 'FM999,999,999') AS uncontrolled_n,\n  to_char(no_visit, 'FM999,999,999') AS no_visit_n\nFROM counts\nORDER BY q\n) AS master_access_control WHERE '${isAllowed}' = '1'",
                         "sql": {
                           "columns": [
                             {
@@ -357,171 +357,38 @@
               "transformations": []
             }
           },
-          "description": "The treatment outcomes for newly registered patients at the end of the following quarter. BP controlled: BP <140/90 at the latest visit in the following quarter. BP uncontrolled: BP >=140/90 at that visit. No visit in quarter: no visit in the following quarter. n = patients registered in that quarter. Cohorts whose following quarter has not ended are not shown.",
+          "description": "The treatment outcomes for newly registered patients at the end of the following quarter. BP controlled: BP <140/90 at the latest visit in the following quarter. BP uncontrolled: BP >=140/90 at that visit. No visit in quarter: no visit in the following quarter. Hover a segment for its patient count. Cohorts whose following quarter has not ended are not shown.",
           "id": 20,
           "links": [],
           "title": "Quarterly cohort reports",
           "vizConfig": {
-            "group": "barchart",
+            "group": "marcusolsson-dynamictext-panel",
             "kind": "VizConfig",
+            "version": "6.3.0",
             "spec": {
               "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "mode": "palette-classic"
-                  },
-                  "custom": {
-                    "axisBorderShow": false,
-                    "axisCenteredZero": false,
-                    "axisColorMode": "text",
-                    "axisLabel": "",
-                    "axisPlacement": "auto",
-                    "barAlignment": 0,
-                    "barWidthFactor": 0.3,
-                    "drawStyle": "bars",
-                    "fillOpacity": 100,
-                    "gradientMode": "none",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "insertNulls": false,
-                    "lineInterpolation": "linear",
-                    "lineWidth": 5,
-                    "pointSize": 5,
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "showPoints": "auto",
-                    "showValues": false,
-                    "spanNulls": false,
-                    "stacking": {
-                      "group": "A",
-                      "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  },
-                  "mappings": [],
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      },
-                      {
-                        "color": "red",
-                        "value": 80
-                      }
-                    ]
-                  },
-                  "decimals": 0,
-                  "min": 0,
-                  "max": 1
-                },
-                "overrides": [
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "% Patients with no visit in following quarter"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "#ed6300",
-                          "mode": "fixed"
-                        }
-                      },
-                      {
-                        "id": "displayName",
-                        "value": "No visit in quarter"
-                      },
-                      {
-                        "id": "custom.axisPlacement",
-                        "value": "hidden"
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "% Uncontrolled BP at latest visit in following quarter"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "#eeab00",
-                          "mode": "fixed"
-                        }
-                      },
-                      {
-                        "id": "displayName",
-                        "value": "BP uncontrolled"
-                      },
-                      {
-                        "id": "custom.axisPlacement",
-                        "value": "hidden"
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "% Controlled BP at latest visit in following quarter"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "#3bb231",
-                          "mode": "fixed"
-                        }
-                      },
-                      {
-                        "id": "displayName",
-                        "value": "BP controlled"
-                      },
-                      {
-                        "id": "custom.axisPlacement",
-                        "value": "hidden"
-                      }
-                    ]
-                  }
-                ]
+                "defaults": {},
+                "overrides": []
               },
               "options": {
-                "barRadius": 0,
-                "barWidth": 0.5,
-                "fullHighlight": false,
-                "groupWidth": 0.7,
-                "legend": {
-                  "calcs": [],
-                  "displayMode": "list",
-                  "placement": "bottom",
-                  "showLegend": true
+                "afterRender": "",
+                "content": "<div class=\"coh\">\n  <div class=\"coh-row\">\n    {{#each data}}\n    <div class=\"coh-q\">\n      <div class=\"coh-bar\">\n        <div class=\"seg coh-controlled\" style=\"height: {{controlled_h}}%;\" title=\"BP controlled: {{controlled_n}}\">{{controlled_lbl}}</div>\n        <div class=\"seg coh-uncontrolled\" style=\"height: {{uncontrolled_h}}%;\" title=\"BP uncontrolled: {{uncontrolled_n}}\">{{uncontrolled_lbl}}</div>\n        <div class=\"seg coh-novisit\" style=\"height: {{no_visit_h}}%;\" title=\"No visit in quarter: {{no_visit_n}}\">{{no_visit_lbl}}</div>\n      </div>\n      <div class=\"coh-detail\">\n        <b>{{cohort_label}}</b>\n        <span>{{patients_label}}</span>\n        <span class=\"coh-note\">Result from latest visit in {{result_quarter}}</span>\n      </div>\n    </div>\n    {{/each}}\n  </div>\n  <div class=\"coh-key\">\n    <span><i class=\"coh-controlled\"></i>BP controlled</span>\n    <span><i class=\"coh-uncontrolled\"></i>BP uncontrolled</span>\n    <span><i class=\"coh-novisit\"></i>No visit in quarter</span>\n  </div>\n</div>",
+                "contentPartials": [],
+                "defaultContent": "No finished cohorts in this time range.",
+                "editor": {
+                  "format": "auto",
+                  "language": "html"
                 },
-                "orientation": "auto",
-                "showValue": "always",
-                "stacking": "percent",
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "single",
-                  "sort": "none"
-                },
-                "xField": "quarter_label",
-                "xTickLabelRotation": 0,
-                "xTickLabelSpacing": 0,
-                "text": {
-                  "valueSize": 14
-                }
+                "editors": [
+                  "styles"
+                ],
+                "externalStyles": [],
+                "helpers": "",
+                "renderMode": "allRows",
+                "styles": "\n.coh { display: flex; flex-direction: column; justify-content: space-between; height: 100%; font-size: 13px; line-height: 1.3; }\n.coh-row { display: flex; gap: 12px; padding: 8px 4px 0 4px; overflow-x: auto; }\n.coh-q { flex: 1 1 0; min-width: 104px; max-width: 136px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; }\n.coh-bar { height: 250px; width: 56px; display: flex; flex-direction: column; gap: 2px; border-radius: 4px; overflow: hidden; }\n.seg { display: flex; align-items: center; justify-content: center; line-height: 1; color: #fff; font-weight: 700; font-size: 13px; text-shadow: 0 1px 3px rgba(0,0,0,0.3); }\n.coh-detail { display: flex; flex-direction: column; font-size: 13px; }\n.coh-detail b { white-space: nowrap; }\n.coh-note { margin-top: 6px; font-size: 11px; color: #888; }\n.coh-key { display: flex; justify-content: flex-end; gap: 16px; padding: 8px 4px 2px 4px; font-size: 12px; }\n.coh-key span { display: flex; align-items: center; gap: 6px; }\n.coh-key i { display: inline-block; width: 14px; height: 14px; border-radius: 3px; }\n.coh-controlled { background: #3bb231; }\n.coh-uncontrolled { background: #eeab00; }\n.coh-novisit { background: #ed6300; }\n",
+                "wrap": false
               }
-            },
-            "version": "13.2.1"
+            }
           }
         }
       },
@@ -1542,7 +1409,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\nSELECT\n  (100.00 * SUM(nb_patients_controlled) / NULLIF(GREATEST(0, SUM(TOTAL_NUMBER_OF_PATIENTS) - SUM(NB_PATIENTS_NEWLY_REGISTERED) - SUM(NB_PATIENTS_LOST_TO_FOLLOW_UP)), 0)) AS value\nFROM HEART360_PATIENTS_CATEGORY\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_PATIENTS_CATEGORY\n    WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  )\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+                        "rawSql": "SELECT * FROM (\nSELECT\n  (100.00 * SUM(nb_patients_controlled) / NULLIF(GREATEST(0, SUM(TOTAL_NUMBER_OF_PATIENTS) - SUM(NB_PATIENTS_NEWLY_REGISTERED) - SUM(NB_PATIENTS_LOST_TO_FOLLOW_UP)), 0)) AS value\nFROM HEART360_PATIENTS_CATEGORY\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_PATIENTS_CATEGORY\n    WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  ) - interval '1 month'\n) AS master_access_control WHERE '${isAllowed}' = '1'",
                         "sql": {
                           "columns": [
                             {
@@ -1571,7 +1438,7 @@
               "transformations": []
             }
           },
-          "description": "${facility:text} - Latest month",
+          "description": "${facility:text} - Latest completed month (the month before the current one)",
           "id": 14,
           "links": [],
           "title": "% Controlled BP",
@@ -1651,7 +1518,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\nSELECT\n  SUM(nb_patients_controlled) AS value\nFROM HEART360_PATIENTS_CATEGORY\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_PATIENTS_CATEGORY\n    WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  )\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+                        "rawSql": "SELECT * FROM (\nSELECT\n  SUM(nb_patients_controlled) AS value\nFROM HEART360_PATIENTS_CATEGORY\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_PATIENTS_CATEGORY\n    WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  ) - interval '1 month'\n) AS master_access_control WHERE '${isAllowed}' = '1'",
                         "sql": {
                           "columns": [
                             {
@@ -1680,7 +1547,7 @@
               "transformations": []
             }
           },
-          "description": "${facility:text} - Latest month",
+          "description": "${facility:text} - Latest completed month (the month before the current one)",
           "id": 15,
           "links": [],
           "title": "# Controlled BP",
@@ -1752,7 +1619,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\nSELECT\n  (100.00 * SUM(nb_patients_uncontrolled) / NULLIF(GREATEST(0, SUM(TOTAL_NUMBER_OF_PATIENTS) - SUM(NB_PATIENTS_NEWLY_REGISTERED) - SUM(NB_PATIENTS_LOST_TO_FOLLOW_UP)), 0)) AS value\nFROM HEART360_PATIENTS_CATEGORY\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_PATIENTS_CATEGORY\n    WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  )\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+                        "rawSql": "SELECT * FROM (\nSELECT\n  (100.00 * SUM(nb_patients_uncontrolled) / NULLIF(GREATEST(0, SUM(TOTAL_NUMBER_OF_PATIENTS) - SUM(NB_PATIENTS_NEWLY_REGISTERED) - SUM(NB_PATIENTS_LOST_TO_FOLLOW_UP)), 0)) AS value\nFROM HEART360_PATIENTS_CATEGORY\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_PATIENTS_CATEGORY\n    WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  ) - interval '1 month'\n) AS master_access_control WHERE '${isAllowed}' = '1'",
                         "sql": {
                           "columns": [
                             {
@@ -1781,7 +1648,7 @@
               "transformations": []
             }
           },
-          "description": "${facility:text} - Latest month",
+          "description": "${facility:text} - Latest completed month (the month before the current one)",
           "id": 16,
           "links": [],
           "title": "% Uncontrolled BP",
@@ -1853,7 +1720,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\nSELECT\n  SUM(nb_patients_uncontrolled) AS value\nFROM HEART360_PATIENTS_CATEGORY\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_PATIENTS_CATEGORY\n    WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  )\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+                        "rawSql": "SELECT * FROM (\nSELECT\n  SUM(nb_patients_uncontrolled) AS value\nFROM HEART360_PATIENTS_CATEGORY\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_PATIENTS_CATEGORY\n    WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  ) - interval '1 month'\n) AS master_access_control WHERE '${isAllowed}' = '1'",
                         "sql": {
                           "columns": [
                             {
@@ -1882,7 +1749,7 @@
               "transformations": []
             }
           },
-          "description": "${facility:text} - Latest month",
+          "description": "${facility:text} - Latest completed month (the month before the current one)",
           "id": 17,
           "links": [],
           "title": "# Uncontrolled BP",
@@ -1954,7 +1821,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\nSELECT\n  (100.00 * SUM(nb_patients_no_visit) / NULLIF(GREATEST(0, SUM(TOTAL_NUMBER_OF_PATIENTS) - SUM(NB_PATIENTS_NEWLY_REGISTERED) - SUM(NB_PATIENTS_LOST_TO_FOLLOW_UP)), 0)) AS value\nFROM HEART360_PATIENTS_CATEGORY\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_PATIENTS_CATEGORY\n    WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  )\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+                        "rawSql": "SELECT * FROM (\nSELECT\n  (100.00 * SUM(nb_patients_no_visit) / NULLIF(GREATEST(0, SUM(TOTAL_NUMBER_OF_PATIENTS) - SUM(NB_PATIENTS_NEWLY_REGISTERED) - SUM(NB_PATIENTS_LOST_TO_FOLLOW_UP)), 0)) AS value\nFROM HEART360_PATIENTS_CATEGORY\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_PATIENTS_CATEGORY\n    WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  ) - interval '1 month'\n) AS master_access_control WHERE '${isAllowed}' = '1'",
                         "sql": {
                           "columns": [
                             {
@@ -1983,7 +1850,7 @@
               "transformations": []
             }
           },
-          "description": "${facility:text} - Latest month",
+          "description": "${facility:text} - Latest completed month (the month before the current one)",
           "id": 18,
           "links": [],
           "title": "% No visit",
@@ -2055,7 +1922,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\nSELECT\n  SUM(nb_patients_no_visit) AS value\nFROM HEART360_PATIENTS_CATEGORY\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_PATIENTS_CATEGORY\n    WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  )\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+                        "rawSql": "SELECT * FROM (\nSELECT\n  SUM(nb_patients_no_visit) AS value\nFROM HEART360_PATIENTS_CATEGORY\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_PATIENTS_CATEGORY\n    WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  ) - interval '1 month'\n) AS master_access_control WHERE '${isAllowed}' = '1'",
                         "sql": {
                           "columns": [
                             {
@@ -2084,7 +1951,7 @@
               "transformations": []
             }
           },
-          "description": "${facility:text} - Latest month",
+          "description": "${facility:text} - Latest completed month (the month before the current one)",
           "id": 19,
           "links": [],
           "title": "# No visit",
@@ -2947,159 +2814,50 @@
               "transformations": []
             }
           },
-          "description": "**Patients under care:** Registered patients with hypertension with at least 1 visit in the past 12 months. Dead patients and 12 month lost to follow-up patients are excluded.\n**Cumulative registered patients:** All patients with hypertension registered. Dead patients are excluded.\n**Monthly registered patients:** Patients with hypertension registered each month.",
+          "description": "**Patients under care:** Registered patients with hypertension with at least 1 visit in the past 12 months. **Cumulative registered patients:** All patients with hypertension registered. **Monthly registered patients:** Patients with hypertension registered each month. The headline is the latest completed month; the current month is dashed.",
           "id": 7,
           "links": [],
           "title": "Patients under care & registrations (HTN)",
           "vizConfig": {
-            "group": "timeseries",
+            "group": "volkovlabs-echarts-panel",
             "kind": "VizConfig",
+            "version": "7.2.5",
             "spec": {
               "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "mode": "palette-classic"
-                  },
-                  "custom": {
-                    "axisBorderShow": false,
-                    "axisCenteredZero": false,
-                    "axisColorMode": "text",
-                    "axisLabel": "",
-                    "axisPlacement": "auto",
-                    "barAlignment": 0,
-                    "barWidthFactor": 0.6,
-                    "drawStyle": "line",
-                    "fillOpacity": 25,
-                    "gradientMode": "opacity",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "insertNulls": false,
-                    "lineInterpolation": "linear",
-                    "lineWidth": 1,
-                    "pointSize": 5,
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "showPoints": "auto",
-                    "showValues": false,
-                    "spanNulls": false,
-                    "stacking": {
-                      "group": "A",
-                      "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  },
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      },
-                      {
-                        "color": "red",
-                        "value": 80
-                      }
-                    ]
-                  },
-                  "unit": "locale"
-                },
-                "overrides": [
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "nb_new_patients"
-                    },
-                    "properties": [
-                      {
-                        "id": "custom.drawStyle",
-                        "value": "bars"
-                      },
-                      {
-                        "id": "custom.fillOpacity",
-                        "value": 25
-                      },
-                      {
-                        "id": "custom.gradientMode",
-                        "value": "none"
-                      },
-                      {
-                        "id": "custom.lineWidth",
-                        "value": 0
-                      },
-                      {
-                        "id": "displayName",
-                        "value": "HTN - Monthly registrations"
-                      },
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "#007ee4",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "cumulative_number_of_patients"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "#007ee4",
-                          "mode": "fixed"
-                        }
-                      },
-                      {
-                        "id": "displayName",
-                        "value": "HTN - Cumulative registrations"
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "nb_patients_under_care"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "#b51bdc",
-                          "mode": "fixed"
-                        }
-                      },
-                      {
-                        "id": "displayName",
-                        "value": "HTN - Patients under care"
-                      }
-                    ]
-                  }
-                ]
+                "defaults": {},
+                "overrides": []
               },
               "options": {
-                "legend": {
-                  "calcs": [],
-                  "displayMode": "list",
-                  "placement": "bottom",
-                  "showLegend": true
+                "baidu": {
+                  "callback": "bmapReady",
+                  "key": ""
                 },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "single",
-                  "sort": "none"
-                }
+                "editor": {
+                  "format": "auto"
+                },
+                "editorMode": "code",
+                "gaode": {
+                  "key": "",
+                  "plugin": "AMap.Scale,AMap.ToolBar"
+                },
+                "google": {
+                  "callback": "gmapReady",
+                  "key": ""
+                },
+                "map": "none",
+                "renderer": "canvas",
+                "themeEditor": {
+                  "config": "{}",
+                  "name": "default"
+                },
+                "visualEditor": {
+                  "code": "return {}",
+                  "dataset": [],
+                  "series": []
+                },
+                "getOption": "const frame = (context.panel.data.series || [])[0];\nfunction col(n) { const f = frame && frame.fields.find((x) => x.name === n); if (!f) { return []; } return Array.from(f.values && f.values.buffer ? f.values.buffer : f.values); }\nconst tr = context.panel.data.timeRange;\nconst from = tr ? tr.from.valueOf() : -Infinity;\nconst to = tr ? tr.to.valueOf() : Infinity;\nconst months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];\nconst mLabel = (ms) => { const d = new Date(ms); return months[d.getUTCMonth()] + '-' + d.getUTCFullYear(); };\nconst fmt = (v) => Math.round(Number(v) || 0).toLocaleString('en-US');\nconst theme = context.grafana && context.grafana.theme;\nconst fg = (theme && theme.colors && theme.colors.text && theme.colors.text.primary) || '#1c1c1c';\nconst muted = '#6e7f8d';\nconst T = col('ref_month').map(Number);\nconst order = T.map((v, i) => i).filter((i) => T[i] >= from && T[i] <= to).sort((a, b) => T[a] - T[b]);\nconst done = order.length > 1 ? order[order.length - 2] : order[order.length - 1];\nconst solid = (vals) => order.map((i, k) => [T[i], k < order.length - 1 ? Number(vals[i]) || 0 : null]);\nconst dashed = (vals) => order.map((i, k) => [T[i], k >= order.length - 2 ? Number(vals[i]) || 0 : null]);\nconst axisX = { type: 'time', axisLabel: { color: muted, fontSize: 11, hideOverlap: true, formatter: (v) => mLabel(v) }, axisLine: { lineStyle: { color: 'rgba(128,128,128,0.4)' } }, splitLine: { show: false } };\nconst head = (big, color, line2, line3, rich) => [\n  { type: 'text', left: 12, top: 2, style: { text: big, fontSize: 30, fontWeight: 700, fill: color } },\n  { type: 'text', left: 12, top: 42, style: { text: line2, fontSize: 13, fill: fg } },\n  { type: 'text', left: 12, top: 62, style: { text: line3, fontSize: 13, fill: muted, rich: rich } }\n];\nconst cum = col('cumulative_number_of_patients');\nconst uc = col('nb_patients_under_care');\nconst nw = col('nb_new_patients');\nconst blue = '#007ee4';\nconst purple = '#b51bdc';\nconst graphic = done === undefined ? [] : head(fmt(uc[done]), purple,\n  fmt(nw[done]) + ' patients registered in ' + mLabel(T[done]),\n  'of {b|' + fmt(cum[done]) + ' cumulative registered patients}', { b: { fill: blue, fontSize: 13 } });\nconst line = (name, color, vals) => [\n  { type: 'line', name: name, data: solid(vals), showSymbol: true, symbolSize: 5, lineStyle: { color: color, width: 2 }, itemStyle: { color: color } },\n  { type: 'line', name: name, data: dashed(vals), showSymbol: true, symbolSize: 5, lineStyle: { color: color, width: 2, type: 'dashed' }, itemStyle: { color: color }, tooltip: { show: false } }\n];\nreturn {\n  animation: false,\n  graphic: graphic,\n  legend: { bottom: 10, left: 8, icon: 'roundRect', itemWidth: 14, itemHeight: 4, textStyle: { color: fg, fontSize: 12 }, data: ['Cumulative registered patients', 'Patients under care', 'Monthly registrations'] },\n  grid: { left: 12, right: 24, top: 96, bottom: 40, containLabel: true },\n  tooltip: { trigger: 'axis', valueFormatter: (v) => fmt(v) },\n  xAxis: axisX,\n  yAxis: { type: 'value', min: 0, splitNumber: 3, axisLabel: { color: muted, fontSize: 11, formatter: (v) => fmt(v) }, splitLine: { lineStyle: { color: 'rgba(128,128,128,0.15)' } } },\n  series: [\n    { type: 'bar', name: 'Monthly registrations', data: order.map((i) => [T[i], Number(nw[i]) || 0]), barMaxWidth: 14, itemStyle: { color: 'rgba(0,126,228,0.25)' } }\n  ].concat(line('Cumulative registered patients', blue, cum), line('Patients under care', purple, uc))\n};"
               }
-            },
-            "version": "13.2.1"
+            }
           }
         }
       },
@@ -3125,7 +2883,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\nselect \n  HEART360_PATIENTS_CATEGORY.ref_month,\n  (100.0 * sum(COALESCE(HEART360_PATIENTS_CATEGORY.nb_patients_lost_to_follow_up, 0))) / \n  NULLIF(sum(HEART360_PATIENTS_CATEGORY.TOTAL_NUMBER_OF_PATIENTS), 0) as lost_to_follow_up_pct\nfrom HEART360_PATIENTS_CATEGORY\nwhere HEART360_PATIENTS_CATEGORY.org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\ngroup by 1\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+                        "rawSql": "SELECT * FROM (\nselect \n  HEART360_PATIENTS_CATEGORY.ref_month,\n  (100.0 * sum(COALESCE(HEART360_PATIENTS_CATEGORY.nb_patients_lost_to_follow_up, 0))) / \n  NULLIF(sum(HEART360_PATIENTS_CATEGORY.TOTAL_NUMBER_OF_PATIENTS), 0) as lost_to_follow_up_pct,\n  sum(COALESCE(HEART360_PATIENTS_CATEGORY.nb_patients_lost_to_follow_up, 0)) AS lost_n,\n  sum(HEART360_PATIENTS_CATEGORY.TOTAL_NUMBER_OF_PATIENTS) AS total_n\nfrom HEART360_PATIENTS_CATEGORY\nwhere HEART360_PATIENTS_CATEGORY.org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\ngroup by 1\n) AS master_access_control WHERE '${isAllowed}' = '1'",
                         "sql": {
                           "columns": [
                             {
@@ -3154,105 +2912,50 @@
               "transformations": []
             }
           },
-          "description": "Patients with hypertension with no visit in the past 12 months",
+          "description": "Patients with hypertension with no visit in the past 12 months, as a percent of cumulative registered patients. The headline is the latest completed month; the current month is dashed.",
           "id": 8,
           "links": [],
           "title": "% 12 month lost to follow-up",
           "vizConfig": {
-            "group": "timeseries",
+            "group": "volkovlabs-echarts-panel",
             "kind": "VizConfig",
+            "version": "7.2.5",
             "spec": {
               "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "mode": "palette-classic"
-                  },
-                  "custom": {
-                    "axisBorderShow": false,
-                    "axisCenteredZero": false,
-                    "axisColorMode": "text",
-                    "axisLabel": "",
-                    "axisPlacement": "auto",
-                    "barAlignment": 0,
-                    "barWidthFactor": 0.6,
-                    "drawStyle": "line",
-                    "fillOpacity": 12,
-                    "gradientMode": "none",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "insertNulls": false,
-                    "lineInterpolation": "linear",
-                    "lineWidth": 2,
-                    "pointSize": 6,
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "showPoints": "auto",
-                    "showValues": false,
-                    "spanNulls": false,
-                    "stacking": {
-                      "group": "A",
-                      "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  },
-                  "decimals": 0,
-                  "displayName": "% Patients with no BP measure recorded in the past 12 months",
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      },
-                      {
-                        "color": "red",
-                        "value": 80
-                      }
-                    ]
-                  },
-                  "unit": "percent",
-                  "min": 0,
-                  "max": 100
-                },
-                "overrides": [
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "lost_to_follow_up_pct"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "#ff3355",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  }
-                ]
+                "defaults": {},
+                "overrides": []
               },
               "options": {
-                "legend": {
-                  "calcs": [],
-                  "displayMode": "list",
-                  "placement": "bottom",
-                  "showLegend": true
+                "baidu": {
+                  "callback": "bmapReady",
+                  "key": ""
                 },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "single",
-                  "sort": "none"
-                }
+                "editor": {
+                  "format": "auto"
+                },
+                "editorMode": "code",
+                "gaode": {
+                  "key": "",
+                  "plugin": "AMap.Scale,AMap.ToolBar"
+                },
+                "google": {
+                  "callback": "gmapReady",
+                  "key": ""
+                },
+                "map": "none",
+                "renderer": "canvas",
+                "themeEditor": {
+                  "config": "{}",
+                  "name": "default"
+                },
+                "visualEditor": {
+                  "code": "return {}",
+                  "dataset": [],
+                  "series": []
+                },
+                "getOption": "const frame = (context.panel.data.series || [])[0];\nfunction col(n) { const f = frame && frame.fields.find((x) => x.name === n); if (!f) { return []; } return Array.from(f.values && f.values.buffer ? f.values.buffer : f.values); }\nconst tr = context.panel.data.timeRange;\nconst from = tr ? tr.from.valueOf() : -Infinity;\nconst to = tr ? tr.to.valueOf() : Infinity;\nconst months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];\nconst mLabel = (ms) => { const d = new Date(ms); return months[d.getUTCMonth()] + '-' + d.getUTCFullYear(); };\nconst fmt = (v) => Math.round(Number(v) || 0).toLocaleString('en-US');\nconst theme = context.grafana && context.grafana.theme;\nconst fg = (theme && theme.colors && theme.colors.text && theme.colors.text.primary) || '#1c1c1c';\nconst muted = '#6e7f8d';\nconst T = col('ref_month').map(Number);\nconst order = T.map((v, i) => i).filter((i) => T[i] >= from && T[i] <= to).sort((a, b) => T[a] - T[b]);\nconst done = order.length > 1 ? order[order.length - 2] : order[order.length - 1];\nconst solid = (vals) => order.map((i, k) => [T[i], k < order.length - 1 ? Number(vals[i]) || 0 : null]);\nconst dashed = (vals) => order.map((i, k) => [T[i], k >= order.length - 2 ? Number(vals[i]) || 0 : null]);\nconst axisX = { type: 'time', axisLabel: { color: muted, fontSize: 11, hideOverlap: true, formatter: (v) => mLabel(v) }, axisLine: { lineStyle: { color: 'rgba(128,128,128,0.4)' } }, splitLine: { show: false } };\nconst head = (big, color, line2, line3, rich) => [\n  { type: 'text', left: 12, top: 2, style: { text: big, fontSize: 30, fontWeight: 700, fill: color } },\n  { type: 'text', left: 12, top: 42, style: { text: line2, fontSize: 13, fill: fg } },\n  { type: 'text', left: 12, top: 62, style: { text: line3, fontSize: 13, fill: muted, rich: rich } }\n];\nconst pct = col('lost_to_follow_up_pct');\nconst lost = col('lost_n');\nconst total = col('total_n');\nconst red = '#ff3355';\nconst blue = '#007ee4';\nconst yearStart = (ms) => { const d = new Date(ms); return Date.UTC(d.getUTCFullYear() - 1, d.getUTCMonth() + 1, 1); };\nconst graphic = done === undefined ? [] : head(((v) => (v < 10 ? v.toFixed(1) : Math.round(v)) + '%')(Number(pct[done]) || 0), red,\n  fmt(lost[done]) + ' patients with no visit from ' + mLabel(yearStart(T[done])) + ' to ' + mLabel(T[done]),\n  'of {b|' + fmt(total[done]) + ' cumulative registered patients}', { b: { fill: blue, fontSize: 13 } });\nreturn {\n  animation: false,\n  graphic: graphic,\n  grid: { left: 12, right: 24, top: 96, bottom: 14, containLabel: true },\n  tooltip: { trigger: 'axis', valueFormatter: (v) => (v === null || v === undefined) ? '' : Number(v).toFixed(1) + '%' },\n  xAxis: axisX,\n  yAxis: { type: 'value', min: 0, max: 100, interval: 25, axisLabel: { color: muted, fontSize: 11, formatter: (v) => v + '%' }, splitLine: { lineStyle: { color: 'rgba(128,128,128,0.15)' } } },\n  series: [\n    { type: 'line', name: '12 month lost to follow-up', data: solid(pct), showSymbol: true, symbolSize: 5, lineStyle: { color: red, width: 2 }, itemStyle: { color: red }, areaStyle: { color: 'rgba(255,51,85,0.10)' } },\n    { type: 'line', name: '12 month lost to follow-up', data: dashed(pct), showSymbol: true, symbolSize: 5, lineStyle: { color: red, width: 2, type: 'dashed' }, itemStyle: { color: red }, tooltip: { show: false } }\n  ]\n};"
               }
-            },
-            "version": "13.2.1"
+            }
           }
         }
       },
@@ -7528,7 +7231,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\n  SELECT\n    to_char(s.eligible_adults, 'FM999,999,999') AS eligible_n,\n    to_char(s.screened_adults, 'FM999,999,999') AS screened_n,\n    to_char(s.suspected_htn, 'FM999,999,999') AS suspected_n,\n    ROUND(100.0 * s.screened_adults / NULLIF(s.eligible_adults, 0))::int AS screened_pct,\n    ROUND(100.0 * s.suspected_htn / NULLIF(s.eligible_adults, 0))::int AS suspected_pct,\n    s.screening_target_pct AS target_pct,\n    to_char(${estimated_htn_population}::numeric, 'FM999,999,999') AS estimated_n,\n    to_char(COALESCE(t.registered, 0), 'FM999,999,999') AS registered_n,\n    to_char(COALESCE(t.under_care, 0), 'FM999,999,999') AS under_care_n,\n    to_char(COALESCE(t.controlled, 0), 'FM999,999,999') AS controlled_n,\n    ROUND(100.0 * COALESCE(t.registered, 0) / NULLIF(${estimated_htn_population}::numeric, 0))::int AS registered_pct,\n    ROUND(100.0 * COALESCE(t.under_care, 0) / NULLIF(${estimated_htn_population}::numeric, 0))::int AS under_care_pct,\n    ROUND(100.0 * COALESCE(t.controlled, 0) / NULLIF(${estimated_htn_population}::numeric, 0))::int AS controlled_pct,\n    to_char(to_timestamp(${reference_month}/1000.0), 'Mon YYYY') AS month_label\n  FROM demo_screening_cascade s\n  LEFT JOIN (\n    SELECT\n      SUM(reg.cumulative_number_of_patients)::numeric AS registered,\n      SUM(cat.nb_patients_under_care_registered_before_the_past_3_months)::numeric AS under_care,\n      SUM(cat.nb_patients_controlled)::numeric AS controlled\n    FROM heart360_patients_category cat\n    JOIN heart360_patients_registered reg\n      ON reg.ref_month = cat.ref_month AND reg.org_unit_id = cat.org_unit_id\n    WHERE cat.ref_month = to_timestamp(${reference_month}/1000.0)\n      AND cat.org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  ) t ON TRUE\n  WHERE s.id = 1\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+                        "rawSql": "SELECT * FROM (\n  SELECT\n    to_char(s.eligible_adults, 'FM999,999,999') AS eligible_n,\n    to_char(s.screened_adults, 'FM999,999,999') AS screened_n,\n    to_char(s.suspected_htn, 'FM999,999,999') AS suspected_n,\n    ROUND(100.0 * s.screened_adults / NULLIF(s.eligible_adults, 0))::int AS screened_pct,\n    ROUND(100.0 * s.suspected_htn / NULLIF(s.eligible_adults, 0))::int AS suspected_pct,\n    s.screening_target_pct AS target_pct,\n    to_char(${estimated_htn_population}::numeric, 'FM999,999,999') AS estimated_n,\n    to_char(COALESCE(t.registered, 0), 'FM999,999,999') AS registered_n,\n    to_char(COALESCE(t.under_care, 0), 'FM999,999,999') AS under_care_n,\n    to_char(COALESCE(t.controlled, 0), 'FM999,999,999') AS controlled_n,\n    ROUND(100.0 * COALESCE(t.registered, 0) / NULLIF(${estimated_htn_population}::numeric, 0))::int AS registered_pct,\n    ROUND(100.0 * COALESCE(t.under_care, 0) / NULLIF(${estimated_htn_population}::numeric, 0))::int AS under_care_pct,\n    ROUND(100.0 * COALESCE(t.controlled, 0) / NULLIF(${estimated_htn_population}::numeric, 0))::int AS controlled_pct,\n    to_char(to_timestamp(${reference_month}/1000.0) - interval '1 month', 'Mon YYYY') AS month_label\n  FROM demo_screening_cascade s\n  LEFT JOIN (\n    SELECT\n      SUM(reg.cumulative_number_of_patients)::numeric AS registered,\n      SUM(cat.nb_patients_under_care_registered_before_the_past_3_months)::numeric AS under_care,\n      SUM(cat.nb_patients_controlled)::numeric AS controlled\n    FROM heart360_patients_category cat\n    JOIN heart360_patients_registered reg\n      ON reg.ref_month = cat.ref_month AND reg.org_unit_id = cat.org_unit_id\n    WHERE cat.ref_month = to_timestamp(${reference_month}/1000.0) - interval '1 month'\n      AND cat.org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  ) t ON TRUE\n  WHERE s.id = 1\n) AS master_access_control WHERE '${isAllowed}' = '1'",
                         "refId": "A"
                       },
                       "version": "v0"
@@ -7543,7 +7246,7 @@
               "transformations": []
             }
           },
-          "description": "Screening cascade: demo seed (demo_screening_cascade), nationwide, over eligible adults aged 15+. Treatment cascade: live registered, under care, and BP controlled for the selected place and month, over estimated adults with hypertension (${estimated_htn_population}).",
+          "description": "Screening cascade: demo seed (demo_screening_cascade), nationwide, over eligible adults aged 15+. Treatment cascade: live registered, under care, and BP controlled for the selected place in the latest completed month, over estimated adults with hypertension (${estimated_htn_population}).",
           "id": 91,
           "links": [],
           "title": "Screening-to-treatment cascade",
@@ -7558,7 +7261,7 @@
               },
               "options": {
                 "afterRender": "",
-                "content": "<div class=\"stc\">\n  <section class=\"stc-col\">\n    <div class=\"stc-rows\">\n    <div class=\"stc-row\">\n      <div class=\"stc-label\">Eligible for screening (aged 15+)</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-eligible\" style=\"width: min(100%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">100%</div><div class=\"stc-cnt\">{{eligible_n}}</div></div>\n    </div>\n    <div class=\"stc-row stc-row-target\">\n      <div class=\"stc-label\">Actually screened</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-screened\" style=\"width: min({{screened_pct}}%, 100%);\"></div><div class=\"stc-target\" style=\"left: {{target_pct}}%;\"></div><div class=\"stc-target-label\" style=\"left: {{target_pct}}%;\">&#9660; Target: {{target_pct}}%</div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{screened_pct}}%</div><div class=\"stc-cnt\">{{screened_n}}</div></div>\n    </div>\n    <div class=\"stc-row\">\n      <div class=\"stc-label\">Suspected hypertension</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-suspected\" style=\"width: min({{suspected_pct}}%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{suspected_pct}}%</div><div class=\"stc-cnt\">{{suspected_n}}</div></div><div class=\"stc-caption\">Screened, not diagnosed, BP &gt; 140/90 mmHg</div>\n    </div>\n    </div>\n    <div class=\"stc-den\"><b>100%</b> = {{eligible_n}} eligible adults aged 15+</div>\n  </section>\n  <div class=\"stc-divider\"></div>\n  <section class=\"stc-col stc-treatment\">\n    <div class=\"stc-rows\">\n    <div class=\"stc-row\">\n      <div class=\"stc-label\">Registered patients</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-registered\" style=\"width: min({{registered_pct}}%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{registered_pct}}%</div><div class=\"stc-cnt\">{{registered_n}}</div></div>\n    </div>\n    <div class=\"stc-row stc-row-target\">\n      <div class=\"stc-label\">Patients under care</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-undercare\" style=\"width: min({{under_care_pct}}%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{under_care_pct}}%</div><div class=\"stc-cnt\">{{under_care_n}}</div></div>\n    </div>\n    <div class=\"stc-row\">\n      <div class=\"stc-label\">Patients with BP controlled</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-controlled\" style=\"width: min({{controlled_pct}}%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{controlled_pct}}%</div><div class=\"stc-cnt\">{{controlled_n}}</div></div><div class=\"stc-caption\">&nbsp;</div>\n    </div>\n    </div>\n    <div class=\"stc-den\"><b>100%</b> = {{estimated_n}} estimated adults with hypertension</div>\n  </section>\n</div>",
+                "content": "<div class=\"stc\">\n  <section class=\"stc-col\">\n    <div class=\"stc-rows\">\n    <div class=\"stc-row\">\n      <div class=\"stc-label\">Eligible for screening (aged 15+)</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-eligible\" style=\"width: min(100%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">100%</div><div class=\"stc-cnt\">{{eligible_n}}</div></div>\n    </div>\n    <div class=\"stc-row stc-row-target\">\n      <div class=\"stc-label\">Screened individuals</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-screened\" style=\"width: min({{screened_pct}}%, 100%);\"></div><div class=\"stc-target\" style=\"left: {{target_pct}}%;\"></div><div class=\"stc-target-label\" style=\"left: {{target_pct}}%;\"><span class=\"stc-arrow\">&#9660;</span>Target: {{target_pct}}%</div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{screened_pct}}%</div><div class=\"stc-cnt\">{{screened_n}}</div></div>\n    </div>\n    <div class=\"stc-row\">\n      <div class=\"stc-label\">Suspected for hypertension</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-suspected\" style=\"width: min({{suspected_pct}}%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{suspected_pct}}%</div><div class=\"stc-cnt\">{{suspected_n}}</div></div><div class=\"stc-caption\">Screened, not diagnosed, BP &gt; 140/90 mmHg</div>\n    </div>\n    </div>\n    <div class=\"stc-den\"><b>100%</b> = {{eligible_n}} eligible adults aged 15+</div>\n  </section>\n  <div class=\"stc-divider\"></div>\n  <section class=\"stc-col stc-treatment\">\n    <div class=\"stc-rows\">\n    <div class=\"stc-row\">\n      <div class=\"stc-label\">Registered patients</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-registered\" style=\"width: min({{registered_pct}}%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{registered_pct}}%</div><div class=\"stc-cnt\">{{registered_n}}</div></div>\n    </div>\n    <div class=\"stc-row stc-row-target\">\n      <div class=\"stc-label\">Patients under care</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-undercare\" style=\"width: min({{under_care_pct}}%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{under_care_pct}}%</div><div class=\"stc-cnt\">{{under_care_n}}</div></div>\n    </div>\n    <div class=\"stc-row\">\n      <div class=\"stc-label\">Patients with BP controlled</div>\n      <div class=\"stc-track\"><div class=\"stc-bar stc-controlled\" style=\"width: min({{controlled_pct}}%, 100%);\"></div></div>\n      <div class=\"stc-value\"><div class=\"stc-pct\">{{controlled_pct}}%</div><div class=\"stc-cnt\">{{controlled_n}}</div></div><div class=\"stc-caption\">&nbsp;</div>\n    </div>\n    </div>\n    <div class=\"stc-den\"><b>100%</b> = {{estimated_n}} estimated adults with hypertension</div>\n  </section>\n</div>",
                 "contentPartials": [],
                 "defaultContent": "No data for this place and month.",
                 "editor": {
@@ -7571,7 +7274,7 @@
                 "externalStyles": [],
                 "helpers": "",
                 "renderMode": "everyRow",
-                "styles": "\n.stc { display: flex; height: 100%; font-size: 13px; line-height: 1.3; padding: 4px 4px 0 4px; }\n.stc-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }\n.stc-divider { width: 1px; background: rgba(128,128,128,0.25); margin: 0 24px; }\n.stc-rows { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; gap: 16px; }\n.stc-row { display: grid; grid-template-columns: 136px 1fr 72px; align-items: center; column-gap: 12px; }\n.stc-row-target { padding-bottom: 18px; }\n.stc-label { font-size: 13px; }\n.stc-caption { grid-column: 1 / -1; font-size: 12px; color: #6e7f8d; margin-top: 4px; }\n.stc-track { position: relative; height: 22px; background: rgba(128,128,128,0.14); border-radius: 2px; }\n.stc-treatment .stc-track { border-right: 2px dashed #8a9599; }\n.stc-bar { height: 100%; border-radius: 2px; }\n.stc-eligible { background: #dae0e1; }\n.stc-screened { background: #FF9830; }\n.stc-suspected { background: #F2495C; }\n.stc-registered { background: #007ee4; }\n.stc-undercare { background: #b51bdc; }\n.stc-controlled { background: #3bb231; }\n.stc-target { position: absolute; top: -6px; bottom: -6px; border-left: 2px dashed #ed6300; transform: translateX(-1px); }\n.stc-target-label { position: absolute; top: 28px; transform: translateX(-50%); white-space: nowrap; color: #ed6300; font-size: 12px; font-weight: 600; }\n.stc-pct { font-size: 17px; font-weight: 700; }\n.stc-cnt { font-size: 13px; color: #6e7f8d; }\n.stc-den { margin-top: 12px; padding-top: 8px; border-top: 1px solid rgba(128,128,128,0.18); font-size: 12px; color: #6e7f8d; }\n.stc-den b { color: inherit; }\n",
+                "styles": "\n.stc { display: flex; height: 100%; font-size: 13px; line-height: 1.3; padding: 4px 4px 0 4px; }\n.stc-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }\n.stc-divider { width: 1px; background: rgba(128,128,128,0.25); margin: 0 24px; }\n.stc-rows { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; gap: 16px; }\n.stc-row { display: grid; grid-template-columns: 136px 1fr 72px; align-items: center; column-gap: 12px; }\n.stc-row-target { padding-bottom: 18px; }\n.stc-label { font-size: 13px; }\n.stc-caption { grid-column: 1 / -1; font-size: 12px; color: #6e7f8d; margin-top: 4px; }\n.stc-track { position: relative; height: 22px; background: rgba(128,128,128,0.14); border-radius: 2px; }\n.stc-treatment .stc-track { border-right: 2px dashed #8a9599; }\n.stc-bar { height: 100%; border-radius: 2px; }\n.stc-eligible { background: #dae0e1; }\n.stc-screened { background: #FF9830; }\n.stc-suspected { background: #F2495C; }\n.stc-registered { background: #007ee4; }\n.stc-undercare { background: #b51bdc; }\n.stc-controlled { background: #3bb231; }\n.stc-target { position: absolute; top: -6px; bottom: -6px; border-left: 2px dashed #ed6300; transform: translateX(-1px); }\n.stc-target-label { position: absolute; top: 27px; transform: translateX(-6px); white-space: nowrap; color: #ed6300; font-size: 12px; font-weight: 600; }\n.stc-arrow { display: inline-block; width: 12px; text-align: center; margin-right: 3px; }\n.stc-pct { font-size: 17px; font-weight: 700; }\n.stc-cnt { font-size: 13px; color: #6e7f8d; }\n.stc-den { margin-top: 12px; padding-top: 8px; border-top: 1px solid rgba(128,128,128,0.18); font-size: 12px; color: #6e7f8d; }\n.stc-den b { color: inherit; }\n",
                 "wrap": false
               }
             }
@@ -7797,7 +7500,7 @@
                                               "kind": "ElementReference",
                                               "name": "panel-7"
                                             },
-                                            "height": 8,
+                                            "height": 10,
                                             "width": 16,
                                             "x": 0,
                                             "y": 13
@@ -7810,7 +7513,7 @@
                                               "kind": "ElementReference",
                                               "name": "panel-8"
                                             },
-                                            "height": 8,
+                                            "height": 10,
                                             "width": 8,
                                             "x": 16,
                                             "y": 13
@@ -7837,7 +7540,7 @@
                                               "kind": "ElementReference",
                                               "name": "panel-cohort"
                                             },
-                                            "height": 13,
+                                            "height": 12,
                                             "width": 24,
                                             "x": 0,
                                             "y": 0

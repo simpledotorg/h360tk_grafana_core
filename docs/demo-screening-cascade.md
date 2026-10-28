@@ -42,7 +42,7 @@ The cascade is one Grafana panel on purpose. One border and one title make the t
 
 **Treatment cascade:**
 
-- Live, for the selected place and `${reference_month}`:
+- Live, for the selected place in the **latest completed month** (`${reference_month}` − 1 month; Sep 2026 in the demo):
   - Registered = `SUM(heart360_patients_registered.cumulative_number_of_patients)`
   - Under care = `SUM(nb_patients_under_care_registered_before_the_past_3_months)`
   - Controlled = `SUM(nb_patients_controlled)`
@@ -53,11 +53,13 @@ The cascade is one Grafana panel on purpose. One border and one title make the t
 
 - `panel-1`'s **original SQL, unchanged** (controlled per `ref_month`, org filter, `isAllowed`). Only the visualisation changed.
 - The headline is the last point of the same series inside the dashboard time range, so it always equals the line's last point.
-- Nationwide, October 2026, the cascade's controlled and the headline both read 3,320.
+- The headline is the **latest completed month** (second-to-last point). The running month is drawn dashed.
+- Nationwide for Sep 2026, the cascade's controlled, the headline and the `# Controlled BP` card all read 3,901.
 
 ## Known facts a presenter should know
 
-- Controlled drops from 3,901 (September 2026) to 3,320 (October 2026). The trend shows that dip honestly.
+- Every headline on the Hypertension tab uses the latest completed month (Sep 2026). October is still running and is shown dashed.
+- The cascade's "Patients under care" (6,523) uses `nb_patients_under_care_registered_before_the_past_3_months`, the same measure as the old treatment cascade. The Patients under care headline (7,363) uses `nb_patients_under_care`. Both are unchanged definitions, but the numbers differ.
 - Registered (8,252) is larger than suspected hypertension (7,320). They are different groups, so there is no arrow between the two charts.
 - When a facility is selected, treatment percents fall near 0%. `estimated_htn_population` is a nationwide 14,500, and the old treatment cascade behaved the same way. Demo nationwide.
 
@@ -97,25 +99,30 @@ The cascade is one Grafana panel on purpose. One border and one title make the t
 
 | Panel | Change (native options unless noted) |
 |---|---|
-| `panel-stc` | Removed the sub-titles, the `Denominator:` lines and the tags. Added the denominator footers. Treatment bars use hearts360 colours. Rows line up across both halves. (Custom HTML/CSS.) |
-| `panel-1` | Headline and subtitle aligned with the panel title (left 12). hearts360 green. `Mon-YYYY` month labels. Y-axis ticks like `4,000`. (ECharts code.) |
+| `panel-stc` | Removed the sub-titles, the `Denominator:` lines and the tags. Added the denominator footers. Rows read `Screened individuals` and `Suspected for hypertension`. Treatment bars use hearts360 colours. Rows line up across both halves. The target arrow sits on the dashed target line. (Custom HTML/CSS.) |
+| `panel-1` | Headline and subtitle aligned with the panel title (left 12). hearts360 green. `Mon-YYYY` month labels. Y-axis ticks like `4,000`. Bottom inset 14 px. (ECharts code.) |
 | `panel-2/3/4` | Per-point value labels off. Points always shown. 0–100% axis. Light fill. hearts360 colours. The dashed `Current Month` series is hidden from the legend but stays on the chart. |
-| `panel-14…19` | hearts360 colours. Count cards use unit `locale` (`3,320`). |
-| `panel-7` | Value labels off. Unit `locale`. Registrations blue, under care purple. |
-| `panel-8` | Value labels off. 0–100%. `#ff3355`. |
-| `panel-cohort` | Renamed `Quarterly cohort reports`. hearts360 colours. Value labels always on, at 14 px. Value axis hidden and scaled 0–1. Bars wider. Legend reads `BP controlled` / `BP uncontrolled` / `No visit in quarter`. (SQL: see below.) |
+| `panel-14…19` | **Latest completed month.** The SQL subtracts 1 month from `MAX(ref_month)`, which is the running month. For example, Sep 2026: 60% / 3,901, 31% / 2,025, 9% / 597. hearts360 colours. Count cards use unit `locale`. |
+| `panel-7` | **Now ECharts, same SQL.** Purple headline: under care in the latest completed month. Then `N patients registered in Mon-YYYY` and `of N cumulative registered patients` (in blue). Below that, the trend: cumulative and under-care lines, monthly registration bars, and the running month dashed. Height 8 → 10. |
+| `panel-8` | **Now ECharts.** The SQL adds `lost_n` and `total_n` columns; the percent is unchanged. Red headline: LTFU % for the latest completed month (one decimal under 10%). Then `N patients with no visit from Mon-YYYY to Mon-YYYY` and `of N cumulative registered patients`. 0–100% axis at 25% steps. The running month is dashed. Height 8 → 10. |
+| `panel-cohort` | **Rebuilt as dynamic text (HTML/CSS), like hearts360**, with renderMode `allRows`. Slim 56 px bars, 250 px tall. Green on top. Centred white bold percents; segments under 5% have no label. Under each bar: `Q2-2026 cohort` / `1,003 patients` / grey `Result from latest visit in Q3-2026`. Legend key at the bottom right. Hover a segment to see its count. Height 12. |
 | `panel-12` | Count columns use unit `locale`. Percent text uses hearts360 colours. |
 
-**Cohort SQL changes:**
+**Cohort SQL** (new query, same data):
 
-- **Label.** Each cohort label is `Q2-2026 · n=1,003`, where n is the number of patients registered in that quarter.
-  - A two-line label was tried: Grafana clips the second line.
-  - A label with the full word "patients" was tried: it clips at the right edge.
-- **Unfinished cohorts.** `WHERE q.q + 6 months <= reference_month + 1 month` hides cohorts whose follow-up quarter has not ended. Before this, Q4-2026 showed a false 100% "no visit".
+- Counts come from `HEART360_COHORT_PATIENT_DETAILS`, with the same quarters, location filter and `isAllowed` check.
+- **Unfinished cohorts.** `WHERE q.q + 6 months <= reference_month + 1 month` hides cohorts whose follow-up quarter has not ended.
+- **Pre-formatted text.** The SQL returns labels, heights and counts as text, so the template only prints.
 
-**Known native limits:**
+**Why the cohort chart is HTML:**
 
-- **Cohort labels.** Grafana places stacked-bar value labels at the top edge of each segment and draws them in the theme text colour (not white). A very small segment collides with its neighbour's label, for example `6%` and `35%` on Q2-2026.
+- Grafana's native bar chart puts stacked labels on the segment edge.
+- It draws `text.valueSize` at half size on 2× (retina) screens. This was confirmed at 1280 px, scale 2.
+- It allows one line of text under a bar. Two lines and tilted labels were both tried, and both clip.
+- Tony approved the HTML rebuild on 2026-10-28.
+
+**Known limits:**
+
 - **Panel title size** is global in Grafana and was not changed.
 
 ## Rules to keep
