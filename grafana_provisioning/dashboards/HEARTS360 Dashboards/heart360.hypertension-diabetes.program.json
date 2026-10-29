@@ -3043,7 +3043,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\nSELECT\n  patient_id,\n  patient_name,\n  registration_date,\n  birth_date,\n  gender,\n  phone_number,\n  (SELECT name FROM org_units WHERE id = h.org_unit_id) AS facility,\n  last_visit_date,\n  last_bp_diastolic,\n  last_bp_systolic,\n  last_call_date,\n  last_call_result AS result_type,\n  COALESCE(removed_reason, '-') AS removed_reason,\n  EXTRACT(YEAR FROM AGE(birth_date)) AS age_years,\n  (CURRENT_DATE - last_visit_date::date) AS days_since_last_visit,\n  CASE\n    WHEN last_bp_systolic IS NOT NULL AND last_bp_diastolic IS NOT NULL\n      THEN CONCAT(\n        last_bp_systolic::int,\n        '/',\n        last_bp_diastolic::int\n      )\n    ELSE NULL\n  END AS last_bp\nFROM HEART360_OVERDUE_PATIENTS h\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  AND last_visit_date < now() - interval '45 days'\n  AND ${selected_level} IN (3, 4, 10)\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+                        "rawSql": "SELECT * FROM (\nSELECT\n  patient_id,\n  patient_name,\n  registration_date,\n  birth_date,\n  gender,\n  phone_number,\n  (SELECT name FROM org_units WHERE id = h.org_unit_id) AS facility,\n  last_visit_date,\n  last_bp_diastolic,\n  last_bp_systolic,\n  last_call_date,\n  last_call_result AS result_type,\n  COALESCE(removed_reason, 'Pending to call') AS removed_reason,\n  EXTRACT(YEAR FROM AGE(birth_date)) AS age_years,\n  to_char(registration_date, 'FMDD Mon, YYYY') AS registration_label,\n  to_char(last_visit_date, 'FMDD Mon, YYYY')\n    || CASE WHEN last_visit_date::time <> '00:00'\n         THEN E'\\n' || lower(to_char(last_visit_date, 'FMHH12:MI AM')) ELSE '' END AS last_visit_label,\n  to_char(last_call_date, 'FMDD Mon, YYYY') AS last_contacted_label,\n  (CURRENT_DATE - last_visit_date::date) AS days_since_last_visit,\n  CASE\n    WHEN last_bp_systolic IS NOT NULL AND last_bp_diastolic IS NOT NULL\n      THEN CONCAT(\n        last_bp_systolic::int,\n        '/',\n        last_bp_diastolic::int\n      )\n    ELSE NULL\n  END AS last_bp\nFROM HEART360_OVERDUE_PATIENTS h\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  AND last_visit_date < now() - interval '45 days'\n  AND ${selected_level} IN (3, 4, 10)\nORDER BY (CURRENT_DATE - last_visit_date::date) DESC\n) AS master_access_control WHERE '${isAllowed}' = '1'",
                         "refId": "A",
                         "dataset": "metrics_db",
                         "sql": {
@@ -3117,7 +3117,7 @@
           "description": "",
           "id": 401,
           "links": [],
-          "title": "Overdue Patients",
+          "title": "All columns & download",
           "vizConfig": {
             "group": "volkovlabs-table-panel",
             "kind": "VizConfig",
@@ -3154,6 +3154,21 @@
                         "value": "Pending to call"
                       }
                     ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "days_since_last_visit"
+                    },
+                    "properties": [
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "red",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
                   }
                 ]
               },
@@ -3168,7 +3183,7 @@
                     "actionsColumnConfig": {
                       "alignment": "start",
                       "fontSize": "md",
-                      "label": "",
+                      "label": "Update",
                       "width": {
                         "auto": false,
                         "value": 100
@@ -3213,16 +3228,20 @@
                           "width": {
                             "auto": false,
                             "min": 20,
-                            "value": 110
+                            "value": 190
                           },
                           "wrap": true
                         },
                         "columnTooltip": "",
                         "edit": {
                           "editor": {
-                            "type": "string"
+                            "queryOptions": {
+                              "source": "B",
+                              "value": "option"
+                            },
+                            "type": "select"
                           },
-                          "enabled": false,
+                          "enabled": true,
                           "permission": {
                             "mode": "",
                             "userRole": []
@@ -3230,7 +3249,7 @@
                         },
                         "enabled": true,
                         "field": {
-                          "name": "patient_id",
+                          "name": "removed_reason",
                           "source": "A"
                         },
                         "fileCell": {
@@ -3239,7 +3258,7 @@
                           "variant": "primary"
                         },
                         "filter": {
-                          "enabled": false,
+                          "enabled": true,
                           "mode": "client",
                           "variable": ""
                         },
@@ -3250,7 +3269,7 @@
                           "valueSize": 14
                         },
                         "group": false,
-                        "label": "NIK number",
+                        "label": "Overdue status",
                         "newRowEdit": {
                           "editor": {
                             "type": "string"
@@ -3349,6 +3368,75 @@
                             "fontSize": "md"
                           },
                           "width": {
+                            "auto": false,
+                            "min": 20,
+                            "value": 175
+                          },
+                          "wrap": true
+                        },
+                        "columnTooltip": "",
+                        "edit": {
+                          "editor": {
+                            "type": "string"
+                          },
+                          "enabled": false,
+                          "permission": {
+                            "mode": "",
+                            "userRole": []
+                          }
+                        },
+                        "enabled": true,
+                        "field": {
+                          "name": "patient_id",
+                          "source": "A"
+                        },
+                        "fileCell": {
+                          "size": "md",
+                          "text": "Download",
+                          "variant": "primary"
+                        },
+                        "filter": {
+                          "enabled": false,
+                          "mode": "client",
+                          "variable": ""
+                        },
+                        "footer": [],
+                        "gauge": {
+                          "mode": "basic",
+                          "valueDisplayMode": "text",
+                          "valueSize": 14
+                        },
+                        "group": false,
+                        "label": "Patient ID",
+                        "newRowEdit": {
+                          "editor": {
+                            "type": "string"
+                          },
+                          "enabled": false
+                        },
+                        "objectId": "",
+                        "pin": "",
+                        "preformattedStyle": false,
+                        "scale": "auto",
+                        "showingRows": 20,
+                        "sort": {
+                          "descFirst": false,
+                          "enabled": false
+                        },
+                        "type": "auto"
+                      },
+                      {
+                        "aggregation": "none",
+                        "appearance": {
+                          "alignment": "start",
+                          "background": {
+                            "applyToRow": false
+                          },
+                          "colors": {},
+                          "header": {
+                            "fontSize": "md"
+                          },
+                          "width": {
                             "auto": true,
                             "min": 20,
                             "value": 100
@@ -3368,7 +3456,283 @@
                         },
                         "enabled": true,
                         "field": {
-                          "name": "registration_date",
+                          "name": "gender",
+                          "source": "A"
+                        },
+                        "fileCell": {
+                          "size": "md",
+                          "text": "Download",
+                          "variant": "primary"
+                        },
+                        "filter": {
+                          "enabled": false,
+                          "mode": "client",
+                          "variable": ""
+                        },
+                        "footer": [],
+                        "gauge": {
+                          "mode": "basic",
+                          "valueDisplayMode": "text",
+                          "valueSize": 14
+                        },
+                        "group": false,
+                        "label": "Gender",
+                        "newRowEdit": {
+                          "editor": {
+                            "type": "string"
+                          },
+                          "enabled": false
+                        },
+                        "objectId": "",
+                        "pin": "",
+                        "preformattedStyle": false,
+                        "scale": "auto",
+                        "showingRows": 20,
+                        "sort": {
+                          "descFirst": false,
+                          "enabled": false
+                        },
+                        "type": "auto"
+                      },
+                      {
+                        "aggregation": "none",
+                        "appearance": {
+                          "alignment": "start",
+                          "background": {
+                            "applyToRow": false
+                          },
+                          "colors": {},
+                          "header": {
+                            "fontSize": "md"
+                          },
+                          "width": {
+                            "auto": false,
+                            "min": 20,
+                            "value": 70
+                          },
+                          "wrap": true
+                        },
+                        "columnTooltip": "",
+                        "edit": {
+                          "editor": {
+                            "type": "string"
+                          },
+                          "enabled": false,
+                          "permission": {
+                            "mode": "",
+                            "userRole": []
+                          }
+                        },
+                        "enabled": true,
+                        "field": {
+                          "name": "age_years",
+                          "source": "A"
+                        },
+                        "fileCell": {
+                          "size": "md",
+                          "text": "Download",
+                          "variant": "primary"
+                        },
+                        "filter": {
+                          "enabled": false,
+                          "mode": "client",
+                          "variable": ""
+                        },
+                        "footer": [],
+                        "gauge": {
+                          "mode": "basic",
+                          "valueDisplayMode": "text",
+                          "valueSize": 14
+                        },
+                        "group": false,
+                        "label": "Age",
+                        "newRowEdit": {
+                          "editor": {
+                            "type": "string"
+                          },
+                          "enabled": false
+                        },
+                        "objectId": "",
+                        "pin": "",
+                        "preformattedStyle": false,
+                        "scale": "auto",
+                        "showingRows": 20,
+                        "sort": {
+                          "descFirst": false,
+                          "enabled": false
+                        },
+                        "type": "auto"
+                      },
+                      {
+                        "aggregation": "none",
+                        "appearance": {
+                          "alignment": "start",
+                          "background": {
+                            "applyToRow": false
+                          },
+                          "colors": {},
+                          "header": {
+                            "fontSize": "md"
+                          },
+                          "width": {
+                            "auto": true,
+                            "min": 20,
+                            "value": 100
+                          },
+                          "wrap": true
+                        },
+                        "columnTooltip": "",
+                        "edit": {
+                          "editor": {
+                            "type": "string"
+                          },
+                          "enabled": false,
+                          "permission": {
+                            "mode": "",
+                            "userRole": []
+                          }
+                        },
+                        "enabled": true,
+                        "field": {
+                          "name": "phone_number",
+                          "source": "A"
+                        },
+                        "fileCell": {
+                          "size": "md",
+                          "text": "Download",
+                          "variant": "primary"
+                        },
+                        "filter": {
+                          "enabled": true,
+                          "mode": "client",
+                          "variable": ""
+                        },
+                        "footer": [],
+                        "gauge": {
+                          "mode": "basic",
+                          "valueDisplayMode": "text",
+                          "valueSize": 14
+                        },
+                        "group": false,
+                        "label": "Phone",
+                        "newRowEdit": {
+                          "editor": {
+                            "type": "string"
+                          },
+                          "enabled": false
+                        },
+                        "objectId": "",
+                        "pin": "",
+                        "preformattedStyle": false,
+                        "scale": "auto",
+                        "showingRows": 20,
+                        "sort": {
+                          "descFirst": false,
+                          "enabled": false
+                        },
+                        "type": "auto"
+                      },
+                      {
+                        "aggregation": "none",
+                        "appearance": {
+                          "alignment": "start",
+                          "background": {
+                            "applyToRow": false
+                          },
+                          "colors": {},
+                          "header": {
+                            "fontSize": "md"
+                          },
+                          "width": {
+                            "auto": true,
+                            "min": 20,
+                            "value": 100
+                          },
+                          "wrap": true
+                        },
+                        "columnTooltip": "",
+                        "edit": {
+                          "editor": {
+                            "type": "string"
+                          },
+                          "enabled": false,
+                          "permission": {
+                            "mode": "",
+                            "userRole": []
+                          }
+                        },
+                        "enabled": true,
+                        "field": {
+                          "name": "facility",
+                          "source": "A"
+                        },
+                        "fileCell": {
+                          "size": "md",
+                          "text": "Download",
+                          "variant": "primary"
+                        },
+                        "filter": {
+                          "enabled": true,
+                          "mode": "client",
+                          "variable": ""
+                        },
+                        "footer": [],
+                        "gauge": {
+                          "mode": "basic",
+                          "valueDisplayMode": "text",
+                          "valueSize": 14
+                        },
+                        "group": false,
+                        "label": "Facility",
+                        "newRowEdit": {
+                          "editor": {
+                            "type": "string"
+                          },
+                          "enabled": false
+                        },
+                        "objectId": "",
+                        "pin": "",
+                        "preformattedStyle": false,
+                        "scale": "auto",
+                        "showingRows": 20,
+                        "sort": {
+                          "descFirst": false,
+                          "enabled": false
+                        },
+                        "type": "auto"
+                      },
+                      {
+                        "aggregation": "none",
+                        "appearance": {
+                          "alignment": "start",
+                          "background": {
+                            "applyToRow": false
+                          },
+                          "colors": {},
+                          "header": {
+                            "fontSize": "md"
+                          },
+                          "width": {
+                            "auto": true,
+                            "min": 20,
+                            "value": 100
+                          },
+                          "wrap": true
+                        },
+                        "columnTooltip": "",
+                        "edit": {
+                          "editor": {
+                            "type": "string"
+                          },
+                          "enabled": false,
+                          "permission": {
+                            "mode": "",
+                            "userRole": []
+                          }
+                        },
+                        "enabled": true,
+                        "field": {
+                          "name": "registration_label",
                           "source": "A"
                         },
                         "fileCell": {
@@ -3418,7 +3782,7 @@
                             "fontSize": "md"
                           },
                           "width": {
-                            "auto": false,
+                            "auto": true,
                             "min": 20,
                             "value": 100
                           },
@@ -3437,7 +3801,7 @@
                         },
                         "enabled": true,
                         "field": {
-                          "name": "age_years",
+                          "name": "last_visit_label",
                           "source": "A"
                         },
                         "fileCell": {
@@ -3457,7 +3821,283 @@
                           "valueSize": 14
                         },
                         "group": false,
-                        "label": "Age",
+                        "label": "Last visited on",
+                        "newRowEdit": {
+                          "editor": {
+                            "type": "string"
+                          },
+                          "enabled": false
+                        },
+                        "objectId": "",
+                        "pin": "",
+                        "preformattedStyle": false,
+                        "scale": "auto",
+                        "showingRows": 20,
+                        "sort": {
+                          "descFirst": false,
+                          "enabled": false
+                        },
+                        "type": "preformatted"
+                      },
+                      {
+                        "aggregation": "none",
+                        "appearance": {
+                          "alignment": "start",
+                          "background": {
+                            "applyToRow": false
+                          },
+                          "colors": {},
+                          "header": {
+                            "fontSize": "md"
+                          },
+                          "width": {
+                            "auto": false,
+                            "min": 20,
+                            "value": 90
+                          },
+                          "wrap": true
+                        },
+                        "columnTooltip": "",
+                        "edit": {
+                          "editor": {
+                            "type": "string"
+                          },
+                          "enabled": false,
+                          "permission": {
+                            "mode": "",
+                            "userRole": []
+                          }
+                        },
+                        "enabled": true,
+                        "field": {
+                          "name": "last_bp",
+                          "source": "A"
+                        },
+                        "fileCell": {
+                          "size": "md",
+                          "text": "Download",
+                          "variant": "primary"
+                        },
+                        "filter": {
+                          "enabled": false,
+                          "mode": "client",
+                          "variable": ""
+                        },
+                        "footer": [],
+                        "gauge": {
+                          "mode": "basic",
+                          "valueDisplayMode": "text",
+                          "valueSize": 14
+                        },
+                        "group": false,
+                        "label": "Last BP",
+                        "newRowEdit": {
+                          "editor": {
+                            "type": "string"
+                          },
+                          "enabled": false
+                        },
+                        "objectId": "",
+                        "pin": "",
+                        "preformattedStyle": false,
+                        "scale": "auto",
+                        "showingRows": 20,
+                        "sort": {
+                          "descFirst": false,
+                          "enabled": false
+                        },
+                        "type": "auto"
+                      },
+                      {
+                        "aggregation": "none",
+                        "appearance": {
+                          "alignment": "start",
+                          "background": {
+                            "applyToRow": false
+                          },
+                          "colors": {},
+                          "header": {
+                            "fontSize": "md"
+                          },
+                          "width": {
+                            "auto": false,
+                            "min": 20,
+                            "value": 100
+                          },
+                          "wrap": true
+                        },
+                        "columnTooltip": "",
+                        "edit": {
+                          "editor": {
+                            "type": "string"
+                          },
+                          "enabled": false,
+                          "permission": {
+                            "mode": "",
+                            "userRole": []
+                          }
+                        },
+                        "enabled": true,
+                        "field": {
+                          "name": "days_since_last_visit",
+                          "source": "A"
+                        },
+                        "fileCell": {
+                          "size": "md",
+                          "text": "Download",
+                          "variant": "primary"
+                        },
+                        "filter": {
+                          "enabled": false,
+                          "mode": "client",
+                          "variable": ""
+                        },
+                        "footer": [],
+                        "gauge": {
+                          "mode": "basic",
+                          "valueDisplayMode": "text",
+                          "valueSize": 14
+                        },
+                        "group": false,
+                        "label": "Days since last visit",
+                        "newRowEdit": {
+                          "editor": {
+                            "type": "string"
+                          },
+                          "enabled": false
+                        },
+                        "objectId": "",
+                        "pin": "",
+                        "preformattedStyle": false,
+                        "scale": "auto",
+                        "showingRows": 20,
+                        "sort": {
+                          "descFirst": true,
+                          "enabled": true
+                        },
+                        "type": "coloredText"
+                      },
+                      {
+                        "aggregation": "none",
+                        "appearance": {
+                          "alignment": "start",
+                          "background": {
+                            "applyToRow": false
+                          },
+                          "colors": {},
+                          "header": {
+                            "fontSize": "md"
+                          },
+                          "width": {
+                            "auto": true,
+                            "min": 20,
+                            "value": 100
+                          },
+                          "wrap": true
+                        },
+                        "columnTooltip": "",
+                        "edit": {
+                          "editor": {
+                            "type": "string"
+                          },
+                          "enabled": false,
+                          "permission": {
+                            "mode": "",
+                            "userRole": []
+                          }
+                        },
+                        "enabled": true,
+                        "field": {
+                          "name": "last_contacted_label",
+                          "source": "A"
+                        },
+                        "fileCell": {
+                          "size": "md",
+                          "text": "Download",
+                          "variant": "primary"
+                        },
+                        "filter": {
+                          "enabled": false,
+                          "mode": "client",
+                          "variable": ""
+                        },
+                        "footer": [],
+                        "gauge": {
+                          "mode": "basic",
+                          "valueDisplayMode": "text",
+                          "valueSize": 14
+                        },
+                        "group": false,
+                        "label": "Last contacted on",
+                        "newRowEdit": {
+                          "editor": {
+                            "type": "string"
+                          },
+                          "enabled": false
+                        },
+                        "objectId": "",
+                        "pin": "",
+                        "preformattedStyle": false,
+                        "scale": "auto",
+                        "showingRows": 20,
+                        "sort": {
+                          "descFirst": false,
+                          "enabled": false
+                        },
+                        "type": "auto"
+                      },
+                      {
+                        "aggregation": "none",
+                        "appearance": {
+                          "alignment": "start",
+                          "background": {
+                            "applyToRow": false
+                          },
+                          "colors": {},
+                          "header": {
+                            "fontSize": "md"
+                          },
+                          "width": {
+                            "auto": true,
+                            "min": 20,
+                            "value": 100
+                          },
+                          "wrap": true
+                        },
+                        "columnTooltip": "",
+                        "edit": {
+                          "editor": {
+                            "type": "string"
+                          },
+                          "enabled": false,
+                          "permission": {
+                            "mode": "",
+                            "userRole": []
+                          }
+                        },
+                        "enabled": false,
+                        "field": {
+                          "name": "registration_date",
+                          "source": "A"
+                        },
+                        "fileCell": {
+                          "size": "md",
+                          "text": "Download",
+                          "variant": "primary"
+                        },
+                        "filter": {
+                          "enabled": false,
+                          "mode": "client",
+                          "variable": ""
+                        },
+                        "footer": [],
+                        "gauge": {
+                          "mode": "basic",
+                          "valueDisplayMode": "text",
+                          "valueSize": 14
+                        },
+                        "group": false,
+                        "label": "HTN Diagnosis date",
                         "newRowEdit": {
                           "editor": {
                             "type": "string"
@@ -3573,145 +4213,7 @@
                             "userRole": []
                           }
                         },
-                        "enabled": true,
-                        "field": {
-                          "name": "gender",
-                          "source": "A"
-                        },
-                        "fileCell": {
-                          "size": "md",
-                          "text": "Download",
-                          "variant": "primary"
-                        },
-                        "filter": {
-                          "enabled": false,
-                          "mode": "client",
-                          "variable": ""
-                        },
-                        "footer": [],
-                        "gauge": {
-                          "mode": "basic",
-                          "valueDisplayMode": "text",
-                          "valueSize": 14
-                        },
-                        "group": false,
-                        "label": "Gender",
-                        "newRowEdit": {
-                          "editor": {
-                            "type": "string"
-                          },
-                          "enabled": false
-                        },
-                        "objectId": "",
-                        "pin": "",
-                        "preformattedStyle": false,
-                        "scale": "auto",
-                        "showingRows": 20,
-                        "sort": {
-                          "descFirst": false,
-                          "enabled": false
-                        },
-                        "type": "auto"
-                      },
-                      {
-                        "aggregation": "none",
-                        "appearance": {
-                          "alignment": "start",
-                          "background": {
-                            "applyToRow": false
-                          },
-                          "colors": {},
-                          "header": {
-                            "fontSize": "md"
-                          },
-                          "width": {
-                            "auto": true,
-                            "min": 20,
-                            "value": 100
-                          },
-                          "wrap": true
-                        },
-                        "columnTooltip": "",
-                        "edit": {
-                          "editor": {
-                            "type": "string"
-                          },
-                          "enabled": false,
-                          "permission": {
-                            "mode": "",
-                            "userRole": []
-                          }
-                        },
-                        "enabled": true,
-                        "field": {
-                          "name": "phone_number",
-                          "source": "A"
-                        },
-                        "fileCell": {
-                          "size": "md",
-                          "text": "Download",
-                          "variant": "primary"
-                        },
-                        "filter": {
-                          "enabled": false,
-                          "mode": "client",
-                          "variable": ""
-                        },
-                        "footer": [],
-                        "gauge": {
-                          "mode": "basic",
-                          "valueDisplayMode": "text",
-                          "valueSize": 14
-                        },
-                        "group": false,
-                        "label": "Phone",
-                        "newRowEdit": {
-                          "editor": {
-                            "type": "string"
-                          },
-                          "enabled": false
-                        },
-                        "objectId": "",
-                        "pin": "",
-                        "preformattedStyle": false,
-                        "scale": "auto",
-                        "showingRows": 20,
-                        "sort": {
-                          "descFirst": false,
-                          "enabled": false
-                        },
-                        "type": "auto"
-                      },
-                      {
-                        "aggregation": "none",
-                        "appearance": {
-                          "alignment": "start",
-                          "background": {
-                            "applyToRow": false
-                          },
-                          "colors": {},
-                          "header": {
-                            "fontSize": "md"
-                          },
-                          "width": {
-                            "auto": true,
-                            "min": 20,
-                            "value": 100
-                          },
-                          "wrap": true
-                        },
-                        "columnTooltip": "",
-                        "edit": {
-                          "editor": {
-                            "type": "string"
-                          },
-                          "enabled": false,
-                          "permission": {
-                            "mode": "",
-                            "userRole": []
-                          }
-                        },
-                        "enabled": true,
+                        "enabled": false,
                         "field": {
                           "name": "last_visit_date",
                           "source": "A"
@@ -3734,144 +4236,6 @@
                         },
                         "group": false,
                         "label": "Last visit on",
-                        "newRowEdit": {
-                          "editor": {
-                            "type": "string"
-                          },
-                          "enabled": false
-                        },
-                        "objectId": "",
-                        "pin": "",
-                        "preformattedStyle": false,
-                        "scale": "auto",
-                        "showingRows": 20,
-                        "sort": {
-                          "descFirst": false,
-                          "enabled": false
-                        },
-                        "type": "auto"
-                      },
-                      {
-                        "aggregation": "none",
-                        "appearance": {
-                          "alignment": "start",
-                          "background": {
-                            "applyToRow": false
-                          },
-                          "colors": {},
-                          "header": {
-                            "fontSize": "md"
-                          },
-                          "width": {
-                            "auto": false,
-                            "min": 20,
-                            "value": 100
-                          },
-                          "wrap": true
-                        },
-                        "columnTooltip": "",
-                        "edit": {
-                          "editor": {
-                            "type": "string"
-                          },
-                          "enabled": false,
-                          "permission": {
-                            "mode": "",
-                            "userRole": []
-                          }
-                        },
-                        "enabled": true,
-                        "field": {
-                          "name": "days_since_last_visit",
-                          "source": "A"
-                        },
-                        "fileCell": {
-                          "size": "md",
-                          "text": "Download",
-                          "variant": "primary"
-                        },
-                        "filter": {
-                          "enabled": false,
-                          "mode": "client",
-                          "variable": ""
-                        },
-                        "footer": [],
-                        "gauge": {
-                          "mode": "basic",
-                          "valueDisplayMode": "text",
-                          "valueSize": 14
-                        },
-                        "group": false,
-                        "label": "Days since last visit",
-                        "newRowEdit": {
-                          "editor": {
-                            "type": "string"
-                          },
-                          "enabled": false
-                        },
-                        "objectId": "",
-                        "pin": "",
-                        "preformattedStyle": false,
-                        "scale": "auto",
-                        "showingRows": 20,
-                        "sort": {
-                          "descFirst": false,
-                          "enabled": false
-                        },
-                        "type": "auto"
-                      },
-                      {
-                        "aggregation": "none",
-                        "appearance": {
-                          "alignment": "start",
-                          "background": {
-                            "applyToRow": false
-                          },
-                          "colors": {},
-                          "header": {
-                            "fontSize": "md"
-                          },
-                          "width": {
-                            "auto": false,
-                            "min": 20,
-                            "value": 100
-                          },
-                          "wrap": true
-                        },
-                        "columnTooltip": "",
-                        "edit": {
-                          "editor": {
-                            "type": "string"
-                          },
-                          "enabled": false,
-                          "permission": {
-                            "mode": "",
-                            "userRole": []
-                          }
-                        },
-                        "enabled": true,
-                        "field": {
-                          "name": "last_bp",
-                          "source": "A"
-                        },
-                        "fileCell": {
-                          "size": "md",
-                          "text": "Download",
-                          "variant": "primary"
-                        },
-                        "filter": {
-                          "enabled": false,
-                          "mode": "client",
-                          "variable": ""
-                        },
-                        "footer": [],
-                        "gauge": {
-                          "mode": "basic",
-                          "valueDisplayMode": "text",
-                          "valueSize": 14
-                        },
-                        "group": false,
-                        "label": "Last BP",
                         "newRowEdit": {
                           "editor": {
                             "type": "string"
@@ -4056,7 +4420,7 @@
                             "userRole": []
                           }
                         },
-                        "enabled": true,
+                        "enabled": false,
                         "field": {
                           "name": "overdue_days",
                           "source": "A"
@@ -4125,7 +4489,7 @@
                             "userRole": []
                           }
                         },
-                        "enabled": true,
+                        "enabled": false,
                         "field": {
                           "name": "last_call_date",
                           "source": "A"
@@ -4194,7 +4558,7 @@
                             "userRole": []
                           }
                         },
-                        "enabled": true,
+                        "enabled": false,
                         "field": {
                           "name": "result_type",
                           "source": "A"
@@ -4212,79 +4576,6 @@
                         },
                         "group": false,
                         "label": "Result Type",
-                        "newRowEdit": {
-                          "editor": {
-                            "type": "string"
-                          },
-                          "enabled": false
-                        },
-                        "objectId": "",
-                        "pin": "",
-                        "preformattedStyle": false,
-                        "scale": "auto",
-                        "showingRows": 20,
-                        "sort": {
-                          "descFirst": false,
-                          "enabled": false
-                        },
-                        "type": "auto"
-                      },
-                      {
-                        "aggregation": "none",
-                        "appearance": {
-                          "alignment": "start",
-                          "background": {
-                            "applyToRow": false
-                          },
-                          "colors": {},
-                          "header": {
-                            "fontSize": "md"
-                          },
-                          "width": {
-                            "auto": true,
-                            "min": 20,
-                            "value": 100
-                          },
-                          "wrap": true
-                        },
-                        "columnTooltip": "",
-                        "edit": {
-                          "editor": {
-                            "queryOptions": {
-                              "source": "B",
-                              "value": "option"
-                            },
-                            "type": "select"
-                          },
-                          "enabled": true,
-                          "permission": {
-                            "mode": "",
-                            "userRole": []
-                          }
-                        },
-                        "enabled": true,
-                        "field": {
-                          "name": "removed_reason",
-                          "source": "A"
-                        },
-                        "fileCell": {
-                          "size": "md",
-                          "text": "Download",
-                          "variant": "primary"
-                        },
-                        "filter": {
-                          "enabled": true,
-                          "mode": "client",
-                          "variable": ""
-                        },
-                        "footer": [],
-                        "gauge": {
-                          "mode": "basic",
-                          "valueDisplayMode": "text",
-                          "valueSize": 14
-                        },
-                        "group": false,
-                        "label": "Overdue Status",
                         "newRowEdit": {
                           "editor": {
                             "type": "string"
@@ -4731,6 +5022,109 @@
             }
           }
         }
+      },
+      "panel-ov-quick": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "postgres-hypertension"
+                      },
+                      "group": "grafana-postgresql-datasource",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "editorMode": "code",
+                        "format": "table",
+                        "rawQuery": true,
+                        "rawSql": "SELECT * FROM (\nSELECT\n  patient_id::text AS patient_id,\n  patient_name,\n  registration_date,\n  birth_date,\n  gender,\n  phone_number,\n  (SELECT name FROM org_units WHERE id = h.org_unit_id) AS facility,\n  last_visit_date,\n  last_bp_diastolic,\n  last_bp_systolic,\n  last_call_date,\n  last_call_result AS result_type,\n  COALESCE(removed_reason, 'Pending to call') AS removed_reason,\n  EXTRACT(YEAR FROM AGE(birth_date)) AS age_years,\n  to_char(registration_date, 'FMDD Mon, YYYY') AS registration_label,\n  to_char(last_visit_date, 'FMDD Mon, YYYY')\n    || CASE WHEN last_visit_date::time <> '00:00'\n         THEN E'\\n' || lower(to_char(last_visit_date, 'FMHH12:MI AM')) ELSE '' END AS last_visit_label,\n  to_char(last_call_date, 'FMDD Mon, YYYY') AS last_contacted_label,\n  (CURRENT_DATE - last_visit_date::date) AS days_since_last_visit,\n  CASE\n    WHEN last_bp_systolic IS NOT NULL AND last_bp_diastolic IS NOT NULL\n      THEN CONCAT(\n        last_bp_systolic::int,\n        '/',\n        last_bp_diastolic::int\n      )\n    ELSE NULL\n  END AS last_bp,\n  (SELECT string_agg(option, '|' ORDER BY sort) FROM (\nSELECT * FROM (\nselect 'Pending to call' as option, 1 as sort\nunion select 'Agreed to visit', 2\nunion select 'Call again later', 3\nunion select 'Already visited puskesmas', 4\nunion select 'Multiple failed contact attempts', 5\nunion select 'Wrong phone number', 6\nunion select 'Moved out of catchment area', 7\nunion select 'Transferred to another puskesmas', 8\nunion select 'Refused to return', 9\nunion select 'Died', 10\nunion select 'Other reason', 11\norder by sort\n) AS master_access_control WHERE '${isAllowed}' = '1' AND COALESCE(current_setting('app.is_central_node', true), 'false') <> 'true'\n) o) AS status_options,\n  (SELECT name FROM org_units WHERE id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')) AS place\nFROM HEART360_OVERDUE_PATIENTS h\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  AND last_visit_date < now() - interval '45 days'\n  AND ${selected_level} IN (3, 4, 10)\nORDER BY (CURRENT_DATE - last_visit_date::date) DESC\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+                        "refId": "A",
+                        "dataset": "metrics_db",
+                        "sql": {
+                          "columns": [
+                            {
+                              "parameters": [],
+                              "type": "function"
+                            }
+                          ],
+                          "groupBy": [
+                            {
+                              "property": {
+                                "type": "string"
+                              },
+                              "type": "groupBy"
+                            }
+                          ],
+                          "limit": 50
+                        }
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "",
+          "id": 451,
+          "links": [],
+          "title": "Overdue patients",
+          "transparent": false,
+          "vizConfig": {
+            "group": "marcusolsson-dynamictext-panel",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "options": {
+                "afterRender": "// Overdue list with an auto-saving status dropdown (hearts360 style).\n// Runs as the Business Text panel's afterRender on one result set: patients, plus the status\n// options and place name as columns (no options on the central node makes it read-only).\nconst root = context.element.querySelector('.ovq');\nif (!root) { return; }\n\nconst series = (context.panelData && context.panelData.series) || [];\nconst rowsOf = (ref) => {\n  const f = series.find((s) => s.refId === ref);\n  if (!f) { return []; }\n  const cols = f.fields.map((x) => [x.name, Array.from(x.values)]);\n  const n = cols.length ? cols[0][1].length : 0;\n  return Array.from({ length: n }, (_, i) => Object.fromEntries(cols.map(([k, v]) => [k, v[i]])));\n};\nconst rows = rowsOf('A');\nconst options = String((rows[0] || {}).status_options || '').split('|').filter(Boolean);\nconst place = (rows[0] || {}).place || 'this place';\n\n// Same rule as the table's update SQL: these keep the patient on the list; the rest remove them.\nconst ACTIVE = ['Pending to call', 'Agreed to visit', 'Call again later'];\nconst REMOVED = 'Removed from list';\nconst PAGE = 20;\nconst byId = Object.fromEntries(rows.map((r) => [r.patient_id, r]));\nconst state = { status: 'All', q: '', facility: '', asc: false, page: 0 };\n\nconst esc = (v) => String(v == null ? '' : v).replace(/[&<>\"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;' }[c]));\nconst fmt = (n) => Number(n || 0).toLocaleString('en-US');\nconst today = () => { const d = new Date(); return d.getDate() + ' ' + d.toLocaleString('en-US', { month: 'short' }) + ', ' + d.getFullYear(); };\nconst groupOf = (r) => (ACTIVE.includes(r.removed_reason) ? r.removed_reason : REMOVED);\n\nconst visible = () => {\n  const q = state.q.trim().toLowerCase();\n  return rows\n    .filter((r) => state.status === 'All' || groupOf(r) === state.status)\n    .filter((r) => !state.facility || r.facility === state.facility)\n    .filter((r) => !q || [r.patient_name, r.patient_id, r.phone_number].some((v) => String(v || '').toLowerCase().includes(q)))\n    .sort((a, b) => (state.asc ? 1 : -1) * ((a.days_since_last_visit || 0) - (b.days_since_last_visit || 0)));\n};\n\nconst statusCell = (r) => {\n  if (!options.length) { return esc(r.removed_reason); }\n  const opt = (o) => '<option' + (o === r.removed_reason ? ' selected' : '') + '>' + esc(o) + '</option>';\n  const legacy = options.includes(r.removed_reason) ? '' : '<option selected disabled>' + esc(r.removed_reason) + '</option>';\n  const removal = options.filter((o) => !ACTIVE.includes(o));\n  return '<select class=\"ovq-sel\" data-id=\"' + esc(r.patient_id) + '\" aria-label=\"Overdue status for ' + esc(r.patient_name) + '\">'\n    + legacy + ACTIVE.filter((o) => options.includes(o)).map(opt).join('')\n    + (removal.length ? '<optgroup label=\"Or, remove from list\">' + removal.map(opt).join('') + '</optgroup>' : '')\n    + '</select><div class=\"ovq-msg\" aria-live=\"polite\"></div>';\n};\n\nconst COLS = [\n  ['Overdue status', statusCell],\n  ['Name', (r) => esc(r.patient_name)],\n  ['Patient ID', (r) => esc(r.patient_id)],\n  ['Gender', (r) => esc(r.gender)],\n  ['Age', (r) => esc(r.age_years)],\n  ['Phone', (r) => esc(r.phone_number)],\n  ['Facility', (r) => esc(r.facility)],\n  ['HTN Diagnosis date', (r) => esc(r.registration_label)],\n  ['Last visited on', (r) => esc(r.last_visit_label).replace(/\\n/g, '<br><span class=\"ovq-soft\">') + (String(r.last_visit_label || '').includes('\\n') ? '</span>' : '')],\n  ['Last BP', (r) => esc(r.last_bp)],\n  ['Days since last visit', (r) => '<span class=\"ovq-red\">' + fmt(r.days_since_last_visit) + '</span>'],\n  ['Last contacted on', (r) => '<span class=\"ovq-lc\">' + esc(r.last_contacted_label) + '</span>'],\n];\n\nconst renderCounts = () => {\n  const n = (g) => rows.filter((r) => groupOf(r) === g).length;\n  root.querySelector('.ovq-chips').innerHTML = [['All', rows.length]].concat(ACTIVE.concat(REMOVED).map((g) => [g, n(g)]))\n    .map(([g, c]) => '<button type=\"button\" class=\"ovq-chip' + (state.status === g ? ' on' : '') + '\" data-status=\"' + esc(g) + '\">' + esc(g) + ': ' + fmt(c) + '</button>')\n    .join('');\n};\n\nconst renderBody = () => {\n  const list = visible();\n  const pages = Math.max(1, Math.ceil(list.length / PAGE));\n  state.page = Math.min(state.page, pages - 1);\n  const shown = list.slice(state.page * PAGE, (state.page + 1) * PAGE);\n  root.querySelector('tbody').innerHTML = shown.length\n    ? shown.map((r) => '<tr data-id=\"' + esc(r.patient_id) + '\">' + COLS.map(([, cell]) => '<td>' + cell(r) + '</td>').join('') + '</tr>').join('')\n    : '<tr><td class=\"ovq-empty\" colspan=\"' + COLS.length + '\">No patients match these filters.</td></tr>';\n  root.querySelector('.ovq-sort').textContent = state.asc ? '\u2191' : '\u2193';\n  root.querySelector('.ovq-pager').innerHTML = list.length\n    ? '<button type=\"button\" data-page=\"-1\"' + (state.page ? '' : ' disabled') + ' aria-label=\"Previous page\">\u2039</button>'\n      + '<span>' + fmt(state.page * PAGE + 1) + '\u2013' + fmt(state.page * PAGE + shown.length) + ' of ' + fmt(list.length) + '</span>'\n      + '<button type=\"button\" data-page=\"1\"' + (state.page < pages - 1 ? '' : ' disabled') + ' aria-label=\"Next page\">\u203a</button>'\n    : '';\n  renderCounts();\n};\n\nconst facilities = [...new Set(rows.map((r) => r.facility).filter(Boolean))].sort();\nroot.innerHTML = '<div class=\"ovq-head\"><b>' + fmt(rows.length) + ' overdue patients</b> at ' + esc(place) + '</div>'\n  + '<div class=\"ovq-chips\" role=\"group\" aria-label=\"Filter by overdue status\"></div>'\n  + '<div class=\"ovq-tip\">' + (options.length\n    ? 'Call patients, then choose their new overdue status. It saves automatically.'\n    : 'Overdue status can only be changed on the facility dashboard.') + '</div>'\n  + '<div class=\"ovq-tools\"><input type=\"search\" class=\"ovq-q\" placeholder=\"Search name, Patient ID or phone\" aria-label=\"Search patients\">'\n  + (facilities.length > 1 ? '<select class=\"ovq-fac\" aria-label=\"Facility\"><option value=\"\">All facilities</option>' + facilities.map((f) => '<option>' + esc(f) + '</option>').join('') + '</select>' : '')\n  + '</div><div class=\"ovq-wrap\"><table><thead><tr>'\n  + COLS.map(([h]) => (h === 'Days since last visit'\n    ? '<th><button type=\"button\" class=\"ovq-sortbtn\" data-sort=\"1\">' + h + ' <span class=\"ovq-sort\"></span></button></th>'\n    : '<th>' + h + '</th>')).join('')\n  + '</tr></thead><tbody></tbody></table></div><div class=\"ovq-pager\"></div>';\nrenderBody();\n\n// --- Saving: the same insert/upsert the table's Update SQL runs, sent through Grafana's query API.\nconst save = async (pid, reason) => {\n  if (!/^\\d+$/.test(pid) || !options.includes(reason)) { throw new Error('Unexpected value'); }\n  const sql = 'INSERT INTO call_results (patient_id, call_date, result_type, removed_reason, org_unit_id)\\n'\n    + 'VALUES (' + pid + ', CURRENT_DATE, ' + (ACTIVE.includes(reason) ? 'NULL' : \"'removed_from_overdue_list'\") + \", '\" + reason.replace(/'/g, \"''\") + \"',\\n\"\n    + '  (SELECT org_unit_id FROM patients WHERE patient_id = ' + pid + ' LIMIT 1))\\n'\n    + 'ON CONFLICT (patient_id, call_date) DO UPDATE SET result_type = EXCLUDED.result_type, removed_reason = EXCLUDED.removed_reason';\n  const res = await fetch('/api/ds/query', {\n    method: 'POST', headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify({ queries: [{ refId: 'A', datasource: { uid: 'postgres-hypertension' }, rawSql: sql, format: 'table' }] }),\n  });\n  const body = await res.json().catch(() => ({}));\n  const err = res.ok ? (body.results && body.results.A && body.results.A.error) : (body.message || res.statusText);\n  if (err) { throw new Error(err); }\n};\n\nconst message = (sel, html, cls) => { const m = sel.parentElement.querySelector('.ovq-msg'); m.className = 'ovq-msg ' + (cls || ''); m.innerHTML = html; };\n\nconst commit = async (sel, r, prev, next) => {\n  sel.disabled = true;\n  message(sel, 'Saving\u2026');\n  try {\n    await save(r.patient_id, next);\n    r.removed_reason = next;\n    r.last_contacted_label = today();\n    sel.closest('tr').querySelector('.ovq-lc').textContent = r.last_contacted_label;\n    message(sel, 'Saved \u2713', 'ok');\n    renderCounts();\n    // Fade only the \"Saved\" note; never wipe a newer prompt (e.g. a removal confirmation).\n    setTimeout(() => { const m = sel.parentElement && sel.parentElement.querySelector('.ovq-msg.ok'); if (m) { message(sel, ''); } }, 2500);\n  } catch (e) {\n    sel.value = prev;\n    message(sel, \"Couldn't save. Try again.\", 'err');\n    context.grafana.notifyError([\"Couldn't save overdue status\", e.message]);\n  } finally {\n    sel.disabled = false;\n  }\n};\n\nroot.addEventListener('change', (e) => {\n  if (e.target.classList.contains('ovq-fac')) { state.facility = e.target.value; state.page = 0; renderBody(); return; }\n  const sel = e.target.closest('.ovq-sel');\n  if (!sel) { return; }\n  const r = byId[sel.dataset.id];\n  const prev = r.removed_reason;\n  const next = sel.value;\n  if (ACTIVE.includes(next)) { commit(sel, r, prev, next); return; }\n  // Removal reasons take the patient off the list, so ask first.\n  sel.disabled = true;\n  sel.dataset.prev = prev;\n  message(sel, 'Remove from list? Reason: ' + esc(next)\n    + ' <button type=\"button\" class=\"ovq-yes\">Remove</button> <button type=\"button\" class=\"ovq-no\">Cancel</button>', 'ask');\n});\n\nroot.addEventListener('input', (e) => {\n  if (e.target.classList.contains('ovq-q')) { state.q = e.target.value; state.page = 0; renderBody(); }\n});\n\nroot.addEventListener('click', (e) => {\n  const b = e.target.closest('button');\n  if (!b) { return; }\n  if (b.dataset.status) { state.status = b.dataset.status; state.page = 0; renderBody(); return; }\n  if (b.dataset.page) { state.page += Number(b.dataset.page); renderBody(); return; }\n  if (b.dataset.sort) { state.asc = !state.asc; renderBody(); return; }\n  const sel = b.closest('td') && b.closest('td').querySelector('.ovq-sel');\n  if (!sel) { return; }\n  const r = byId[sel.dataset.id];\n  if (b.classList.contains('ovq-yes')) { commit(sel, r, sel.dataset.prev, sel.value); }\n  if (b.classList.contains('ovq-no')) { sel.value = sel.dataset.prev; sel.disabled = false; message(sel, ''); sel.focus(); }\n});\n",
+                "content": "<div class=\"ovq\"></div>",
+                "contentPartials": [],
+                "defaultContent": "No overdue patients to show.",
+                "editor": {
+                  "format": "auto",
+                  "language": "html"
+                },
+                "editors": [
+                  "styles",
+                  "afterRender"
+                ],
+                "externalStyles": [],
+                "helpers": "",
+                "renderMode": "allRows",
+                "styles": ".ovq { font-size: 13px; line-height: 1.35; }\n.ovq-head { font-size: 15px; margin: 2px 0 6px; }\n.ovq-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }\n.ovq-chip { border: 1px solid rgba(128,128,128,0.35); background: transparent; color: inherit; border-radius: 14px; padding: 2px 10px; font-size: 12px; cursor: pointer; }\n.ovq-chip.on { background: #007ee4; border-color: #007ee4; color: #fff; }\n.ovq-tip { background: LightGoldenrodYellow; color: rgba(0,0,0,0.7); padding: 6px 10px; border-radius: 4px; margin-bottom: 8px; }\n.ovq-tools { display: flex; gap: 8px; margin-bottom: 8px; }\n.ovq-tools input, .ovq-tools select, .ovq-sel { font: inherit; color: inherit; background: transparent; border: 1px solid rgba(128,128,128,0.45); border-radius: 4px; padding: 4px 6px; }\n/* Grafana's text styles squash native selects; give ours a real height. */\n.ovq select, .ovq input { height: 30px; line-height: 1.2; box-sizing: border-box; }\n.ovq-tools input { width: 280px; }\n.ovq-wrap { overflow-x: auto; }\n.ovq table { width: 100%; border-collapse: collapse; }\n.ovq th { text-align: left; font-weight: 600; padding: 8px 8px; border-bottom: 1px solid rgba(128,128,128,0.35); white-space: nowrap; }\n.ovq td { padding: 8px 8px; border-bottom: 1px solid rgba(128,128,128,0.18); vertical-align: top; }\n.ovq tbody tr:nth-child(even) { background: rgba(128,128,128,0.06); }\n.ovq-sel { width: 200px; }\n/* Fixed status column: messages and the removal prompt wrap under the dropdown instead of\n   widening the column while they show. */\n.ovq td:first-child, .ovq th:first-child { width: 216px; max-width: 216px; }\n.ovq-sel:disabled { opacity: 0.6; }\n.ovq-msg { font-size: 12px; margin-top: 3px; min-height: 0; }\n.ovq-msg.ok { color: #3bb231; }\n.ovq-msg.err { color: red; }\n.ovq-msg.ask button { font: inherit; font-size: 12px; padding: 1px 8px; border-radius: 4px; border: 1px solid rgba(128,128,128,0.45); background: transparent; color: inherit; cursor: pointer; margin-top: 3px; }\n.ovq-msg.ask .ovq-yes { background: red; border-color: red; color: #fff; }\n.ovq-sortbtn { font: inherit; font-weight: 600; background: none; border: 0; padding: 0; color: inherit; cursor: pointer; }\n.ovq-red { color: red; }\n.ovq-soft { opacity: 0.65; }\n.ovq-empty { text-align: center; padding: 18px; opacity: 0.7; }\n.ovq-pager { display: flex; justify-content: center; align-items: center; gap: 12px; padding: 10px 0 2px; }\n.ovq-pager button { font: inherit; width: 28px; height: 26px; border-radius: 4px; border: 1px solid rgba(128,128,128,0.45); background: transparent; color: inherit; cursor: pointer; }\n.ovq-pager button:disabled { opacity: 0.35; cursor: default; }\n",
+                "wrap": true
+              }
+            },
+            "version": "6.2.0"
+          }
+        }
       }
     },
     "layout": {
@@ -5085,33 +5479,75 @@
                       "kind": "TabsLayoutTab",
                       "spec": {
                         "layout": {
-                          "kind": "GridLayout",
+                          "kind": "RowsLayout",
                           "spec": {
-                            "items": [
+                            "rows": [
                               {
-                                "kind": "GridLayoutItem",
+                                "kind": "RowsLayoutRow",
                                 "spec": {
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-ov-50"
-                                  },
-                                  "height": 2,
-                                  "width": 24,
-                                  "x": 0,
-                                  "y": 0
+                                  "title": "Overdue patients",
+                                  "collapse": false,
+                                  "hideHeader": true,
+                                  "layout": {
+                                    "kind": "GridLayout",
+                                    "spec": {
+                                      "items": [
+                                        {
+                                          "kind": "GridLayoutItem",
+                                          "spec": {
+                                            "element": {
+                                              "kind": "ElementReference",
+                                              "name": "panel-ov-50"
+                                            },
+                                            "height": 2,
+                                            "width": 24,
+                                            "x": 0,
+                                            "y": 0
+                                          }
+                                        },
+                                        {
+                                          "kind": "GridLayoutItem",
+                                          "spec": {
+                                            "element": {
+                                              "kind": "ElementReference",
+                                              "name": "panel-ov-quick"
+                                            },
+                                            "height": 31,
+                                            "width": 24,
+                                            "x": 0,
+                                            "y": 2
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
                                 }
                               },
                               {
-                                "kind": "GridLayoutItem",
+                                "kind": "RowsLayoutRow",
                                 "spec": {
-                                  "element": {
-                                    "kind": "ElementReference",
-                                    "name": "panel-ov-1"
-                                  },
-                                  "height": 26,
-                                  "width": 24,
-                                  "x": 0,
-                                  "y": 2
+                                  "title": "All columns & download",
+                                  "collapse": true,
+                                  "layout": {
+                                    "kind": "GridLayout",
+                                    "spec": {
+                                      "items": [
+                                        {
+                                          "kind": "GridLayoutItem",
+                                          "spec": {
+                                            "element": {
+                                              "kind": "ElementReference",
+                                              "name": "panel-ov-1"
+                                            },
+                                            "height": 26,
+                                            "width": 24,
+                                            "x": 0,
+                                            "y": 0
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
                                 }
                               }
                             ]

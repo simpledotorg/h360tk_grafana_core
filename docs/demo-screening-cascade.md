@@ -193,9 +193,52 @@ All three are idempotent. The Diabetes script leaves every non-`panel-dm-*` elem
 - Removed an odd options fallback in `apply_overview.py`.
 - The output was checked byte-identical before and after.
 
+## Overdue list (2026-10-29)
+
+**Scripts:**
+- [scripts/apply_overdue_style.py](scripts/apply_overdue_style.py), run after the other three.
+- [scripts/overdue_list.js](scripts/overdue_list.js) and [scripts/overdue_list.css](scripts/overdue_list.css), which the script embeds.
+- They touch only `panel-ov-1` and the new `panel-ov-quick`, and rebuild the Overdue tab layout.
+- `panel-ov-50` (facility-level and access warnings) is unchanged.
+
+**Overdue tab layout.** A rows layout:
+1. A hidden-header row with the `panel-ov-50` warnings, then **`panel-ov-quick` "Overdue patients"**.
+2. A collapsed row **"All columns & download"** holding the original Business Table `panel-ov-1`.
+
+**`panel-ov-quick`: auto-saving list (Business Text + afterRender JS)**
+- **Data.** One result set: the table's own query A, plus:
+  - `patient_id::text`, so 16-digit IDs don't lose precision in JavaScript.
+  - `status_options`, aggregated from the table's options query B. B returns nothing on the central node, which makes the list read-only.
+  - `place`.
+  - A second result set would make Business Text show a "choose data frame" picker.
+- **UI**, in hearts360 order and copy:
+  - "N overdue patients at PLACE".
+  - Clickable status-count chips that filter the list.
+  - A yellow instruction line.
+  - Search (name, Patient ID, phone) and a Facility filter.
+  - The table, with a sortable "Days since last visit" (most overdue first), 20 rows per page and a pager.
+- **Status cell.** A native `<select>`: Pending to call, Agreed to visit, Call again later, then an "Or, remove from list" group.
+  - **Active statuses save on change.** The cell shows "Saving…" then "Saved ✓"; Last contacted on becomes today and the chips update.
+  - **Removal reasons ask first** in the cell: "Remove from list? Reason: X · Remove / Cancel". Cancel restores the old value.
+  - **On failure** the old value comes back, with "Couldn't save. Try again." plus a Grafana error toast.
+- **Save path.**
+  - A `POST /api/ds/query` to `postgres-hypertension`, the same live datasource the table uses, with the viewer's session.
+  - It runs the same insert/upsert as the table's Update SQL, including the same `removed_from_overdue_list` rule.
+  - Values are checked first: the patient ID must be digits, and the reason must be one of the options.
+- **Tested end to end on Patient 40 at PHC-A, with test rows deleted afterwards:**
+  - Auto-save, Cancel (nothing written), confirmed removal and a simulated failure.
+  - Paging, sorting, search, the Facility and status filters, and the keyboard tab order.
+- **Bug found and fixed in testing:** the "Saved" fade timer wiped a newer removal prompt and left the dropdown locked. It now fades only the "Saved" note.
+
+**`panel-ov-1` (kept, collapsed)**
+- Titled "All columns & download". The Phase 1 changes still apply: Patient ID, readable dates, column order, red days, filters, and the pencil column labelled "Update".
+- Its pencil editing, options query, update SQL, pagination and XLSX/CSV export are unchanged and verified.
+
+**Not done:** high risk, HTN/DM tags, home village and appointment-based overdue days. There's no data or definition for these, or they're deferred.
+
 ## Rules to keep
 
-- Do not change: the Diabetes tab, `panel-dm-*`, the Overdue list, `estimated_htn_population`, Docker images, `main` / 0.6.1.
+- Do not change: `estimated_htn_population`, Docker images, `main` / 0.6.1.
 - Do not copy from the Simple screenshot: the Option A/B/C strip, River District, or 250,800.
 - Do not commit `.env` or `test_data/demo/out/shifted_PHC-*.xlsx`.
 - Changed elements in this pass: `panel-stc`, `panel-1`, and the removal of unused `panel-screening`. `panel-cascade` (the old native treatment cascade) is still defined but not placed on the grid. It causes the harmless "conversion data loss" log line.
