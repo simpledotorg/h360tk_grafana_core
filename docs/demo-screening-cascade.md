@@ -193,9 +193,46 @@ All three are idempotent. The Diabetes script leaves every non-`panel-dm-*` elem
 - Removed an odd options fallback in `apply_overview.py`.
 - The output was checked byte-identical before and after.
 
+## Overdue list (2026-10-29)
+
+**Script:** [scripts/apply_overdue_style.py](scripts/apply_overdue_style.py). Run it after the other three; it touches only `panel-ov-1`, `panel-ov-50` and the Overdue tab layout.
+
+**Table (`panel-ov-1`, Business Table 3.6.1)**
+- **Order:** Overdue status first, then Name, **Patient ID** (was "NIK number"), Gender, Age, Phone, Facility, HTN Diagnosis date, Last visited on, Last BP, Days since last visit, Last contacted on.
+- **Filters:** Overdue status, Name, Phone, Facility.
+- **Dates** come from SQL `to_char` as `15 Jul, 2024`:
+  - **Last visited on** adds a second line with the time (`4:00 pm`) only when the visit has a real time.
+  - **Last contacted on** is date only, because `call_results.call_date` is a `date`.
+- **Days since last visit:** `coloredText` in hearts360 `red`, sortable, most overdue first.
+- **Never-contacted patients** show "Pending to call" instead of "-". This is display only; nothing is written until someone saves.
+- **Hidden but still in the query:** `result_type` (it repeats the status), raw dates, raw BP parts, `birth_date`, `overdue_days`.
+- **Pencil column** is labelled **Update**.
+- **Unchanged, and verified:**
+  - The status editor and its options (query B).
+  - The `call_results` update SQL.
+  - Pagination (20), XLSX/CSV export, access control, the 45-day rule and the facility-level gate.
+
+**Header (`panel-ov-50`)**
+- The facility-level and access warnings are unchanged.
+- **Otherwise it shows:**
+  - "N overdue patients at PLACE".
+  - Status counts: Pending to call, Agreed to visit, Call again later, Removed from list.
+  - A yellow instruction line.
+- **Datasource:** switched from `postgres-hypertension-cached` to **`postgres-hypertension`**. The cached source reads reporting matviews, so its counts lagged behind status saves.
+- **Height:** 2 → 3 rows; the table moves to y=3.
+
+**Verified**
+- **Status save, end to end:** Edit row, pick "Agreed to visit", Save. That wrote to `call_results`; the table showed the new status and "Last contacted on". After a refresh the header read 27 pending / 1 agreed. The test row was then deleted.
+- **CSV export** has the new headers and plain dates.
+
+**Not done (Grafana or data limits)**
+- **One-click status dropdown in the row:** the plugin edits a row through the pencil. This needs a form plugin or a custom panel.
+- **Hiding the empty table at national level:** the grid layout has no "show when data" option.
+- **High risk, HTN/DM tags, home village, appointment-based overdue days:** there's no data or definition, or they're deferred.
+
 ## Rules to keep
 
-- Do not change: the Diabetes tab, `panel-dm-*`, the Overdue list, `estimated_htn_population`, Docker images, `main` / 0.6.1.
+- Do not change: `estimated_htn_population`, Docker images, `main` / 0.6.1.
 - Do not copy from the Simple screenshot: the Option A/B/C strip, River District, or 250,800.
 - Do not commit `.env` or `test_data/demo/out/shifted_PHC-*.xlsx`.
 - Changed elements in this pass: `panel-stc`, `panel-1`, and the removal of unused `panel-screening`. `panel-cascade` (the old native treatment cascade) is still defined but not placed on the grid. It causes the harmless "conversion data loss" log line.
