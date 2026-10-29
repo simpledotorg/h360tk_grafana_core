@@ -1,4 +1,4 @@
-<!-- Copy of h360-toolkit-internal/_bmad-output/planning-artifacts/tracks/screening-cascade-demo/IMPLEMENTATION-NOTES.md. Script paths are relative to that track. -->
+<!-- Copy of h360-toolkit-internal/_bmad-output/planning-artifacts/tracks/screening-cascade-demo/IMPLEMENTATION-NOTES.md (branch screening-cascade-demo-track). Script paths are relative to that track. -->
 ---
 title: Screening cascade demo — implementation notes (handover)
 track: screening-cascade-demo
@@ -125,6 +125,38 @@ The cascade is one Grafana panel on purpose. One border and one title make the t
 **Known limits:**
 
 - **Panel title size** is global in Grafana and was not changed.
+
+## Diabetes tab, hearts360 style (Story 1.6, 2026-10-29)
+
+**Reference:** hearts360 `diabetes.html`. Script: [scripts/apply_dm_hearts360_style.py](scripts/apply_dm_hearts360_style.py). It touches only `panel-dm-*` and the Diabetes tab layout.
+
+| Panel | Change |
+|---|---|
+| `panel-dm-13` | **ECharts**, titled `DM patients with controlled BP`, x=0 w=12 h=10. Shows `62%  839 patients with BP <140/90` (green), `27%  367 patients with BP <130/80` (dark green `#096301`), and grey `of 1,352 patients under care (registered before 1-Jul-2026) in Sep-2026`. Below that, a two-line trend. **Note:** in `HEART360_DM_BP_CONTROL`, the `bp_controlled_140_90` column counts only patients *not* also under 130/80, so <140/90 = `bp_controlled_140_90 + bp_controlled_130_80`. This is the same formula the old panel used. |
+| `panel-dm-outcomes` | **New**, titled `DM treatment outcomes`, w=24 h=13. Replaces `panel-dm-2/3/4` and `panel-dm-7…12`, which are removed. One SQL joins `HEART360_BLOOD_SUGAR_CONTROLLED`, `…_SEVERITY` and `…_MISSED_VISITS` by month; all three share `diabetes_patients_under_care` as the denominator. It opens with `Outcomes for 1,352 patients under care (registered before …) between … to …`. Three columns: controlled (big `10%`, `141 patients with RBS <140, FBS <126 mg/dL or HbA1c <7%`); not controlled (two figure lines, `29%` moderate in amber and `31%` high in dark amber `#c08b00`, over stacked bars with the running month faded); no visit (big `30%`, `399 patients with no visit`). The denominator really does exclude patients registered in the past 3 months: the view filters `registration month + 3 months <= ref_month`. |
+| `panel-dm-14` | **ECharts**, using the shared `under_care_js()` with the Diabetes columns. Sep 2026: `1,478`, `0 patients registered`, `of 1,740 cumulative registered patients`. w=16 h=10. |
+| `panel-dm-15` | **ECharts**, using the shared `LTFU_JS`. The SQL gains `lost_n` and `total_n` columns. Sep 2026: `15%`, `262 patients with no visit from Oct-2025 to Sep-2026`, `of 1,740`. Width 7 → **8** (fixes the gap), h=10. |
+| `panel-dm-102` | `nb_*` columns use unit `locale`. Percent colours use the hearts360 tokens. |
+
+**Not built**, because Grafana has no matching panels or data: statins, opportunistic screening, the Diabetes quarterly cohort, drug stock, comorbidity.
+
+**Shared code.** [scripts/h360_style_common.py](scripts/h360_style_common.py) holds:
+- the hearts360 colours
+- `fixed` and `set_prop`
+- `ECHARTS_JS_COMMON`
+- `under_care_js(cum, uc, new)`
+- `LTFU_JS`
+
+`apply_hearts360_style.py` imports it. After the refactor, its output was proven byte-identical to `dbf7984`.
+
+**Run order:**
+1. `apply_overview.py`
+2. `apply_hearts360_style.py`
+3. `apply_dm_hearts360_style.py`
+
+All three are idempotent. The Diabetes script leaves every non-`panel-dm-*` element, the Hypertension tab and the Overdue tab byte-identical. This was verified.
+
+**Console note.** One 404 on the Diabetes tab, `/apis/userstorage…/volkovlabs-table-panel:…`, is the table plugin looking up saved user preferences. It is harmless and not from these panels.
 
 ## Rules to keep
 

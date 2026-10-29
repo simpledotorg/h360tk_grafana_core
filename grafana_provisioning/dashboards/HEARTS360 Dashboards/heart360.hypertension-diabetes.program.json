@@ -1760,9 +1760,9 @@
                       "kind": "DataQuery",
                       "spec": {
                         "editorMode": "code",
-                        "format": "time_series",
+                        "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\n    SELECT\n        ref_month AS \"time\",\n\n        CASE\n            WHEN DATE_TRUNC('month', ref_month) < DATE_TRUNC('month', CURRENT_DATE)\n            THEN bp_140_90_rate\n        END AS \"% Patients with BP <140/90 - Historical\",\n\n        CASE\n            WHEN DATE_TRUNC('month', ref_month) >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'\n            THEN bp_140_90_rate\n        END AS \"% Patients with BP <140/90 - Current Month\",\n\n        CASE\n            WHEN DATE_TRUNC('month', ref_month) < DATE_TRUNC('month', CURRENT_DATE)\n            THEN bp_130_80_rate\n        END AS \"% Patients with BP <130/80 - Historical\",\n\n        CASE\n            WHEN DATE_TRUNC('month', ref_month) >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'\n            THEN bp_130_80_rate\n        END AS \"% Patients with BP <130/80 - Current Month\"\n\n    FROM (\n        SELECT\n            ref_month,\n\n            100.0 * SUM(bp_controlled_140_90 + bp_controlled_130_80)\n            / NULLIF(SUM(dm_patients_under_care), 0)\n            AS bp_140_90_rate,\n\n            100.0 * SUM(bp_controlled_130_80)\n            / NULLIF(SUM(dm_patients_under_care), 0)\n            AS bp_130_80_rate\n\n        FROM HEART360_DM_BP_CONTROL\n\n        WHERE org_unit_id IN (\n            SELECT id\n            FROM org_units\n            WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n\n            UNION\n\n            SELECT id\n            FROM get_descendant_ids(\n                (\n                    SELECT ou.id\n                    FROM org_units ou\n                    WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n                    LIMIT 1\n                )\n            )\n        )\n\n        GROUP BY ref_month\n    ) AS data\n\n) AS master_access_control\nWHERE '${isAllowed}' = '1'\nORDER BY \"time\"",
+                        "rawSql": "SELECT * FROM (\nSELECT\n  ref_month,\n  SUM(bp_controlled_140_90 + bp_controlled_130_80) AS bp_140_90_n,\n  SUM(bp_controlled_130_80) AS bp_130_80_n,\n  SUM(dm_patients_under_care) AS denominator_n\nFROM HEART360_DM_BP_CONTROL\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\nGROUP BY ref_month\nORDER BY ref_month\n) AS master_access_control WHERE '${isAllowed}' = '1'",
                         "refId": "A",
                         "dataset": "metrics_db",
                         "sql": {
@@ -1793,1437 +1793,50 @@
               "transformations": []
             }
           },
-          "description": "Numerator:\nPatients with controlled BP at their latest visit in the past 3 months (<140/90 or <130/80).\nDenominator:\nPatients with diabetes registered before the past 3 months. Dead patients and 12 month lost to follow-up patients are excluded.",
+          "description": "**Numerator:** Patients with controlled BP at their latest visit in the past 3 months (<140/90 or <130/80). **Denominator:** Patients with diabetes registered before the past 3 months. Dead patients and 12 month lost to follow-up patients are excluded. Figures are the latest completed month; the current month is dashed.",
           "id": 213,
           "links": [],
-          "title": "% DM patients with controlled BP",
+          "title": "DM patients with controlled BP",
           "vizConfig": {
-            "group": "timeseries",
+            "group": "volkovlabs-echarts-panel",
             "kind": "VizConfig",
+            "version": "7.2.5",
             "spec": {
               "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "mode": "palette-classic"
-                  },
-                  "custom": {
-                    "axisBorderShow": false,
-                    "axisCenteredZero": false,
-                    "axisColorMode": "text",
-                    "axisGridShow": true,
-                    "axisLabel": "",
-                    "axisPlacement": "auto",
-                    "barAlignment": 0,
-                    "barWidthFactor": 0.6,
-                    "drawStyle": "line",
-                    "fillOpacity": 25,
-                    "gradientMode": "opacity",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "insertNulls": false,
-                    "lineInterpolation": "linear",
-                    "lineStyle": {
-                      "fill": "solid"
-                    },
-                    "lineWidth": 2,
-                    "pointSize": 6,
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "showPoints": "always",
-                    "showValues": true,
-                    "spanNulls": false,
-                    "stacking": {
-                      "group": "A",
-                      "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  },
-                  "decimals": 0,
-                  "mappings": [],
-                  "max": 100,
-                  "min": 0,
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      },
-                      {
-                        "color": "red",
-                        "value": 80
-                      }
-                    ]
-                  },
-                  "unit": "percent"
-                },
-                "overrides": [
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "% Patients with BP <140/90"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "light-green",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "% Patients with BP <130/80"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "dark-green",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "% Patients with BP <140/90 - Current Month"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "light-green",
-                          "mode": "fixed"
-                        }
-                      },
-                      {
-                        "id": "custom.lineStyle",
-                        "value": {
-                          "fill": "dash"
-                        }
-                      },
-                      {
-                        "id": "custom.fillOpacity",
-                        "value": 0
-                      },
-                      {
-                        "id": "custom.gradientMode",
-                        "value": "opacity"
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "% Patients with BP <130/80 - Current Month"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "dark-green",
-                          "mode": "fixed"
-                        }
-                      },
-                      {
-                        "id": "custom.lineStyle",
-                        "value": {
-                          "fill": "dash"
-                        }
-                      },
-                      {
-                        "id": "custom.fillOpacity",
-                        "value": 0
-                      },
-                      {
-                        "id": "custom.gradientMode",
-                        "value": "opacity"
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "% Patients with BP <140/90 - Historical"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "light-green",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "% Patients with BP <130/80 - Historical"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "dark-green",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              },
-              "options": {
-                "legend": {
-                  "calcs": [],
-                  "displayMode": "list",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "multi",
-                  "sort": "none"
-                }
-              }
-            },
-            "version": "12.4.2"
-          }
-        }
-      },
-      "panel-dm-2": {
-        "kind": "Panel",
-        "spec": {
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "postgres-hypertension-cached"
-                      },
-                      "group": "grafana-postgresql-datasource",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "code",
-                        "format": "time_series",
-                        "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\n    SELECT\n        ref_month AS \"time\",\n        CASE\n            WHEN DATE_TRUNC('month', ref_month) < DATE_TRUNC('month', CURRENT_DATE)\n            THEN blood_sugar_control_rate\n        END AS \"Historical\",\n        CASE\n            WHEN DATE_TRUNC('month', ref_month) >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'\n            THEN blood_sugar_control_rate\n        END AS \"Current Month\"\n    FROM (\n        SELECT\n            ref_month,\n            SUM(100.0 * diabetes_controlled)\n            / (0.00000001 + SUM(diabetes_patients_under_care)) AS blood_sugar_control_rate\n        FROM HEART360_BLOOD_SUGAR_CONTROLLED\n        WHERE org_unit_id IN (\n            SELECT id\n            FROM org_units\n            WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n\n            UNION\n\n            SELECT id\n            FROM get_descendant_ids(\n                (\n                    SELECT ou.id\n                    FROM org_units ou\n                    WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n                    LIMIT 1\n                )\n            )\n        )\n        GROUP BY ref_month\n    ) AS data\n) AS master_access_control\nWHERE '${isAllowed}' = '1'\nORDER BY \"time\"",
-                        "refId": "A",
-                        "dataset": "metrics_db",
-                        "sql": {
-                          "columns": [
-                            {
-                              "parameters": [],
-                              "type": "function"
-                            }
-                          ],
-                          "groupBy": [
-                            {
-                              "property": {
-                                "type": "string"
-                              },
-                              "type": "groupBy"
-                            }
-                          ],
-                          "limit": 50
-                        }
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "A"
-                  }
-                }
-              ],
-              "queryOptions": {},
-              "transformations": []
-            }
-          },
-          "description": "Numerator:\nPatients with controlled blood sugar (FBS <126 mg/dL or HbA1c <7%) at their latest visit in the past 3 months.\nDenominator:\nPatients with diabetes registered before the past 3 months. Dead patients and 12 month lost to follow-up patients are excluded.",
-          "id": 202,
-          "links": [],
-          "title": "% Controlled blood sugar at latest visit in past 3 months",
-          "vizConfig": {
-            "group": "timeseries",
-            "kind": "VizConfig",
-            "spec": {
-              "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "mode": "continuous-GrYlRd"
-                  },
-                  "custom": {
-                    "axisBorderShow": false,
-                    "axisCenteredZero": false,
-                    "axisColorMode": "text",
-                    "axisGridShow": true,
-                    "axisLabel": "",
-                    "axisPlacement": "auto",
-                    "barAlignment": 0,
-                    "barWidthFactor": 0.6,
-                    "drawStyle": "line",
-                    "fillOpacity": 25,
-                    "gradientMode": "opacity",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "insertNulls": false,
-                    "lineInterpolation": "linear",
-                    "lineStyle": {
-                      "fill": "solid"
-                    },
-                    "lineWidth": 2,
-                    "pointSize": 6,
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "showPoints": "always",
-                    "showValues": true,
-                    "spanNulls": false,
-                    "stacking": {
-                      "group": "A",
-                      "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  },
-                  "decimals": 0,
-                  "displayName": "% Patients with RBS <140, FBS <126 mg/dL, or HbA1c <7%",
-                  "mappings": [],
-                  "max": 100,
-                  "min": 0,
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      },
-                      {
-                        "color": "red",
-                        "value": 80
-                      }
-                    ]
-                  },
-                  "unit": "none"
-                },
-                "overrides": [
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "% Patients with RBS <140, FBS <126 mg/dL, or HbA1c <7%"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "green",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "Historical"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "green",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "Current Month"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "green",
-                          "mode": "fixed"
-                        }
-                      },
-                      {
-                        "id": "custom.lineStyle",
-                        "value": {
-                          "fill": "dash"
-                        }
-                      },
-                      {
-                        "id": "custom.fillOpacity",
-                        "value": 0
-                      },
-                      {
-                        "id": "custom.gradientMode",
-                        "value": "opacity"
-                      }
-                    ]
-                  }
-                ]
-              },
-              "options": {
-                "legend": {
-                  "calcs": [],
-                  "displayMode": "list",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "single",
-                  "sort": "none"
-                }
-              }
-            },
-            "version": "12.4.2"
-          }
-        }
-      },
-      "panel-dm-3": {
-        "kind": "Panel",
-        "spec": {
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "postgres-hypertension-cached"
-                      },
-                      "group": "grafana-postgresql-datasource",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "code",
-                        "format": "time_series",
-                        "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\nWITH months AS (\n  SELECT generate_series(\n    date_trunc('month', $__timeFrom()::timestamp),\n    date_trunc('month', $__timeTo()::timestamp),\n    '1 month'::interval\n  )::date AS ref_month\n)\nSELECT\n  months.ref_month AS \"time\",\n\n  COALESCE(SUM(100.0 * s.uncontrolled_moderate) / NULLIF(SUM(s.diabetes_patients_under_care), 0), 0)\n  AS \"% Patients with FBS 126\u2013199 mg/dL or HbA1c 7\u20138.9%\",\n\n  COALESCE(SUM(100.0 * s.uncontrolled_high) / NULLIF(SUM(s.diabetes_patients_under_care), 0), 0)\n  AS \"% Patients with FBS \u2265200 mg/dL or HbA1c \u22659%\",\n\n  COALESCE(SUM(100.0 * (s.uncontrolled_moderate + s.uncontrolled_high)) / NULLIF(SUM(s.diabetes_patients_under_care), 0), 0)\n  AS \"% Total Uncontrolled\"\n\nFROM months\nLEFT JOIN HEART360_BLOOD_SUGAR_SEVERITY s\n  ON s.ref_month = months.ref_month\n  AND s.org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\nGROUP BY months.ref_month\nORDER BY months.ref_month\n) AS master_access_control WHERE '${isAllowed}' = '1'",
-                        "refId": "A",
-                        "dataset": "metrics_db",
-                        "sql": {
-                          "columns": [
-                            {
-                              "parameters": [],
-                              "type": "function"
-                            }
-                          ],
-                          "groupBy": [
-                            {
-                              "property": {
-                                "type": "string"
-                              },
-                              "type": "groupBy"
-                            }
-                          ],
-                          "limit": 50
-                        }
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "A"
-                  }
-                }
-              ],
-              "queryOptions": {},
-              "transformations": []
-            }
-          },
-          "description": "Numerator:\nPatients with uncontrolled blood sugar (FBS \u2265126 mg/dL or HbA1c \u22657%) at their latest visit in the past 3 months.\nDenominator:\nPatients with diabetes registered before the past 3 months. Dead patients and 12 month lost to follow-up patients are excluded.",
-          "id": 203,
-          "links": [],
-          "title": "% Uncontrolled blood sugar at latest visit in past 3 months",
-          "vizConfig": {
-            "group": "timeseries",
-            "kind": "VizConfig",
-            "spec": {
-              "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "fixedColor": "#CCCC00",
-                    "mode": "fixed"
-                  },
-                  "custom": {
-                    "axisBorderShow": false,
-                    "axisCenteredZero": false,
-                    "axisColorMode": "text",
-                    "axisLabel": "",
-                    "axisPlacement": "auto",
-                    "barAlignment": 0,
-                    "barWidthFactor": 0.6,
-                    "drawStyle": "bars",
-                    "fillOpacity": 100,
-                    "gradientMode": "none",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "insertNulls": false,
-                    "lineInterpolation": "linear",
-                    "lineWidth": 0,
-                    "pointSize": 5,
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "showPoints": "never",
-                    "showValues": false,
-                    "spanNulls": false,
-                    "stacking": {
-                      "group": "A",
-                      "mode": "normal"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  },
-                  "decimals": 0,
-                  "mappings": [],
-                  "max": 100,
-                  "min": 0,
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      },
-                      {
-                        "color": "red",
-                        "value": 80
-                      }
-                    ]
-                  }
-                },
-                "overrides": [
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "% Patients with FBS 126\u2013199 mg/dL or HbA1c 7\u20138.9%"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "yellow",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "% Patients with FBS \u2265200 mg/dL or HbA1c \u22659%"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "rgb(249, 233, 150)",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "% Total Uncontrolled"
-                    },
-                    "properties": [
-                      {
-                        "id": "custom.drawStyle",
-                        "value": "points"
-                      },
-                      {
-                        "id": "custom.pointSize",
-                        "value": 1
-                      },
-                      {
-                        "id": "custom.showValues",
-                        "value": "always"
-                      },
-                      {
-                        "id": "custom.stacking",
-                        "value": {
-                          "group": "A",
-                          "mode": "none"
-                        }
-                      },
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "transparent",
-                          "mode": "fixed"
-                        }
-                      },
-                      {
-                        "id": "custom.hideFrom",
-                        "value": {
-                          "legend": true,
-                          "tooltip": true,
-                          "viz": false
-                        }
-                      }
-                    ]
-                  }
-                ]
-              },
-              "options": {
-                "legend": {
-                  "calcs": [],
-                  "displayMode": "list",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "single",
-                  "sort": "none"
-                }
-              }
-            },
-            "version": "12.4.2"
-          }
-        }
-      },
-      "panel-dm-4": {
-        "kind": "Panel",
-        "spec": {
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "postgres-hypertension-cached"
-                      },
-                      "group": "grafana-postgresql-datasource",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "code",
-                        "format": "time_series",
-                        "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\n    SELECT\n        ref_month AS \"time\",\n        CASE\n            WHEN DATE_TRUNC('month', ref_month) < DATE_TRUNC('month', CURRENT_DATE)\n            THEN missed_visit_rate\n        END AS \"Historical\",\n        CASE\n            WHEN DATE_TRUNC('month', ref_month) >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'\n            THEN missed_visit_rate\n        END AS \"Current Month\"\n    FROM (\n        SELECT\n            ref_month,\n            SUM(100.0 * missed_visit)\n            / (0.00000001 + SUM(diabetes_patients_under_care)) AS missed_visit_rate\n        FROM HEART360_BLOOD_SUGAR_MISSED_VISITS\n        WHERE org_unit_id IN (\n            SELECT id\n            FROM org_units\n            WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n\n            UNION\n\n            SELECT id\n            FROM get_descendant_ids(\n                (\n                    SELECT ou.id\n                    FROM org_units ou\n                    WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n                    LIMIT 1\n                )\n            )\n        )\n        GROUP BY ref_month\n    ) AS data\n) AS master_access_control\nWHERE '${isAllowed}' = '1'\nORDER BY \"time\"",
-                        "refId": "A",
-                        "dataset": "metrics_db",
-                        "sql": {
-                          "columns": [
-                            {
-                              "parameters": [],
-                              "type": "function"
-                            }
-                          ],
-                          "groupBy": [
-                            {
-                              "property": {
-                                "type": "string"
-                              },
-                              "type": "groupBy"
-                            }
-                          ],
-                          "limit": 50
-                        }
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "A"
-                  }
-                }
-              ],
-              "queryOptions": {},
-              "transformations": []
-            }
-          },
-          "description": "Numerator:\nPatients with no visit in the past 3 months.\nDenominator:\nPatients with diabetes registered before the past 3 months. Dead patients and 12 month lost to follow-up patients are excluded.",
-          "id": 204,
-          "links": [],
-          "title": "% No visit in past 3 months (DM)",
-          "vizConfig": {
-            "group": "timeseries",
-            "kind": "VizConfig",
-            "spec": {
-              "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "fixedColor": "#ED6300",
-                    "mode": "shades",
-                    "seriesBy": "last"
-                  },
-                  "custom": {
-                    "axisBorderShow": false,
-                    "axisCenteredZero": false,
-                    "axisColorMode": "text",
-                    "axisLabel": "",
-                    "axisPlacement": "auto",
-                    "barAlignment": 0,
-                    "barWidthFactor": 0.6,
-                    "drawStyle": "line",
-                    "fillOpacity": 25,
-                    "gradientMode": "opacity",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "insertNulls": false,
-                    "lineInterpolation": "linear",
-                    "lineWidth": 2,
-                    "pointSize": 6,
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "showPoints": "auto",
-                    "showValues": true,
-                    "spanNulls": false,
-                    "stacking": {
-                      "group": "A",
-                      "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  },
-                  "decimals": 0,
-                  "displayName": "DM - % Patients with no blood sugar measure recorded in the past 3 months",
-                  "mappings": [],
-                  "max": 100,
-                  "min": 0,
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      },
-                      {
-                        "color": "red",
-                        "value": 80
-                      }
-                    ]
-                  }
-                },
-                "overrides": [
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "Historical"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "#ED6300",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "Current Month"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "#ED6300",
-                          "mode": "fixed"
-                        }
-                      },
-                      {
-                        "id": "custom.lineStyle",
-                        "value": {
-                          "fill": "dash"
-                        }
-                      },
-                      {
-                        "id": "custom.fillOpacity",
-                        "value": 0
-                      },
-                      {
-                        "id": "custom.gradientMode",
-                        "value": "opacity"
-                      }
-                    ]
-                  }
-                ]
-              },
-              "options": {
-                "legend": {
-                  "calcs": [],
-                  "displayMode": "list",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "single",
-                  "sort": "none"
-                }
-              }
-            },
-            "version": "12.4.2"
-          }
-        }
-      },
-      "panel-dm-7": {
-        "kind": "Panel",
-        "spec": {
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "postgres-hypertension-cached"
-                      },
-                      "group": "grafana-postgresql-datasource",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "code",
-                        "format": "table",
-                        "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\nSELECT\n  (SUM(diabetes_controlled) * 100.0 / NULLIF(SUM(diabetes_patients_under_care), 0)) AS value\nFROM HEART360_BLOOD_SUGAR_CONTROLLED\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_BLOOD_SUGAR_CONTROLLED\n    WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  )\n) AS master_access_control WHERE '${isAllowed}' = '1'",
-                        "refId": "A",
-                        "dataset": "metrics_db",
-                        "sql": {
-                          "columns": [
-                            {
-                              "parameters": [],
-                              "type": "function"
-                            }
-                          ],
-                          "groupBy": [
-                            {
-                              "property": {
-                                "type": "string"
-                              },
-                              "type": "groupBy"
-                            }
-                          ],
-                          "limit": 50
-                        }
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "A"
-                  }
-                }
-              ],
-              "queryOptions": {},
-              "transformations": []
-            }
-          },
-          "description": "${facility:text} - Latest month",
-          "id": 207,
-          "links": [],
-          "title": "% Controlled blood sugar",
-          "vizConfig": {
-            "group": "stat",
-            "kind": "VizConfig",
-            "spec": {
-              "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "fixedColor": "green",
-                    "mode": "fixed"
-                  },
-                  "decimals": 0,
-                  "mappings": [],
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "red",
-                        "value": 0
-                      },
-                      {
-                        "color": "yellow",
-                        "value": 30
-                      },
-                      {
-                        "color": "green",
-                        "value": 50
-                      }
-                    ]
-                  },
-                  "unit": "percent"
-                },
+                "defaults": {},
                 "overrides": []
               },
               "options": {
-                "colorMode": "value",
-                "graphMode": "none",
-                "justifyMode": "auto",
-                "orientation": "horizontal",
-                "percentChangeColorMode": "standard",
-                "reduceOptions": {
-                  "calcs": [
-                    "lastNotNull"
-                  ],
-                  "fields": "",
-                  "values": false
+                "baidu": {
+                  "callback": "bmapReady",
+                  "key": ""
                 },
-                "showPercentChange": false,
-                "textMode": "value",
-                "wideLayout": true
+                "editor": {
+                  "format": "auto"
+                },
+                "editorMode": "code",
+                "gaode": {
+                  "key": "",
+                  "plugin": "AMap.Scale,AMap.ToolBar"
+                },
+                "google": {
+                  "callback": "gmapReady",
+                  "key": ""
+                },
+                "map": "none",
+                "renderer": "canvas",
+                "themeEditor": {
+                  "config": "{}",
+                  "name": "default"
+                },
+                "visualEditor": {
+                  "code": "return {}",
+                  "dataset": [],
+                  "series": []
+                },
+                "getOption": "const frame = (context.panel.data.series || [])[0];\nfunction col(n) { const f = frame && frame.fields.find((x) => x.name === n); if (!f) { return []; } return Array.from(f.values && f.values.buffer ? f.values.buffer : f.values); }\nconst tr = context.panel.data.timeRange;\nconst from = tr ? tr.from.valueOf() : -Infinity;\nconst to = tr ? tr.to.valueOf() : Infinity;\nconst months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];\nconst mLabel = (ms) => { const d = new Date(ms); return months[d.getUTCMonth()] + '-' + d.getUTCFullYear(); };\nconst fmt = (v) => Math.round(Number(v) || 0).toLocaleString('en-US');\nconst theme = context.grafana && context.grafana.theme;\nconst fg = (theme && theme.colors && theme.colors.text && theme.colors.text.primary) || '#1c1c1c';\nconst muted = '#6e7f8d';\nconst T = col('ref_month').map(Number);\nconst order = T.map((v, i) => i).filter((i) => T[i] >= from && T[i] <= to).sort((a, b) => T[a] - T[b]);\nconst done = order.length > 1 ? order[order.length - 2] : order[order.length - 1];\nconst solid = (vals) => order.map((i, k) => [T[i], k < order.length - 1 ? Number(vals[i]) || 0 : null]);\nconst dashed = (vals) => order.map((i, k) => [T[i], k >= order.length - 2 ? Number(vals[i]) || 0 : null]);\nconst axisX = { type: 'time', axisLabel: { color: muted, fontSize: 11, hideOverlap: true, formatter: (v) => mLabel(v) }, axisLine: { lineStyle: { color: 'rgba(128,128,128,0.4)' } }, splitLine: { show: false } };\nconst head = (big, color, line2, line3, rich) => [\n  { type: 'text', left: 12, top: 2, style: { text: big, fontSize: 30, fontWeight: 700, fill: color } },\n  { type: 'text', left: 12, top: 42, style: { text: line2, fontSize: 13, fill: fg } },\n  { type: 'text', left: 12, top: 62, style: { text: line3, fontSize: 13, fill: muted, rich: rich } }\n];\nconst dayLabel = (ms) => { const d = new Date(ms); return d.getUTCDate() + '-' + months[d.getUTCMonth()] + '-' + d.getUTCFullYear(); };\nconst winOf = (ms) => { const e = new Date(ms); return [Date.UTC(e.getUTCFullYear(), e.getUTCMonth() - 2, 1), Date.UTC(e.getUTCFullYear(), e.getUTCMonth() + 1, 0)]; };\nconst pctOf = (vals, den, i) => { const dn = Number(den[i]) || 0; return dn ? 100 * (Number(vals[i]) || 0) / dn : null; };\nconst pctTxt = (p) => p === null ? '\u2013' : Math.round(p) + '%';\nconst W = (context.panel.chart && context.panel.chart.getWidth && context.panel.chart.getWidth()) || 1200;\nconst lines = (t, width, px) => Math.max(1, Math.ceil(t.length * px / width));\nconst b140 = col('bp_140_90_n');\nconst b130 = col('bp_130_80_n');\nconst den = col('denominator_n');\nconst green = '#3bb231';\nconst dark = '#096301';\nconst graphic = done === undefined ? [] : [\n  { type: 'text', left: 12, top: 4, style: { text: '{a|' + pctTxt(pctOf(b140, den, done)) + '}  ' + fmt(b140[done]) + ' patients with BP <140/90', fontSize: 13, fill: fg, rich: { a: { fontSize: 22, fontWeight: 700, fill: green } } } },\n  { type: 'text', left: 12, top: 36, style: { text: '{a|' + pctTxt(pctOf(b130, den, done)) + '}  ' + fmt(b130[done]) + ' patients with BP <130/80', fontSize: 13, fill: fg, rich: { a: { fontSize: 22, fontWeight: 700, fill: dark } } } },\n  { type: 'text', left: 12, top: 70, style: { text: 'of ' + fmt(den[done]) + ' patients under care (registered before ' + dayLabel(winOf(T[done])[0]) + ') in ' + mLabel(T[done]), fontSize: 13, fill: muted, width: W - 24, overflow: 'break' } }\n];\nconst pts = (vals) => order.map((i) => pctOf(vals, den, i));\nconst series = [];\n[['BP <140/90', green, b140], ['BP <130/80', dark, b130]].forEach(([name, color, vals]) => {\n  const p = pts(vals);\n  series.push({ type: 'line', name: name, data: order.map((i, n) => [T[i], n < order.length - 1 ? p[n] : null]), showSymbol: true, symbolSize: 5, lineStyle: { color: color, width: 2 }, itemStyle: { color: color } });\n  series.push({ type: 'line', name: name, data: order.map((i, n) => [T[i], n >= order.length - 2 ? p[n] : null]), showSymbol: true, symbolSize: 5, lineStyle: { color: color, width: 2, type: 'dashed' }, itemStyle: { color: color }, tooltip: { show: false } });\n});\nseries[0].areaStyle = { color: 'rgba(59,178,49,0.10)' };\nreturn {\n  animation: false,\n  graphic: graphic,\n  legend: { bottom: 10, left: 8, icon: 'roundRect', itemWidth: 14, itemHeight: 4, textStyle: { color: fg, fontSize: 12 }, data: ['BP <140/90', 'BP <130/80'] },\n  grid: { left: 12, right: 24, top: 104, bottom: 40, containLabel: true },\n  tooltip: { trigger: 'axis', valueFormatter: (v) => (v === null || v === undefined) ? '' : Math.round(v) + '%' },\n  xAxis: axisX,\n  yAxis: { type: 'value', min: 0, max: 100, interval: 25, axisLabel: { color: muted, fontSize: 11, formatter: (v) => v + '%' }, splitLine: { lineStyle: { color: 'rgba(128,128,128,0.15)' } } },\n  series: series\n};"
               }
-            },
-            "version": "12.4.2"
-          }
-        }
-      },
-      "panel-dm-8": {
-        "kind": "Panel",
-        "spec": {
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "postgres-hypertension-cached"
-                      },
-                      "group": "grafana-postgresql-datasource",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "code",
-                        "format": "table",
-                        "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\nSELECT\n  SUM(diabetes_controlled) AS value\nFROM HEART360_BLOOD_SUGAR_CONTROLLED\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_BLOOD_SUGAR_CONTROLLED\n    WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  )\n) AS master_access_control WHERE '${isAllowed}' = '1'",
-                        "refId": "A",
-                        "dataset": "metrics_db",
-                        "sql": {
-                          "columns": [
-                            {
-                              "parameters": [],
-                              "type": "function"
-                            }
-                          ],
-                          "groupBy": [
-                            {
-                              "property": {
-                                "type": "string"
-                              },
-                              "type": "groupBy"
-                            }
-                          ],
-                          "limit": 50
-                        }
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "A"
-                  }
-                }
-              ],
-              "queryOptions": {},
-              "transformations": []
             }
-          },
-          "description": "${facility:text} - Latest month",
-          "id": 208,
-          "links": [],
-          "title": "# Controlled blood sugar",
-          "vizConfig": {
-            "group": "stat",
-            "kind": "VizConfig",
-            "spec": {
-              "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "fixedColor": "green",
-                    "mode": "fixed"
-                  },
-                  "decimals": 0,
-                  "mappings": [],
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      }
-                    ]
-                  },
-                  "unit": "none"
-                },
-                "overrides": []
-              },
-              "options": {
-                "colorMode": "value",
-                "graphMode": "none",
-                "justifyMode": "auto",
-                "orientation": "horizontal",
-                "percentChangeColorMode": "standard",
-                "reduceOptions": {
-                  "calcs": [
-                    "lastNotNull"
-                  ],
-                  "fields": "",
-                  "values": false
-                },
-                "showPercentChange": false,
-                "textMode": "value",
-                "wideLayout": true
-              }
-            },
-            "version": "12.4.2"
-          }
-        }
-      },
-      "panel-dm-9": {
-        "kind": "Panel",
-        "spec": {
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "postgres-hypertension-cached"
-                      },
-                      "group": "grafana-postgresql-datasource",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "code",
-                        "format": "table",
-                        "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\nSELECT\n  (SUM(uncontrolled_moderate + uncontrolled_high) * 100.0 / NULLIF(SUM(diabetes_patients_under_care), 0)) AS value\nFROM HEART360_BLOOD_SUGAR_SEVERITY\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_BLOOD_SUGAR_SEVERITY\n    WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  )\n) AS master_access_control WHERE '${isAllowed}' = '1'",
-                        "refId": "A",
-                        "dataset": "metrics_db",
-                        "sql": {
-                          "columns": [
-                            {
-                              "parameters": [],
-                              "type": "function"
-                            }
-                          ],
-                          "groupBy": [
-                            {
-                              "property": {
-                                "type": "string"
-                              },
-                              "type": "groupBy"
-                            }
-                          ],
-                          "limit": 50
-                        }
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "A"
-                  }
-                }
-              ],
-              "queryOptions": {},
-              "transformations": []
-            }
-          },
-          "description": "${facility:text} - Latest month",
-          "id": 209,
-          "links": [],
-          "title": "% Uncontrolled blood sugar",
-          "vizConfig": {
-            "group": "stat",
-            "kind": "VizConfig",
-            "spec": {
-              "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "fixedColor": "light-yellow",
-                    "mode": "fixed"
-                  },
-                  "decimals": 0,
-                  "mappings": [],
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      }
-                    ]
-                  },
-                  "unit": "percent"
-                },
-                "overrides": []
-              },
-              "options": {
-                "colorMode": "value",
-                "graphMode": "none",
-                "justifyMode": "auto",
-                "orientation": "horizontal",
-                "percentChangeColorMode": "standard",
-                "reduceOptions": {
-                  "calcs": [
-                    "lastNotNull"
-                  ],
-                  "fields": "",
-                  "values": false
-                },
-                "showPercentChange": false,
-                "textMode": "value",
-                "wideLayout": true
-              }
-            },
-            "version": "12.4.2"
-          }
-        }
-      },
-      "panel-dm-10": {
-        "kind": "Panel",
-        "spec": {
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "postgres-hypertension-cached"
-                      },
-                      "group": "grafana-postgresql-datasource",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "code",
-                        "format": "table",
-                        "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\nSELECT\n  SUM(uncontrolled_moderate + uncontrolled_high) AS value\nFROM HEART360_BLOOD_SUGAR_SEVERITY\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_BLOOD_SUGAR_SEVERITY\n    WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  )\n) AS master_access_control WHERE '${isAllowed}' = '1'",
-                        "refId": "A",
-                        "dataset": "metrics_db",
-                        "sql": {
-                          "columns": [
-                            {
-                              "parameters": [],
-                              "type": "function"
-                            }
-                          ],
-                          "groupBy": [
-                            {
-                              "property": {
-                                "type": "string"
-                              },
-                              "type": "groupBy"
-                            }
-                          ],
-                          "limit": 50
-                        }
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "A"
-                  }
-                }
-              ],
-              "queryOptions": {},
-              "transformations": []
-            }
-          },
-          "description": "${facility:text} - Latest month",
-          "id": 210,
-          "links": [],
-          "title": "# Uncontrolled blood sugar",
-          "vizConfig": {
-            "group": "stat",
-            "kind": "VizConfig",
-            "spec": {
-              "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "fixedColor": "light-yellow",
-                    "mode": "fixed"
-                  },
-                  "decimals": 0,
-                  "mappings": [],
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      }
-                    ]
-                  },
-                  "unit": "none"
-                },
-                "overrides": []
-              },
-              "options": {
-                "colorMode": "value",
-                "graphMode": "none",
-                "justifyMode": "auto",
-                "orientation": "horizontal",
-                "percentChangeColorMode": "standard",
-                "reduceOptions": {
-                  "calcs": [
-                    "lastNotNull"
-                  ],
-                  "fields": "",
-                  "values": false
-                },
-                "showPercentChange": false,
-                "textMode": "value",
-                "wideLayout": true
-              }
-            },
-            "version": "12.4.2"
-          }
-        }
-      },
-      "panel-dm-11": {
-        "kind": "Panel",
-        "spec": {
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "postgres-hypertension-cached"
-                      },
-                      "group": "grafana-postgresql-datasource",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "code",
-                        "format": "table",
-                        "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\nSELECT\n  (SUM(missed_visit) * 100.0 / NULLIF(SUM(diabetes_patients_under_care), 0)) AS value\nFROM HEART360_BLOOD_SUGAR_MISSED_VISITS\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_BLOOD_SUGAR_MISSED_VISITS\n    WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  )\n) AS master_access_control WHERE '${isAllowed}' = '1'",
-                        "refId": "A",
-                        "dataset": "metrics_db",
-                        "sql": {
-                          "columns": [
-                            {
-                              "parameters": [],
-                              "type": "function"
-                            }
-                          ],
-                          "groupBy": [
-                            {
-                              "property": {
-                                "type": "string"
-                              },
-                              "type": "groupBy"
-                            }
-                          ],
-                          "limit": 50
-                        }
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "A"
-                  }
-                }
-              ],
-              "queryOptions": {},
-              "transformations": []
-            }
-          },
-          "description": "${facility:text} - Latest month",
-          "id": 211,
-          "links": [],
-          "title": "% No visit (DM)",
-          "vizConfig": {
-            "group": "stat",
-            "kind": "VizConfig",
-            "spec": {
-              "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "fixedColor": "light-orange",
-                    "mode": "fixed"
-                  },
-                  "decimals": 0,
-                  "mappings": [],
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      }
-                    ]
-                  },
-                  "unit": "percent"
-                },
-                "overrides": []
-              },
-              "options": {
-                "colorMode": "value",
-                "graphMode": "none",
-                "justifyMode": "auto",
-                "orientation": "horizontal",
-                "percentChangeColorMode": "standard",
-                "reduceOptions": {
-                  "calcs": [
-                    "lastNotNull"
-                  ],
-                  "fields": "",
-                  "values": false
-                },
-                "showPercentChange": false,
-                "textMode": "value",
-                "wideLayout": true
-              }
-            },
-            "version": "12.4.2"
-          }
-        }
-      },
-      "panel-dm-12": {
-        "kind": "Panel",
-        "spec": {
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "hidden": false,
-                    "query": {
-                      "datasource": {
-                        "name": "postgres-hypertension-cached"
-                      },
-                      "group": "grafana-postgresql-datasource",
-                      "kind": "DataQuery",
-                      "spec": {
-                        "editorMode": "code",
-                        "format": "table",
-                        "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\nSELECT\n  SUM(missed_visit) AS value\nFROM HEART360_BLOOD_SUGAR_MISSED_VISITS\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  AND ref_month = (\n    SELECT MAX(ref_month) FROM HEART360_BLOOD_SUGAR_MISSED_VISITS\n    WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  )\n) AS master_access_control WHERE '${isAllowed}' = '1'",
-                        "refId": "A",
-                        "dataset": "metrics_db",
-                        "sql": {
-                          "columns": [
-                            {
-                              "parameters": [],
-                              "type": "function"
-                            }
-                          ],
-                          "groupBy": [
-                            {
-                              "property": {
-                                "type": "string"
-                              },
-                              "type": "groupBy"
-                            }
-                          ],
-                          "limit": 50
-                        }
-                      },
-                      "version": "v0"
-                    },
-                    "refId": "A"
-                  }
-                }
-              ],
-              "queryOptions": {},
-              "transformations": []
-            }
-          },
-          "description": "${facility:text} - Latest month",
-          "id": 212,
-          "links": [],
-          "title": "# No visit (DM)",
-          "vizConfig": {
-            "group": "stat",
-            "kind": "VizConfig",
-            "spec": {
-              "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "fixedColor": "light-orange",
-                    "mode": "fixed"
-                  },
-                  "decimals": 0,
-                  "mappings": [],
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      }
-                    ]
-                  },
-                  "unit": "none"
-                },
-                "overrides": []
-              },
-              "options": {
-                "colorMode": "value",
-                "graphMode": "none",
-                "justifyMode": "auto",
-                "orientation": "horizontal",
-                "percentChangeColorMode": "standard",
-                "reduceOptions": {
-                  "calcs": [
-                    "lastNotNull"
-                  ],
-                  "fields": "",
-                  "values": false
-                },
-                "showPercentChange": false,
-                "textMode": "value",
-                "wideLayout": true
-              }
-            },
-            "version": "12.4.2"
           }
         }
       },
@@ -3248,7 +1861,7 @@
                         "editorMode": "code",
                         "format": "table",
                         "rawQuery": true,
-                        "rawSql": "SELECT * FROM (\nSELECT\n  ref_month,\n  (100.0 * SUM(COALESCE(nb_patients_lost_to_follow_up, 0))) /\n  NULLIF(SUM(TOTAL_NUMBER_OF_PATIENTS), 0) AS lost_to_follow_up_pct\nFROM HEART360_DM_PATIENTS_CATAGORY\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\nGROUP BY ref_month\nORDER BY ref_month\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+                        "rawSql": "SELECT * FROM (\nSELECT\n  ref_month,\n  (100.0 * SUM(COALESCE(nb_patients_lost_to_follow_up, 0))) /\n  NULLIF(SUM(TOTAL_NUMBER_OF_PATIENTS), 0) AS lost_to_follow_up_pct,\n  SUM(COALESCE(nb_patients_lost_to_follow_up, 0)) AS lost_n,\n  SUM(TOTAL_NUMBER_OF_PATIENTS) AS total_n\nFROM HEART360_DM_PATIENTS_CATAGORY\nWHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\nGROUP BY ref_month\nORDER BY ref_month\n) AS master_access_control WHERE '${isAllowed}' = '1'",
                         "refId": "A",
                         "dataset": "metrics_db",
                         "sql": {
@@ -3279,105 +1892,50 @@
               "transformations": []
             }
           },
-          "description": "Patients with diabetes with no visit in the past 12 months",
+          "description": "Patients with diabetes with no visit in the past 12 months, as a percent of cumulative registered patients. The headline is the latest completed month; the current month is dashed.",
           "id": 215,
           "links": [],
           "title": "% 12 month lost to follow-up (DM)",
           "vizConfig": {
-            "group": "timeseries",
+            "group": "volkovlabs-echarts-panel",
             "kind": "VizConfig",
+            "version": "7.2.5",
             "spec": {
               "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "mode": "palette-classic"
-                  },
-                  "custom": {
-                    "axisBorderShow": false,
-                    "axisCenteredZero": false,
-                    "axisColorMode": "text",
-                    "axisLabel": "",
-                    "axisPlacement": "auto",
-                    "barAlignment": 0,
-                    "barWidthFactor": 0.6,
-                    "drawStyle": "line",
-                    "fillOpacity": 25,
-                    "gradientMode": "opacity",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "insertNulls": false,
-                    "lineInterpolation": "linear",
-                    "lineWidth": 2,
-                    "pointSize": 5,
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "showPoints": "auto",
-                    "showValues": true,
-                    "spanNulls": false,
-                    "stacking": {
-                      "group": "A",
-                      "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  },
-                  "decimals": 0,
-                  "displayName": "% DM patients with no visit in the past 12 months",
-                  "mappings": [],
-                  "max": 100,
-                  "min": 0,
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      },
-                      {
-                        "color": "red",
-                        "value": 80
-                      }
-                    ]
-                  }
-                },
-                "overrides": [
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "lost_to_follow_up_pct"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "super-light-red",
-                          "mode": "fixed"
-                        }
-                      }
-                    ]
-                  }
-                ]
+                "defaults": {},
+                "overrides": []
               },
               "options": {
-                "legend": {
-                  "calcs": [],
-                  "displayMode": "list",
-                  "placement": "bottom",
-                  "showLegend": true
+                "baidu": {
+                  "callback": "bmapReady",
+                  "key": ""
                 },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "single",
-                  "sort": "none"
-                }
+                "editor": {
+                  "format": "auto"
+                },
+                "editorMode": "code",
+                "gaode": {
+                  "key": "",
+                  "plugin": "AMap.Scale,AMap.ToolBar"
+                },
+                "google": {
+                  "callback": "gmapReady",
+                  "key": ""
+                },
+                "map": "none",
+                "renderer": "canvas",
+                "themeEditor": {
+                  "config": "{}",
+                  "name": "default"
+                },
+                "visualEditor": {
+                  "code": "return {}",
+                  "dataset": [],
+                  "series": []
+                },
+                "getOption": "const frame = (context.panel.data.series || [])[0];\nfunction col(n) { const f = frame && frame.fields.find((x) => x.name === n); if (!f) { return []; } return Array.from(f.values && f.values.buffer ? f.values.buffer : f.values); }\nconst tr = context.panel.data.timeRange;\nconst from = tr ? tr.from.valueOf() : -Infinity;\nconst to = tr ? tr.to.valueOf() : Infinity;\nconst months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];\nconst mLabel = (ms) => { const d = new Date(ms); return months[d.getUTCMonth()] + '-' + d.getUTCFullYear(); };\nconst fmt = (v) => Math.round(Number(v) || 0).toLocaleString('en-US');\nconst theme = context.grafana && context.grafana.theme;\nconst fg = (theme && theme.colors && theme.colors.text && theme.colors.text.primary) || '#1c1c1c';\nconst muted = '#6e7f8d';\nconst T = col('ref_month').map(Number);\nconst order = T.map((v, i) => i).filter((i) => T[i] >= from && T[i] <= to).sort((a, b) => T[a] - T[b]);\nconst done = order.length > 1 ? order[order.length - 2] : order[order.length - 1];\nconst solid = (vals) => order.map((i, k) => [T[i], k < order.length - 1 ? Number(vals[i]) || 0 : null]);\nconst dashed = (vals) => order.map((i, k) => [T[i], k >= order.length - 2 ? Number(vals[i]) || 0 : null]);\nconst axisX = { type: 'time', axisLabel: { color: muted, fontSize: 11, hideOverlap: true, formatter: (v) => mLabel(v) }, axisLine: { lineStyle: { color: 'rgba(128,128,128,0.4)' } }, splitLine: { show: false } };\nconst head = (big, color, line2, line3, rich) => [\n  { type: 'text', left: 12, top: 2, style: { text: big, fontSize: 30, fontWeight: 700, fill: color } },\n  { type: 'text', left: 12, top: 42, style: { text: line2, fontSize: 13, fill: fg } },\n  { type: 'text', left: 12, top: 62, style: { text: line3, fontSize: 13, fill: muted, rich: rich } }\n];\nconst pct = col('lost_to_follow_up_pct');\nconst lost = col('lost_n');\nconst total = col('total_n');\nconst red = '#ff3355';\nconst blue = '#007ee4';\nconst yearStart = (ms) => { const d = new Date(ms); return Date.UTC(d.getUTCFullYear() - 1, d.getUTCMonth() + 1, 1); };\nconst graphic = done === undefined ? [] : head(((v) => (v < 10 ? v.toFixed(1) : Math.round(v)) + '%')(Number(pct[done]) || 0), red,\n  fmt(lost[done]) + ' patients with no visit from ' + mLabel(yearStart(T[done])) + ' to ' + mLabel(T[done]),\n  'of {b|' + fmt(total[done]) + ' cumulative registered patients}', { b: { fill: blue, fontSize: 13 } });\nreturn {\n  animation: false,\n  graphic: graphic,\n  grid: { left: 12, right: 24, top: 96, bottom: 14, containLabel: true },\n  tooltip: { trigger: 'axis', valueFormatter: (v) => (v === null || v === undefined) ? '' : Number(v).toFixed(1) + '%' },\n  xAxis: axisX,\n  yAxis: { type: 'value', min: 0, max: 100, interval: 25, axisLabel: { color: muted, fontSize: 11, formatter: (v) => v + '%' }, splitLine: { lineStyle: { color: 'rgba(128,128,128,0.15)' } } },\n  series: [\n    { type: 'line', name: '12 month lost to follow-up', data: solid(pct), showSymbol: true, symbolSize: 5, lineStyle: { color: red, width: 2 }, itemStyle: { color: red }, areaStyle: { color: 'rgba(255,51,85,0.10)' } },\n    { type: 'line', name: '12 month lost to follow-up', data: dashed(pct), showSymbol: true, symbolSize: 5, lineStyle: { color: red, width: 2, type: 'dashed' }, itemStyle: { color: red }, tooltip: { show: false } }\n  ]\n};"
               }
-            },
-            "version": "12.4.2"
+            }
           }
         }
       },
@@ -3433,156 +1991,50 @@
               "transformations": []
             }
           },
-          "description": "**Patients under care:** Registered patients with diabetes with at least 1 visit in the past 12 months. Dead patients and 12 month lost to follow-up patients are excluded.\n**Cumulative registered patients:** All patients with diabetes registered. Dead patients are excluded.\n**Monthly registered patients:** Patients with diabetes registered each month.",
+          "description": "**Patients under care:** Registered patients with diabetes with at least 1 visit in the past 12 months. Dead patients and 12 month lost to follow-up patients are excluded. **Cumulative registered patients:** All patients with diabetes registered. Dead patients are excluded. **Monthly registered patients:** Patients with diabetes registered each month. The headline is the latest completed month; the current month is dashed.",
           "id": 214,
           "links": [],
           "title": "Patients under care & registrations (DM)",
           "vizConfig": {
-            "group": "timeseries",
+            "group": "volkovlabs-echarts-panel",
             "kind": "VizConfig",
+            "version": "7.2.5",
             "spec": {
               "fieldConfig": {
-                "defaults": {
-                  "color": {
-                    "mode": "palette-classic"
-                  },
-                  "custom": {
-                    "axisBorderShow": false,
-                    "axisCenteredZero": false,
-                    "axisColorMode": "text",
-                    "axisGridShow": true,
-                    "axisLabel": "",
-                    "axisPlacement": "auto",
-                    "barAlignment": 0,
-                    "barWidthFactor": 0.6,
-                    "drawStyle": "line",
-                    "fillOpacity": 25,
-                    "gradientMode": "opacity",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "insertNulls": false,
-                    "lineInterpolation": "linear",
-                    "lineStyle": {
-                      "fill": "solid"
-                    },
-                    "lineWidth": 2,
-                    "pointSize": 6,
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "showPoints": "auto",
-                    "showValues": true,
-                    "spanNulls": false,
-                    "stacking": {
-                      "group": "A",
-                      "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  },
-                  "mappings": [],
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "color": "green",
-                        "value": 0
-                      },
-                      {
-                        "color": "red",
-                        "value": 80
-                      }
-                    ]
-                  }
-                },
-                "overrides": [
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "nb_new_dm_patients"
-                    },
-                    "properties": [
-                      {
-                        "id": "custom.drawStyle",
-                        "value": "bars"
-                      },
-                      {
-                        "id": "custom.fillOpacity",
-                        "value": 32
-                      },
-                      {
-                        "id": "custom.gradientMode",
-                        "value": "none"
-                      },
-                      {
-                        "id": "custom.lineWidth",
-                        "value": 0
-                      },
-                      {
-                        "id": "displayName",
-                        "value": "DM - Monthly registrations"
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "cumulative_dm_patients"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "blue",
-                          "mode": "fixed"
-                        }
-                      },
-                      {
-                        "id": "displayName",
-                        "value": "DM - Cumulative registrations"
-                      }
-                    ]
-                  },
-                  {
-                    "matcher": {
-                      "id": "byName",
-                      "options": "nb_dm_patients_under_care"
-                    },
-                    "properties": [
-                      {
-                        "id": "color",
-                        "value": {
-                          "fixedColor": "purple",
-                          "mode": "fixed"
-                        }
-                      },
-                      {
-                        "id": "displayName",
-                        "value": "DM - Patients under care"
-                      }
-                    ]
-                  }
-                ]
+                "defaults": {},
+                "overrides": []
               },
               "options": {
-                "legend": {
-                  "calcs": [],
-                  "displayMode": "list",
-                  "placement": "bottom",
-                  "showLegend": true
+                "baidu": {
+                  "callback": "bmapReady",
+                  "key": ""
                 },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "single",
-                  "sort": "none"
-                }
+                "editor": {
+                  "format": "auto"
+                },
+                "editorMode": "code",
+                "gaode": {
+                  "key": "",
+                  "plugin": "AMap.Scale,AMap.ToolBar"
+                },
+                "google": {
+                  "callback": "gmapReady",
+                  "key": ""
+                },
+                "map": "none",
+                "renderer": "canvas",
+                "themeEditor": {
+                  "config": "{}",
+                  "name": "default"
+                },
+                "visualEditor": {
+                  "code": "return {}",
+                  "dataset": [],
+                  "series": []
+                },
+                "getOption": "const frame = (context.panel.data.series || [])[0];\nfunction col(n) { const f = frame && frame.fields.find((x) => x.name === n); if (!f) { return []; } return Array.from(f.values && f.values.buffer ? f.values.buffer : f.values); }\nconst tr = context.panel.data.timeRange;\nconst from = tr ? tr.from.valueOf() : -Infinity;\nconst to = tr ? tr.to.valueOf() : Infinity;\nconst months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];\nconst mLabel = (ms) => { const d = new Date(ms); return months[d.getUTCMonth()] + '-' + d.getUTCFullYear(); };\nconst fmt = (v) => Math.round(Number(v) || 0).toLocaleString('en-US');\nconst theme = context.grafana && context.grafana.theme;\nconst fg = (theme && theme.colors && theme.colors.text && theme.colors.text.primary) || '#1c1c1c';\nconst muted = '#6e7f8d';\nconst T = col('ref_month').map(Number);\nconst order = T.map((v, i) => i).filter((i) => T[i] >= from && T[i] <= to).sort((a, b) => T[a] - T[b]);\nconst done = order.length > 1 ? order[order.length - 2] : order[order.length - 1];\nconst solid = (vals) => order.map((i, k) => [T[i], k < order.length - 1 ? Number(vals[i]) || 0 : null]);\nconst dashed = (vals) => order.map((i, k) => [T[i], k >= order.length - 2 ? Number(vals[i]) || 0 : null]);\nconst axisX = { type: 'time', axisLabel: { color: muted, fontSize: 11, hideOverlap: true, formatter: (v) => mLabel(v) }, axisLine: { lineStyle: { color: 'rgba(128,128,128,0.4)' } }, splitLine: { show: false } };\nconst head = (big, color, line2, line3, rich) => [\n  { type: 'text', left: 12, top: 2, style: { text: big, fontSize: 30, fontWeight: 700, fill: color } },\n  { type: 'text', left: 12, top: 42, style: { text: line2, fontSize: 13, fill: fg } },\n  { type: 'text', left: 12, top: 62, style: { text: line3, fontSize: 13, fill: muted, rich: rich } }\n];\nconst cum = col('cumulative_dm_patients');\nconst uc = col('nb_dm_patients_under_care');\nconst nw = col('nb_new_dm_patients');\nconst blue = '#007ee4';\nconst purple = '#b51bdc';\nconst graphic = done === undefined ? [] : head(fmt(uc[done]), purple,\n  fmt(nw[done]) + ' patients registered in ' + mLabel(T[done]),\n  'of {b|' + fmt(cum[done]) + ' cumulative registered patients}', { b: { fill: blue, fontSize: 13 } });\nconst line = (name, color, vals) => [\n  { type: 'line', name: name, data: solid(vals), showSymbol: true, symbolSize: 5, lineStyle: { color: color, width: 2 }, itemStyle: { color: color } },\n  { type: 'line', name: name, data: dashed(vals), showSymbol: true, symbolSize: 5, lineStyle: { color: color, width: 2, type: 'dashed' }, itemStyle: { color: color }, tooltip: { show: false } }\n];\nreturn {\n  animation: false,\n  graphic: graphic,\n  legend: { bottom: 10, left: 8, icon: 'roundRect', itemWidth: 14, itemHeight: 4, textStyle: { color: fg, fontSize: 12 }, data: ['Cumulative registered patients', 'Patients under care', 'Monthly registrations'] },\n  grid: { left: 12, right: 24, top: 96, bottom: 40, containLabel: true },\n  tooltip: { trigger: 'axis', valueFormatter: (v) => fmt(v) },\n  xAxis: axisX,\n  yAxis: { type: 'value', min: 0, splitNumber: 3, axisLabel: { color: muted, fontSize: 11, formatter: (v) => fmt(v) }, splitLine: { lineStyle: { color: 'rgba(128,128,128,0.15)' } } },\n  series: [\n    { type: 'bar', name: 'Monthly registrations', data: order.map((i) => [T[i], Number(nw[i]) || 0]), barMaxWidth: 14, itemStyle: { color: 'rgba(0,126,228,0.25)' } }\n  ].concat(line('Cumulative registered patients', blue, cum), line('Patients under care', purple, uc))\n};"
               }
-            },
-            "version": "12.4.2"
+            }
           }
         }
       },
@@ -3714,7 +2166,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "green",
+                          "fixedColor": "#3bb231",
                           "mode": "fixed"
                         }
                       },
@@ -3737,7 +2189,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "yellow",
+                          "fixedColor": "#eeab00",
                           "mode": "fixed"
                         }
                       },
@@ -3760,7 +2212,7 @@
                       {
                         "id": "color",
                         "value": {
-                          "fixedColor": "orange",
+                          "fixedColor": "#ed6300",
                           "mode": "fixed"
                         }
                       },
@@ -3796,6 +2248,10 @@
                       {
                         "id": "displayName",
                         "value": "DM - Patients under care"
+                      },
+                      {
+                        "id": "unit",
+                        "value": "locale"
                       }
                     ]
                   },
@@ -3808,6 +2264,10 @@
                       {
                         "id": "displayName",
                         "value": "DM - Monthly registrations"
+                      },
+                      {
+                        "id": "unit",
+                        "value": "locale"
                       }
                     ]
                   },
@@ -3820,6 +2280,10 @@
                       {
                         "id": "displayName",
                         "value": "DM - # Controlled Blood Sugar"
+                      },
+                      {
+                        "id": "unit",
+                        "value": "locale"
                       }
                     ]
                   },
@@ -3832,6 +2296,10 @@
                       {
                         "id": "displayName",
                         "value": "DM - # Uncontrolled Blood Sugar"
+                      },
+                      {
+                        "id": "unit",
+                        "value": "locale"
                       }
                     ]
                   },
@@ -3844,6 +2312,10 @@
                       {
                         "id": "displayName",
                         "value": "DM - # No visit in past 3 months"
+                      },
+                      {
+                        "id": "unit",
+                        "value": "locale"
                       }
                     ]
                   }
@@ -6160,6 +4632,105 @@
             }
           }
         }
+      },
+      "panel-dm-outcomes": {
+        "kind": "Panel",
+        "spec": {
+          "id": 901,
+          "title": "DM treatment outcomes",
+          "description": "**Numerator for blood sugar controlled:** RBS <140, FBS <126 mg/dL or HbA1c <7% at the latest visit in the past 3 months. **Numerator for blood sugar not controlled:** FBS 126-199 mg/dL or HbA1c 7-8.9% (moderate), and FBS >=200 mg/dL or HbA1c >=9% (high), at the latest visit in the past 3 months. **Numerator for no visit in 3 months:** Patients with no visit in the past 3 months. **Denominator:** Patients with diabetes registered before the past 3 months. Dead patients and 12 month lost to follow-up patients are excluded. Figures are the latest completed month; the current month is dashed or faded.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "postgres-hypertension-cached"
+                      },
+                      "group": "grafana-postgresql-datasource",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "editorMode": "code",
+                        "format": "table",
+                        "rawQuery": true,
+                        "rawSql": "SELECT * FROM (\nWITH ctl AS (\n  SELECT ref_month, SUM(diabetes_controlled) AS controlled_n, SUM(diabetes_patients_under_care) AS denominator_n\n  FROM HEART360_BLOOD_SUGAR_CONTROLLED WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  GROUP BY ref_month\n), sev AS (\n  SELECT ref_month, SUM(uncontrolled_moderate) AS moderate_n, SUM(uncontrolled_high) AS high_n\n  FROM HEART360_BLOOD_SUGAR_SEVERITY WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  GROUP BY ref_month\n), mv AS (\n  SELECT ref_month, SUM(missed_visit) AS no_visit_n\n  FROM HEART360_BLOOD_SUGAR_MISSED_VISITS WHERE org_unit_id IN (SELECT id FROM org_units\n  WHERE NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0') IS NULL\n  UNION\n  SELECT id FROM get_descendant_ids(\n    (SELECT ou.id FROM org_units ou\n     WHERE ou.id::text = NULLIF(NULLIF(TRIM(BOTH FROM '${org_unit}'), ''), '0')\n     LIMIT 1)\n  ))\n  GROUP BY ref_month\n)\nSELECT ctl.ref_month, ctl.controlled_n, sev.moderate_n, sev.high_n, mv.no_visit_n, ctl.denominator_n\nFROM ctl\nLEFT JOIN sev ON sev.ref_month = ctl.ref_month\nLEFT JOIN mv ON mv.ref_month = ctl.ref_month\nORDER BY ctl.ref_month\n) AS master_access_control WHERE '${isAllowed}' = '1'",
+                        "refId": "A",
+                        "dataset": "metrics_db",
+                        "sql": {
+                          "columns": [
+                            {
+                              "parameters": [],
+                              "type": "function"
+                            }
+                          ],
+                          "groupBy": [
+                            {
+                              "property": {
+                                "type": "string"
+                              },
+                              "type": "groupBy"
+                            }
+                          ],
+                          "limit": 50
+                        }
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "vizConfig": {
+            "group": "volkovlabs-echarts-panel",
+            "kind": "VizConfig",
+            "version": "7.2.5",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              },
+              "options": {
+                "baidu": {
+                  "callback": "bmapReady",
+                  "key": ""
+                },
+                "editor": {
+                  "format": "auto"
+                },
+                "editorMode": "code",
+                "gaode": {
+                  "key": "",
+                  "plugin": "AMap.Scale,AMap.ToolBar"
+                },
+                "google": {
+                  "callback": "gmapReady",
+                  "key": ""
+                },
+                "map": "none",
+                "renderer": "canvas",
+                "themeEditor": {
+                  "config": "{}",
+                  "name": "default"
+                },
+                "visualEditor": {
+                  "code": "return {}",
+                  "dataset": [],
+                  "series": []
+                },
+                "getOption": "const frame = (context.panel.data.series || [])[0];\nfunction col(n) { const f = frame && frame.fields.find((x) => x.name === n); if (!f) { return []; } return Array.from(f.values && f.values.buffer ? f.values.buffer : f.values); }\nconst tr = context.panel.data.timeRange;\nconst from = tr ? tr.from.valueOf() : -Infinity;\nconst to = tr ? tr.to.valueOf() : Infinity;\nconst months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];\nconst mLabel = (ms) => { const d = new Date(ms); return months[d.getUTCMonth()] + '-' + d.getUTCFullYear(); };\nconst fmt = (v) => Math.round(Number(v) || 0).toLocaleString('en-US');\nconst theme = context.grafana && context.grafana.theme;\nconst fg = (theme && theme.colors && theme.colors.text && theme.colors.text.primary) || '#1c1c1c';\nconst muted = '#6e7f8d';\nconst T = col('ref_month').map(Number);\nconst order = T.map((v, i) => i).filter((i) => T[i] >= from && T[i] <= to).sort((a, b) => T[a] - T[b]);\nconst done = order.length > 1 ? order[order.length - 2] : order[order.length - 1];\nconst solid = (vals) => order.map((i, k) => [T[i], k < order.length - 1 ? Number(vals[i]) || 0 : null]);\nconst dashed = (vals) => order.map((i, k) => [T[i], k >= order.length - 2 ? Number(vals[i]) || 0 : null]);\nconst axisX = { type: 'time', axisLabel: { color: muted, fontSize: 11, hideOverlap: true, formatter: (v) => mLabel(v) }, axisLine: { lineStyle: { color: 'rgba(128,128,128,0.4)' } }, splitLine: { show: false } };\nconst head = (big, color, line2, line3, rich) => [\n  { type: 'text', left: 12, top: 2, style: { text: big, fontSize: 30, fontWeight: 700, fill: color } },\n  { type: 'text', left: 12, top: 42, style: { text: line2, fontSize: 13, fill: fg } },\n  { type: 'text', left: 12, top: 62, style: { text: line3, fontSize: 13, fill: muted, rich: rich } }\n];\nconst dayLabel = (ms) => { const d = new Date(ms); return d.getUTCDate() + '-' + months[d.getUTCMonth()] + '-' + d.getUTCFullYear(); };\nconst winOf = (ms) => { const e = new Date(ms); return [Date.UTC(e.getUTCFullYear(), e.getUTCMonth() - 2, 1), Date.UTC(e.getUTCFullYear(), e.getUTCMonth() + 1, 0)]; };\nconst pctOf = (vals, den, i) => { const dn = Number(den[i]) || 0; return dn ? 100 * (Number(vals[i]) || 0) / dn : null; };\nconst pctTxt = (p) => p === null ? '\u2013' : Math.round(p) + '%';\nconst W = (context.panel.chart && context.panel.chart.getWidth && context.panel.chart.getWidth()) || 1200;\nconst lines = (t, width, px) => Math.max(1, Math.ceil(t.length * px / width));\nconst ctl = col('controlled_n');\nconst mod = col('moderate_n');\nconst high = col('high_n');\nconst nov = col('no_visit_n');\nconst den = col('denominator_n');\nconst green = '#3bb231';\nconst amber = '#eeab00';\nconst amberDark = '#c08b00';\nconst orange = '#ed6300';\nconst colW = W / 3;\nconst TITLES = ['Blood sugar controlled at latest visit in past 3 months', 'Blood sugar not controlled at latest visit in past 3 months', 'No visit in past 3 months'];\n// Titles and the two uncontrolled lines wrap on narrow screens; push content down when they do.\nconst titleShift = TITLES.some((t) => lines(t, colW - 36, 7.8) > 1) ? 18 : 0;\nconst graphic = [];\nlet detailExtra = 0;\nif (done !== undefined) {\n  const [ws, we] = winOf(T[done]);\n  graphic.push({ type: 'text', left: 12, top: 0, style: { text: 'Outcomes for ' + fmt(den[done]) + ' patients under care (registered before ' + dayLabel(ws) + ') between ' + dayLabel(ws) + ' to ' + dayLabel(we), fontSize: 13, fill: fg, width: W - 24, overflow: 'truncate' } });\n  const modLine = fmt(mod[done]) + ' patients with FBS 126\u2013199 mg/dL or HbA1c 7\u20138.9%';\n  const highLine = fmt(high[done]) + ' patients with FBS \u2265200 mg/dL or HbA1c \u22659%';\n  const modRows = lines(modLine + '00%  ', colW - 36, 6.2);\n  const highRows = lines(highLine + '00%  ', colW - 36, 6.2);\n  detailExtra = Math.max(0, (modRows + highRows - 2) * 18);\n  const t = (k, text, color) => ({ type: 'text', style: { text: text, fontSize: 14, fontWeight: 600, fill: color, width: colW - 36, overflow: 'break', lineHeight: 18 } });\n  const big = (text, color) => ({ type: 'text', top: 26 + titleShift, style: { text: text, fontSize: 30, fontWeight: 700, fill: color } });\n  const detail = (text) => ({ type: 'text', top: 64 + titleShift, style: { text: text, fontSize: 13, fill: fg, width: colW - 36, overflow: 'break' } });\n  const figLine = (top, pct, color, text) => ({ type: 'text', top: top, style: { text: '{a|' + pct + '}  ' + text, fontSize: 13, fill: fg, width: colW - 36, overflow: 'break', lineHeight: 18, rich: { a: { fontSize: 18, fontWeight: 700, fill: color } } } });\n  graphic.push({ type: 'group', left: 12, top: 32, children: [\n    t(0, TITLES[0], green), big(pctTxt(pctOf(ctl, den, done)), green),\n    detail(fmt(ctl[done]) + ' patients with RBS <140, FBS <126 mg/dL or HbA1c <7%') ] });\n  graphic.push({ type: 'group', left: colW + 12, top: 32, children: [\n    t(1, TITLES[1], amber),\n    figLine(30 + titleShift, pctTxt(pctOf(mod, den, done)), amber, modLine),\n    figLine(30 + titleShift + modRows * 18 + 8, pctTxt(pctOf(high, den, done)), amberDark, highLine) ] });\n  graphic.push({ type: 'group', left: 2 * colW + 12, top: 32, children: [\n    t(2, TITLES[2], orange), big(pctTxt(pctOf(nov, den, done)), orange),\n    detail(fmt(nov[done]) + ' patients with no visit') ] });\n}\nconst top = 136 + titleShift + detailExtra;\nconst grid = [0, 1, 2].map((k) => ({ left: k * colW + 12, width: colW - 36, top: top, bottom: 14, containLabel: true }));\nconst xAxis = [0, 1, 2].map((k) => Object.assign({}, axisX, { gridIndex: k }));\nconst yAxis = [0, 1, 2].map((k) => ({ type: 'value', gridIndex: k, min: 0, max: 100, interval: 25, axisLabel: { color: muted, fontSize: 11, formatter: (v) => v + '%' }, splitLine: { lineStyle: { color: 'rgba(128,128,128,0.15)' } } }));\nconst series = [];\nconst trend = (k, name, color, fill, vals) => {\n  const p = order.map((i) => pctOf(vals, den, i));\n  series.push({ type: 'line', name: name, xAxisIndex: k, yAxisIndex: k, data: order.map((i, n) => [T[i], n < order.length - 1 ? p[n] : null]), showSymbol: true, symbolSize: 5, lineStyle: { color: color, width: 2 }, itemStyle: { color: color }, areaStyle: { color: fill } });\n  series.push({ type: 'line', name: name, xAxisIndex: k, yAxisIndex: k, data: order.map((i, n) => [T[i], n >= order.length - 2 ? p[n] : null]), showSymbol: true, symbolSize: 5, lineStyle: { color: color, width: 2, type: 'dashed' }, itemStyle: { color: color }, tooltip: { show: false } });\n};\ntrend(0, TITLES[0], green, 'rgba(59,178,49,0.12)', ctl);\n// Not controlled: stacked bars (high under moderate), the running month faded, as hearts360.\nconst bars = (name, color, vals) => ({ type: 'bar', name: name, stack: 'unc', xAxisIndex: 1, yAxisIndex: 1, barMaxWidth: 12,\n  data: order.map((i, n) => ({ value: [T[i], pctOf(vals, den, i)], itemStyle: { color: color, opacity: n === order.length - 1 ? 0.45 : 1 } })) });\nseries.push(bars('FBS \u2265200 mg/dL or HbA1c \u22659%', amberDark, high));\nseries.push(bars('FBS 126\u2013199 mg/dL or HbA1c 7\u20138.9%', amber, mod));\ntrend(2, TITLES[2], orange, 'rgba(237,99,0,0.12)', nov);\nreturn {\n  animation: false,\n  graphic: graphic,\n  tooltip: { trigger: 'axis', valueFormatter: (v) => (v === null || v === undefined) ? '' : Math.round(v) + '%' },\n  grid: grid, xAxis: xAxis, yAxis: yAxis, series: series\n};"
+              }
+            }
+          }
+        }
       }
     },
     "layout": {
@@ -6397,8 +4968,8 @@
                                               "kind": "ElementReference",
                                               "name": "panel-dm-13"
                                             },
-                                            "height": 8,
-                                            "width": 8,
+                                            "height": 10,
+                                            "width": 12,
                                             "x": 0,
                                             "y": 0
                                           }
@@ -6423,116 +4994,12 @@
                                           "spec": {
                                             "element": {
                                               "kind": "ElementReference",
-                                              "name": "panel-dm-2"
+                                              "name": "panel-dm-outcomes"
                                             },
-                                            "height": 8,
-                                            "width": 8,
+                                            "height": 13,
+                                            "width": 24,
                                             "x": 0,
                                             "y": 0
-                                          }
-                                        },
-                                        {
-                                          "kind": "GridLayoutItem",
-                                          "spec": {
-                                            "element": {
-                                              "kind": "ElementReference",
-                                              "name": "panel-dm-3"
-                                            },
-                                            "height": 8,
-                                            "width": 8,
-                                            "x": 8,
-                                            "y": 0
-                                          }
-                                        },
-                                        {
-                                          "kind": "GridLayoutItem",
-                                          "spec": {
-                                            "element": {
-                                              "kind": "ElementReference",
-                                              "name": "panel-dm-4"
-                                            },
-                                            "height": 8,
-                                            "width": 8,
-                                            "x": 16,
-                                            "y": 0
-                                          }
-                                        },
-                                        {
-                                          "kind": "GridLayoutItem",
-                                          "spec": {
-                                            "element": {
-                                              "kind": "ElementReference",
-                                              "name": "panel-dm-7"
-                                            },
-                                            "height": 3,
-                                            "width": 4,
-                                            "x": 0,
-                                            "y": 8
-                                          }
-                                        },
-                                        {
-                                          "kind": "GridLayoutItem",
-                                          "spec": {
-                                            "element": {
-                                              "kind": "ElementReference",
-                                              "name": "panel-dm-8"
-                                            },
-                                            "height": 3,
-                                            "width": 4,
-                                            "x": 4,
-                                            "y": 8
-                                          }
-                                        },
-                                        {
-                                          "kind": "GridLayoutItem",
-                                          "spec": {
-                                            "element": {
-                                              "kind": "ElementReference",
-                                              "name": "panel-dm-9"
-                                            },
-                                            "height": 3,
-                                            "width": 4,
-                                            "x": 8,
-                                            "y": 8
-                                          }
-                                        },
-                                        {
-                                          "kind": "GridLayoutItem",
-                                          "spec": {
-                                            "element": {
-                                              "kind": "ElementReference",
-                                              "name": "panel-dm-10"
-                                            },
-                                            "height": 3,
-                                            "width": 4,
-                                            "x": 12,
-                                            "y": 8
-                                          }
-                                        },
-                                        {
-                                          "kind": "GridLayoutItem",
-                                          "spec": {
-                                            "element": {
-                                              "kind": "ElementReference",
-                                              "name": "panel-dm-11"
-                                            },
-                                            "height": 3,
-                                            "width": 4,
-                                            "x": 16,
-                                            "y": 8
-                                          }
-                                        },
-                                        {
-                                          "kind": "GridLayoutItem",
-                                          "spec": {
-                                            "element": {
-                                              "kind": "ElementReference",
-                                              "name": "panel-dm-12"
-                                            },
-                                            "height": 3,
-                                            "width": 4,
-                                            "x": 20,
-                                            "y": 8
                                           }
                                         },
                                         {
@@ -6542,10 +5009,10 @@
                                               "kind": "ElementReference",
                                               "name": "panel-dm-14"
                                             },
-                                            "height": 9,
+                                            "height": 10,
                                             "width": 16,
                                             "x": 0,
-                                            "y": 11
+                                            "y": 13
                                           }
                                         },
                                         {
@@ -6555,10 +5022,10 @@
                                               "kind": "ElementReference",
                                               "name": "panel-dm-15"
                                             },
-                                            "height": 9,
-                                            "width": 7,
+                                            "height": 10,
+                                            "width": 8,
                                             "x": 16,
-                                            "y": 11
+                                            "y": 13
                                           }
                                         }
                                       ]
