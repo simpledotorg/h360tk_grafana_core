@@ -32,8 +32,9 @@ class ImportVersion1(BaseImportVersion):
     ) -> None:
         source_key = metadata.get('source_key', '')
         log.info(
-            'Importing zip for source_key=%s (import_export_version=1)',
+            'Importing zip for source_key=%s (import_export_version=%s)',
             source_key,
+            metadata.get('import_export_version'),
         )
 
         self.import_org_units(

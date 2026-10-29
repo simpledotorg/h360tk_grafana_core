@@ -1,8 +1,10 @@
 from import_versions.base import BaseImportVersion
 from import_versions.v1 import ImportVersion1
+from import_versions.v2 import ImportVersion2
 
 VERSION_REGISTRY: dict[int, type[BaseImportVersion]] = {
     1: ImportVersion1,
+    2: ImportVersion2,
 }
 
 
