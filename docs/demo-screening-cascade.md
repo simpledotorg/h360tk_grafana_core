@@ -158,6 +158,41 @@ All three are idempotent. The Diabetes script leaves every non-`panel-dm-*` elem
 
 **Console note.** One 404 on the Diabetes tab, `/apis/userstorage…/volkovlabs-table-panel:…`, is the table plugin looking up saved user preferences. It is harmless and not from these panels.
 
+## Tooltips and outcome-card height (2026-10-29)
+
+**Tooltip.** Every ECharts trend uses one shared tooltip, `tip()`, from `TIP_JS` in `scripts/h360_style_common.py`. That covers Patients protected, both outcome cards, both under-care charts, both LTFU charts and DM controlled BP.
+
+- **Header.** The hovered month in bold, with `(in progress)` on the running month. The dashed running-month segment has a tooltip too.
+- **Rows.**
+  - `shareRows()` prints `Label: 61%`, with `3,901 of 6,523 patients` under it in a lighter style.
+  - When several rows share one denominator, it prints `■ Label: 29% · 387` per row, then `of 1,352 patients`.
+- **Colour keys.** Charts with more than one series show a colour square per row (`dot()`): under care, DM controlled BP and DM not controlled.
+- **Big numbers never change on hover.** A hover readout that moved them was tried and rejected.
+
+**Diabetes "not controlled".**
+- Colours are exactly hearts360 `js/charts.js` (`dmUncontrolledData`):
+  - total line `#D19600`
+  - ≥200 bars `rgba(249,191,45,0.8)`
+  - 126–199 bars `rgba(244,212,128,0.6)`
+- The big figures above the chart keep hearts360's `#eeab00` and `#c08b00` text colours.
+- As in Chart.js, the tooltip colour squares sit on white with a 1px white border, so translucent colours look the same as on the chart.
+- Tooltip rows, in this order:
+  1. ■ `Blood sugar not controlled (total): 41%, 281 patients`
+  2. ■ `FBS ≥200 mg/dL or HbA1c ≥9%: …`
+  3. ■ `FBS 126–199 mg/dL or HbA1c 7–8.9%: …`
+  4. `of N patients`
+- Every multi-row tooltip reads `%, N patients`, not `% · N`.
+
+**DM controlled BP** is one column wide (w=8), like the other cards. Its chart starts lower (grid top 122) so the grey denominator line can wrap once.
+
+**Height.** Both outcome cards are 11 grid rows (were 13). Under care and LTFU move up to y=11. Change that one number to make the 0–100% charts taller or shorter.
+
+**Cleanup.**
+- `to_echarts(els, name, js, description, title=None, sql=None)` lives in the shared module and is used by every ECharts panel.
+- Removed dead passes that restyled panels the script then deletes (`panel-2/3/4`, `panel-14…19`).
+- Removed an odd options fallback in `apply_overview.py`.
+- The output was checked byte-identical before and after.
+
 ## Rules to keep
 
 - Do not change: the Diabetes tab, `panel-dm-*`, the Overdue list, `estimated_htn_population`, Docker images, `main` / 0.6.1.
