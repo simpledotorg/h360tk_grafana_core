@@ -622,6 +622,7 @@ def run_import():
                     validate_start,
                     f'Validation failed for {zip_name}: {reason}',
                 )
+                update_import_source_control(zip_source_key_or_name(local_zip_path, zip_name), 'no_data', 'not imported due to validation failure')
 
         if not valid_zips:
             log.error(
