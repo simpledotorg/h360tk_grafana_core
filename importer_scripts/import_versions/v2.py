@@ -71,6 +71,27 @@ class ImportVersion2(ImportVersion1):
 
         super().import_zip(conn, staging_dir, metadata, mapping_rules=mapping_rules)
 
+    def _read_orgunit_rows(self, csv_path: str) -> list[dict]:
+        """The v1 rows, but an org unit without a name rejects the zip.
+
+        v1 imports it with an empty name, which shows as a blank place on the
+        dashboard; skipping it or naming it would hide the mistake instead.
+        """
+        with open(csv_path, 'r', encoding='utf-8') as csv_file:
+            reader = csv.DictReader(csv_file)
+            if 'name' not in (reader.fieldnames or []):
+                raise ValueError('orgunit.csv is missing column(s): name')
+            blank_lines = [reader.line_num for row in reader if not (row['name'] or '').strip()]
+        if blank_lines:
+            shown = ', '.join(map(str, blank_lines[:MAX_REPORTED_LINES]))
+            if len(blank_lines) > MAX_REPORTED_LINES:
+                shown += ', ...'
+            raise ValueError(
+                f'orgunit.csv has {len(blank_lines)} org unit(s) with an empty name '
+                f'(line {shown}); every org unit needs a name'
+            )
+        return super()._read_orgunit_rows(csv_path)
+
     @staticmethod
     def _find_file(directory: str, filename: str) -> str:
         """Path of ``filename`` in ``directory``, matched case-insensitively."""
@@ -134,13 +155,16 @@ class ImportVersion2(ImportVersion1):
         """Validate the indicators file and pivot it into rows per v1 table.
 
         Rows without an org_unit_id or value are skipped, as v1 imports those
-        as nothing.  Every other problem is collected and raised together so
-        the sender can fix the file in one go.
+        as nothing.  Every other problem, including a value given more than
+        once, is collected and raised together so the sender can fix the file
+        in one go.
         """
         filename = os.path.basename(csv_path)
         catalog, shared = self._indicator_catalog(table_columns)
         tables: dict[str, TableRows] = defaultdict(lambda: defaultdict(dict))
         problems: dict[str, list[int]] = defaultdict(list)
+        # Line each (table, cell, column) was first given on, to point at repeats.
+        first_lines: dict[tuple[str, tuple[date, int], str], int] = {}
         imported = skipped = 0
 
         with open(csv_path, 'r', encoding='utf-8-sig', newline='') as csv_file:
@@ -168,12 +192,21 @@ class ImportVersion2(ImportVersion1):
                     problems[str(e)].append(line_no)
                     continue
 
-                previous = tables[table][cell].setdefault(column, count)
-                if previous != count:
-                    problems[
-                        f'{key} for org unit {cell[1]} in {cell[0]:%Y-%m} has values '
-                        f'{previous} and {count}'
-                    ].append(line_no)
+                first_line = first_lines.setdefault((table, cell, column), line_no)
+                if first_line != line_no:
+                    # A repeat is rejected even with the same value, so a file
+                    # sent twice over is caught instead of imported quietly.
+                    previous = tables[table][cell][column]
+                    where = f'{key} for org unit {cell[1]} in {cell[0]:%Y-%m}'
+                    lines = problems[
+                        f'{where} is repeated' if previous == count
+                        else f'{where} has values {previous} and {count}'
+                    ]
+                    if not lines:
+                        lines.append(first_line)
+                    lines.append(line_no)
+                    continue
+                tables[table][cell][column] = count
                 imported += 1
 
         if problems:
