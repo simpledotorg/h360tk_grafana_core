@@ -15,6 +15,15 @@ def get_importer(version: int) -> BaseImportVersion:
     return importer_cls()
 
 
+def check_zip_files(version: int, names: list[str]) -> str | None:
+    """Why the zip's files do not suit its version, or None.
+
+    An unsupported version passes here and is reported by get_importer.
+    """
+    importer_cls = VERSION_REGISTRY.get(version)
+    return importer_cls.check_files(names) if importer_cls else None
+
+
 def all_reporting_tables() -> list[str]:
     tables: set[str] = set()
     for importer_cls in VERSION_REGISTRY.values():

@@ -1,12 +1,13 @@
 import csv
 import logging
 import os
+import re
 import shutil
 import tempfile
 from collections import defaultdict
 from datetime import date
 
-from import_versions.base import AGGREGATE_KEY
+from import_versions.base import AGGREGATE_KEY, INDICATORS_FILE
 from import_versions.v1 import ImportVersion1
 from orgunit_mapping import MappingRule
 
@@ -19,6 +20,14 @@ TableRows = dict[tuple[date, int], dict[str, int]]
 # the rest are only counted.
 MAX_REPORTED_PROBLEMS = 10
 MAX_REPORTED_LINES = 5
+
+ISO_DATE = re.compile(r'[0-9]{4}-[0-9]{2}-[0-9]{2}')
+
+
+def format_lines(lines: list[int]) -> str:
+    """The first MAX_REPORTED_LINES line numbers, then '...' when there are more."""
+    shown = ', '.join(map(str, lines[:MAX_REPORTED_LINES]))
+    return shown + ', ...' if len(lines) > MAX_REPORTED_LINES else shown
 
 
 class ImportVersion2(ImportVersion1):
@@ -35,9 +44,20 @@ class ImportVersion2(ImportVersion1):
     (the ``heart360_`` prefix is optional).
     """
 
-    INDICATORS_FILE = 'heart360_merged_indicators.csv'
+    INDICATORS_FILE = INDICATORS_FILE
     INDICATOR_COLUMNS = ('ref_month', 'org_unit_id', 'indicator_key', 'value')
     TABLE_PREFIX = 'heart360_'
+
+    def __init__(self) -> None:
+        super().__init__()
+        # orgunit.csv is read once; the v1 path reads the same file again.
+        self._orgunit_rows: list[dict] | None = None
+
+    @classmethod
+    def check_files(cls, names: list[str]) -> str | None:
+        # Not v1's check: the indicators file belongs here, and missing files
+        # are reported while the zip is read.
+        return None
 
     def import_zip(
         self,
@@ -72,25 +92,49 @@ class ImportVersion2(ImportVersion1):
         super().import_zip(conn, staging_dir, metadata, mapping_rules=mapping_rules)
 
     def _read_orgunit_rows(self, csv_path: str) -> list[dict]:
-        """The v1 rows, but an org unit without a name rejects the zip.
+        """The v1 rows, but a row v1 would mis-import or crash on rejects the zip.
 
-        v1 imports it with an empty name, which shows as a blank place on the
-        dashboard; skipping it or naming it would hide the mistake instead.
+        v1 imports an org unit without a name as a blank place on the
+        dashboard (skipping or naming it would hide the mistake instead), and
+        stops on an id or level that is not a number with a bare Python error.
+        All of these are listed together with their lines.
         """
+        if self._orgunit_rows is not None:
+            return self._orgunit_rows
+
+        csv_rows = []
+        blank_lines = []
+        problems: dict[str, list[int]] = defaultdict(list)
         with open(csv_path, 'r', encoding='utf-8') as csv_file:
             reader = csv.DictReader(csv_file)
-            if 'name' not in (reader.fieldnames or []):
-                raise ValueError('orgunit.csv is missing column(s): name')
-            blank_lines = [reader.line_num for row in reader if not (row['name'] or '').strip()]
+            missing = [c for c in ('id', 'name', 'level') if c not in (reader.fieldnames or [])]
+            if missing:
+                raise ValueError(f'orgunit.csv is missing column(s): {", ".join(missing)}')
+            for row in reader:
+                csv_rows.append(row)
+                if not (row['name'] or '').strip():
+                    blank_lines.append(reader.line_num)
+                for field in ('id', 'level', 'parent_id'):
+                    raw = (row.get(field) or '').strip()
+                    if field == 'parent_id' and not raw:
+                        continue  # a top-level org unit has no parent
+                    try:
+                        self._parse_whole_number(field, raw)
+                    except ValueError as e:
+                        problems[str(e)].append(reader.line_num)
+
+        messages = []
         if blank_lines:
-            shown = ', '.join(map(str, blank_lines[:MAX_REPORTED_LINES]))
-            if len(blank_lines) > MAX_REPORTED_LINES:
-                shown += ', ...'
-            raise ValueError(
+            messages.append(
                 f'orgunit.csv has {len(blank_lines)} org unit(s) with an empty name '
-                f'(line {shown}); every org unit needs a name'
+                f'(line {format_lines(blank_lines)}); every org unit needs a name'
             )
-        return super()._read_orgunit_rows(csv_path)
+        if problems:
+            messages.append(self._describe_problems('orgunit.csv', problems))
+        if messages:
+            raise ValueError('; '.join(messages))
+        self._orgunit_rows = self._build_orgunit_rows(csv_rows)
+        return self._orgunit_rows
 
     @staticmethod
     def _find_file(directory: str, filename: str) -> str:
@@ -211,6 +255,12 @@ class ImportVersion2(ImportVersion1):
 
         if problems:
             raise ValueError(self._describe_problems(filename, problems))
+        if not imported:
+            # The org units still import; the sender is told the numbers are missing.
+            self.warnings.append(
+                f'No indicator data in {filename}: org units were imported but no '
+                f'numbers ({skipped} row(s) without org unit or value skipped)'
+            )
 
         log.info(
             '  Read %d indicator value(s) from %s (%d row(s) without org unit or value skipped)',
@@ -222,10 +272,13 @@ class ImportVersion2(ImportVersion1):
 
     @staticmethod
     def _parse_month(raw: str) -> date:
+        # fromisoformat alone also takes forms such as 20261001 and 2026-W40-4.
         try:
+            if not ISO_DATE.fullmatch(raw):
+                raise ValueError
             month = date.fromisoformat(raw)
         except ValueError:
-            raise ValueError(f'ref_month {raw!r} is not a YYYY-MM-DD date') from None
+            raise ValueError(f'ref_month {raw!r} must be a valid YYYY-MM-DD date') from None
         if month.day != 1:
             raise ValueError(f'ref_month {raw!r} must be the first day of the month')
         return month
@@ -256,10 +309,7 @@ class ImportVersion2(ImportVersion1):
         """One message listing each distinct problem with the lines it occurs on."""
         listed = []
         for message, lines in list(problems.items())[:MAX_REPORTED_PROBLEMS]:
-            shown = ', '.join(map(str, lines[:MAX_REPORTED_LINES]))
-            if len(lines) > MAX_REPORTED_LINES:
-                shown += ', ...'
-            listed.append(f'{message} (line {shown})')
+            listed.append(f'{message} (line {format_lines(lines)})')
         more = len(problems) - len(listed)
         return (
             f'{filename} has {len(problems)} problem(s): ' + '; '.join(listed)
