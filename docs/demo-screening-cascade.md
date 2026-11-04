@@ -234,7 +234,29 @@ All three are idempotent. The Diabetes script leaves every non-`panel-dm-*` elem
 - Titled "All columns & download". The Phase 1 changes still apply: Patient ID, readable dates, column order, red days, filters, and the pencil column labelled "Update".
 - Its pencil editing, options query, update SQL, pagination and XLSX/CSV export are unchanged and verified.
 
-**Not done:** high risk, HTN/DM tags, home village and appointment-based overdue days. There's no data or definition for these, or they're deferred.
+**Later additions (2026-10-29)**
+- **Header** as on hearts360: a bold "Overdue patients" title drawn inside the card (the Grafana panel title is empty), the plain line "N overdue patients in PLACE", and a blue **Download list (XLSX)** link.
+- **Warnings folded in.** `panel-ov-50` is removed, along with its empty gap above the list. The list's single query is `flags LEFT JOIN patients`, where `flags` is `panel-ov-50`'s original SQL. Row 1 always exists, so the list shows the same facility-level and access-denied messages itself.
+- **Status groups:** Pending to call (the default chip) · Agreed to visit · Call again later · Removed from list · **No visit in 1 year**.
+  - The last one holds everyone over 365 days since their last visit, whatever their call result.
+  - Never-contacted patients in that group show a disabled "No visit in 1 year" option in the dropdown. It's never saved. Picking a real result saves as usual.
+  - The query adds `never_contacted` (`removed_reason IS NULL`) to tell them apart.
+- **Columns:**
+  - **Condition** pills (HTN `lavender`, DM `bisque`), from `patient_diagnoses` I10/E11.
+  - Patient ID in grey under the name.
+  - Days since last visit in red only above 30 (every listed patient is over 45).
+- **Order and filters:**
+  - Default sort is fewest days first; the column toggles.
+  - Filters: search, Facility, and a **Phone** filter (All patients / With phone / Without phone).
+- **Look:** no vertical lines or stripes, a light header, hover highlight, right-aligned numbers, and Facility and Condition kept on one line.
+- **XLSX:** `makeXlsx` at the top of the list panel's `afterRender` is a self-contained writer (stored zip, no library, works offline).
+  - It exports what the current chip and filters show, across all pages.
+  - Bold frozen header, Patient ID as text, Age and Days as numbers.
+  - Filename: `Overdue patients - PLACE[ - GROUP] - D Mon YYYY.xlsx`.
+  - The link is not attached to the page, because Grafana's link handling would otherwise drop the file name.
+  - Verified by unpacking and parsing every part, and by rendering it in macOS Quick Look.
+
+**Not done:** high risk, home village, appointment-based overdue days, patient pop-up and call log. These were dropped or deferred by decision.
 
 ## Rules to keep
 
