@@ -7778,6 +7778,23 @@
                             ]
                           }
                         },
+                        "conditionalRendering": {
+                          "kind": "ConditionalRenderingGroup",
+                          "spec": {
+                            "visibility": "show",
+                            "condition": "and",
+                            "items": [
+                              {
+                                "kind": "ConditionalRenderingVariable",
+                                "spec": {
+                                  "variable": "isCentralNode",
+                                  "operator": "equals",
+                                  "value": "0"
+                                }
+                              }
+                            ]
+                          }
+                        },
                         "title": "Overdue list"
                       }
                     }
