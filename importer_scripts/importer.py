@@ -17,7 +17,7 @@ import psycopg2
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from import_versions import get_importer
+from import_versions import check_zip_files, get_importer
 from import_versions.base import BaseImportVersion
 from orgunit_mapping import MappingRule, load_mapping_config
 
@@ -419,33 +419,53 @@ def download_sftp_zip_with_retry(zip_name: str, local_zip_path: str) -> None:
     raise last_exc
 
 
-def load_metadata(extract_dir: str) -> dict:
-    metadata_path = os.path.join(extract_dir, 'metadata.json')
-    if not os.path.isfile(metadata_path):
-        raise FileNotFoundError('metadata.json not found in zip')
+class ZipProblem(ValueError):
+    """Why a zip cannot be imported, worded for the sender."""
 
-    with open(metadata_path, 'r', encoding='utf-8') as metadata_file:
-        metadata = json.load(metadata_file)
 
-    source_key = metadata.get('source_key', '').strip()
-    if not source_key:
-        raise ValueError('metadata.json is missing source_key')
-
-    version = metadata.get('import_export_version')
-    if version is None:
-        raise ValueError('metadata.json is missing import_export_version')
-
+def read_zip_metadata(zip_path: str) -> dict:
+    """The zip's metadata.json as a dict; ZipProblem when it is missing or unreadable."""
+    with zipfile.ZipFile(zip_path, 'r') as zf:
+        if 'metadata.json' not in zf.namelist():
+            raise ZipProblem('metadata.json is missing')
+        try:
+            with zf.open('metadata.json') as f:
+                metadata = json.load(f)
+        except ValueError as exc:
+            raise ZipProblem(f'metadata.json could not be parsed: {exc}') from None
+    if not isinstance(metadata, dict):
+        raise ZipProblem('metadata.json must be a JSON object')
     return metadata
 
 
-def read_zip_source_key(zip_path: str) -> str:
-    with zipfile.ZipFile(zip_path, 'r') as zf:
-        with zf.open('metadata.json') as f:
-            metadata = json.load(f)
-    source_key = metadata.get('source_key', '').strip()
+def metadata_source_key(metadata: dict) -> str:
+    source_key = metadata.get('source_key') or ''
+    if not isinstance(source_key, str):
+        raise ZipProblem(
+            f'metadata.json source_key {source_key!r} must be text in quotes, '
+            f'e.g. "{source_key}"'
+        )
+    source_key = source_key.strip()
     if not source_key:
-        raise ValueError('metadata.json is missing source_key')
+        raise ZipProblem('metadata.json is missing source_key')
     return source_key
+
+
+def metadata_version(metadata: dict) -> int:
+    """import_export_version as an int; 2 and "2" both count."""
+    version = metadata.get('import_export_version')
+    if version is None:
+        raise ZipProblem('metadata.json is missing import_export_version')
+    try:
+        return int(str(version).strip())
+    except ValueError:
+        raise ZipProblem(
+            f'metadata.json import_export_version {version!r} is not a whole number'
+        ) from None
+
+
+def read_zip_source_key(zip_path: str) -> str:
+    return metadata_source_key(read_zip_metadata(zip_path))
 
 
 def zip_source_key_or_name(zip_path: str, zip_name: str) -> str:
@@ -461,32 +481,35 @@ def validate_zip(zip_path: str, zip_name: str) -> tuple[bool, str]:
 
     A ZIP is considered valid when:
       1. It is a well-formed ZIP archive.
-      2. metadata.json is present with a non-empty source_key and a recognised
-         import_export_version.
+      2. metadata.json is present with a non-empty text source_key that the
+         file is named after (``<source_key>.zip``), and a whole-number
+         import_export_version that matches the files (a version 2 indicators
+         file under version 1 is rejected).
       3. At least one CSV file inside the archive contains at least one data
          row (beyond the header line).
     """
     if not zipfile.is_zipfile(zip_path):
         return False, 'not a valid ZIP archive'
 
+    try:
+        metadata = read_zip_metadata(zip_path)
+        source_key = metadata_source_key(metadata)
+        # Pausing matches zips by file name, so it has to be the source_key.
+        if os.path.splitext(zip_name)[0] != source_key:
+            raise ZipProblem(
+                f'zip file name {zip_name!r} does not match source_key {source_key!r}; '
+                f'name the file {source_key}.zip'
+            )
+        version = metadata_version(metadata)
+    except ZipProblem as e:
+        return False, str(e)
+
     with zipfile.ZipFile(zip_path, 'r') as zf:
         names_in_zip = zf.namelist()
 
-        if 'metadata.json' not in names_in_zip:
-            return False, 'metadata.json is missing'
-
-        try:
-            with zf.open('metadata.json') as f:
-                metadata = json.load(f)
-        except Exception as exc:
-            return False, f'metadata.json could not be parsed: {exc}'
-
-        source_key = metadata.get('source_key', '').strip()
-        if not source_key:
-            return False, 'metadata.json is missing source_key'
-
-        if metadata.get('import_export_version') is None:
-            return False, 'metadata.json is missing import_export_version'
+        problem = check_zip_files(version, names_in_zip)
+        if problem:
+            return False, problem
 
         csv_files = [n for n in names_in_zip if n.lower().endswith('.csv')]
         has_data = False
@@ -512,14 +535,17 @@ def import_zip_file(
     zip_path: str,
     source_key: str,
     mapping_config: dict[str, list[MappingRule]] | None = None,
-) -> None:
+) -> list[str]:
+    """Import one zip; return warnings that did not stop it."""
     extract_dir = tempfile.mkdtemp(prefix='h360tk_import_')
     try:
         with zipfile.ZipFile(zip_path, 'r') as zf:
             zf.extractall(extract_dir)
 
-        metadata = load_metadata(extract_dir)
-        version = int(metadata['import_export_version'])
+        metadata = read_zip_metadata(zip_path)
+        version = metadata_version(metadata)
+        # The version importers read source_key from metadata; give them the checked one.
+        metadata['source_key'] = source_key
 
         mapping_rules = (mapping_config or {}).get(source_key)
         if mapping_config and mapping_rules is None:
@@ -531,6 +557,7 @@ def import_zip_file(
 
         importer = get_importer(version)
         importer.import_zip(conn, extract_dir, metadata, mapping_rules=mapping_rules)
+        return importer.warnings
 
     finally:
         shutil.rmtree(extract_dir, ignore_errors=True)
@@ -611,17 +638,23 @@ def run_import():
         valid_zips: list[tuple[str, str]] = []
         for zip_name, local_zip_path in downloaded:
             validate_start = time.time()
-            ok, reason = validate_zip(local_zip_path, zip_name)
+            try:
+                ok, reason = validate_zip(local_zip_path, zip_name)
+            except Exception as e:
+                # One unreadable zip must not stop the others from importing.
+                ok, reason = False, f'could not be checked: {e}'
             if ok:
                 log.info('  [VALID]   %s', zip_name)
                 valid_zips.append((zip_name, local_zip_path))
             else:
                 log.warning('  [SKIPPED] %s — %s', zip_name, reason)
+                failed_key = zip_source_key_or_name(local_zip_path, zip_name)
                 log_leaf_node_failure(
-                    zip_source_key_or_name(local_zip_path, zip_name),
+                    failed_key,
                     validate_start,
                     f'Validation failed for {zip_name}: {reason}',
                 )
+                update_import_source_control(failed_key, 'no_data', 'not imported due to validation failure')
 
         if not valid_zips:
             log.error(
@@ -658,16 +691,19 @@ def run_import():
                     log.info('  [SKIPPED] %s (source_key=%s is paused)', zip_name, source_key)
                     continue
 
-                import_zip_file(conn, local_zip_path, source_key, mapping_config)
+                warnings = import_zip_file(conn, local_zip_path, source_key, mapping_config)
                 conn.commit()
 
                 duration = round(time.time() - zip_start, 2)
+                for warning in warnings:
+                    log.warning('  %s: %s', zip_name, warning)
                 log_import_run(
                     source_key=source_key,
                     started_at=zip_start,
                     status='success',
                     log_type=LOG_TYPE_LEAF_NODE,
                     duration_seconds=duration,
+                    error_message='; '.join(warnings) or None,
                 )
                 if mapping_is_empty:
                     review_note = 'Unmapped by design'
@@ -686,19 +722,18 @@ def run_import():
                 )
 
             except Exception as e:
-                conn.rollback()
                 log.error(
                     'Failed to import zip %s: %s',
                     zip_name,
                     e,
                     exc_info=True,
                 )
-                log_leaf_node_failure(
-                    source_key or zip_source_key_or_name(local_zip_path, zip_name),
-                    zip_start,
-                    e,
-                )
-                update_import_source_control(source_key or os.path.splitext(zip_name)[0], 'no_data', 'Not imported yet')
+                # Recorded before the rollback, which fails too when the
+                # connection is gone and would otherwise leave no trace.
+                failed_key = source_key or zip_source_key_or_name(local_zip_path, zip_name)
+                log_leaf_node_failure(failed_key, zip_start, e)
+                update_import_source_control(failed_key, 'no_data', 'Not imported yet')
+                conn.rollback()
 
         if imported_count == 0:
             log.error('No zip files were imported successfully.')

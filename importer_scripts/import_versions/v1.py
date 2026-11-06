@@ -1,7 +1,7 @@
 import logging
 import os
 
-from import_versions.base import BaseImportVersion
+from import_versions.base import INDICATORS_FILE, BaseImportVersion
 from orgunit_mapping import MappingRule
 
 log = logging.getLogger(__name__)
@@ -23,6 +23,17 @@ class ImportVersion1(BaseImportVersion):
         'heart360_dm_patients_catagory',
     ]
 
+    @classmethod
+    def check_files(cls, names: list[str]) -> str | None:
+        # The v2 indicators file would be skipped here as an unknown CSV and
+        # the zip reported as imported with no data.
+        if INDICATORS_FILE in map(str.lower, names):
+            return (
+                f'{INDICATORS_FILE} is a version 2 file but metadata.json has '
+                'import_export_version 1; set it to 2'
+            )
+        return None
+
     def import_zip(
         self,
         conn,
@@ -32,8 +43,9 @@ class ImportVersion1(BaseImportVersion):
     ) -> None:
         source_key = metadata.get('source_key', '')
         log.info(
-            'Importing zip for source_key=%s (import_export_version=1)',
+            'Importing zip for source_key=%s (import_export_version=%s)',
             source_key,
+            metadata.get('import_export_version'),
         )
 
         self.import_org_units(

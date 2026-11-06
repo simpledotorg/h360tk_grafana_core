@@ -13,6 +13,9 @@ log = logging.getLogger(__name__)
 # Unique key of every monthly reporting table (see idx_*_org_month indexes).
 AGGREGATE_KEY = ('org_unit_id', 'ref_month')
 
+# The version 2 data file; version 1 looks for it to catch a mislabelled zip.
+INDICATORS_FILE = 'heart360_merged_indicators.csv'
+
 
 class ResolvedOrgUnit(NamedTuple): 
     """Where one leaf org unit ended up in the central hierarchy.
@@ -29,6 +32,18 @@ class ResolvedOrgUnit(NamedTuple):
 class BaseImportVersion:
     REPORTING_TABLES: list[str] = []
     SKIP_FILES = frozenset({'metadata.json', 'orgunit.csv'})
+
+    def __init__(self) -> None:
+        # Problems that do not stop the import, noted on its import_run_log row.
+        self.warnings: list[str] = []
+
+    @classmethod
+    def check_files(cls, names: list[str]) -> str | None:
+        """Why a zip holding ``names`` cannot be this version, or None.
+
+        Runs during validation, before any data is touched.
+        """
+        return None
 
     @classmethod
     def truncate_reporting_tables(cls, conn) -> None:
@@ -59,17 +74,21 @@ class BaseImportVersion:
         return None
 
     def _read_orgunit_rows(self, csv_path: str) -> list[dict]:
-        rows = []
         with open(csv_path, 'r', encoding='utf-8') as csv_file:
-            reader = csv.DictReader(csv_file)
-            for row in reader:
-                parent_raw = (row.get('parent_id') or '').strip()
-                rows.append({
-                    'leaf_id': int(row['id']),
-                    'name': row['name'].strip(),
-                    'level': int(row['level']),
-                    'leaf_parent_id': int(parent_raw) if parent_raw else None,
-                })
+            return self._build_orgunit_rows(csv.DictReader(csv_file))
+
+    @staticmethod
+    def _build_orgunit_rows(csv_rows) -> list[dict]:
+        """orgunit.csv rows as org unit dicts, parents before children."""
+        rows = []
+        for row in csv_rows:
+            parent_raw = (row.get('parent_id') or '').strip()
+            rows.append({
+                'leaf_id': int(row['id']),
+                'name': row['name'].strip(),
+                'level': int(row['level']),
+                'leaf_parent_id': int(parent_raw) if parent_raw else None,
+            })
         rows.sort(key=lambda item: (item['level'], item['leaf_id']))
         return rows
 

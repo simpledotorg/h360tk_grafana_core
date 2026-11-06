@@ -1,0 +1,330 @@
+import csv
+import logging
+import os
+import re
+import shutil
+import tempfile
+from collections import defaultdict
+from datetime import date
+
+from import_versions.base import AGGREGATE_KEY, INDICATORS_FILE
+from import_versions.v1 import ImportVersion1
+from orgunit_mapping import MappingRule
+
+log = logging.getLogger(__name__)
+
+# Rows of one v1 table: (ref_month, org_unit_id) -> {column: value}.
+TableRows = dict[tuple[date, int], dict[str, int]]
+
+# Distinct problems listed in one error, and line numbers shown per problem;
+# the rest are only counted.
+MAX_REPORTED_PROBLEMS = 10
+MAX_REPORTED_LINES = 5
+
+ISO_DATE = re.compile(r'[0-9]{4}-[0-9]{2}-[0-9]{2}')
+
+
+def format_lines(lines: list[int]) -> str:
+    """The first MAX_REPORTED_LINES line numbers, then '...' when there are more."""
+    shown = ', '.join(map(str, lines[:MAX_REPORTED_LINES]))
+    return shown + ', ...' if len(lines) > MAX_REPORTED_LINES else shown
+
+
+class ImportVersion2(ImportVersion1):
+    """Pre-aggregated data from external systems, in long format.
+
+    The zip holds metadata.json and orgunit.csv exactly as in v1, plus one
+    heart360_merged_indicators.csv with a row per
+    (ref_month, org_unit_id, indicator_key, value).
+    The rows are rebuilt into the v1 reporting CSVs and imported through the v1
+    path, so org unit mapping and aggregation behave exactly as for v1.
+
+    indicator_key is the v1 column name.  A column name that several v1 tables
+    share must name its table, e.g. ``patients_category.nb_patients_under_care``
+    (the ``heart360_`` prefix is optional).
+    """
+
+    INDICATORS_FILE = INDICATORS_FILE
+    INDICATOR_COLUMNS = ('ref_month', 'org_unit_id', 'indicator_key', 'value')
+    TABLE_PREFIX = 'heart360_'
+
+    def __init__(self) -> None:
+        super().__init__()
+        # orgunit.csv is read once; the v1 path reads the same file again.
+        self._orgunit_rows: list[dict] | None = None
+
+    @classmethod
+    def check_files(cls, names: list[str]) -> str | None:
+        # Not v1's check: the indicators file belongs here, and missing files
+        # are reported while the zip is read.
+        return None
+
+    def import_zip(
+        self,
+        conn,
+        extract_dir: str,
+        metadata: dict,
+        mapping_rules: list[MappingRule] | None = None,
+    ) -> None:
+        orgunit_path = self._find_file(extract_dir, 'orgunit.csv')
+        indicators_path = self._find_file(extract_dir, self.INDICATORS_FILE)
+
+        table_columns = {
+            table: self._get_table_columns(conn, table) for table in self.REPORTING_TABLES
+        }
+        org_ids = {row['leaf_id'] for row in self._read_orgunit_rows(orgunit_path)}
+        tables = self._read_indicators(indicators_path, table_columns, org_ids)
+
+        # Only the rebuilt files go to the v1 path, so nothing else in the zip is imported.
+        staging_dir = tempfile.mkdtemp(prefix='v1_', dir=extract_dir)
+        shutil.copyfile(orgunit_path, os.path.join(staging_dir, 'orgunit.csv'))
+        for table, rows in tables.items():
+            self._write_table_csv(
+                os.path.join(staging_dir, f'{table}.csv'), table_columns[table], rows
+            )
+        log.info(
+            '  Rebuilt %d v1 table(s) from %s: %s',
+            len(tables),
+            os.path.basename(indicators_path),
+            ', '.join(sorted(tables)) or 'none',
+        )
+
+        super().import_zip(conn, staging_dir, metadata, mapping_rules=mapping_rules)
+
+    def _read_orgunit_rows(self, csv_path: str) -> list[dict]:
+        """The v1 rows, but a row v1 would mis-import or crash on rejects the zip.
+
+        v1 imports an org unit without a name as a blank place on the
+        dashboard (skipping or naming it would hide the mistake instead), and
+        stops on an id or level that is not a number with a bare Python error.
+        All of these are listed together with their lines.
+        """
+        if self._orgunit_rows is not None:
+            return self._orgunit_rows
+
+        csv_rows = []
+        blank_lines = []
+        problems: dict[str, list[int]] = defaultdict(list)
+        with open(csv_path, 'r', encoding='utf-8') as csv_file:
+            reader = csv.DictReader(csv_file)
+            missing = [c for c in ('id', 'name', 'level') if c not in (reader.fieldnames or [])]
+            if missing:
+                raise ValueError(f'orgunit.csv is missing column(s): {", ".join(missing)}')
+            for row in reader:
+                csv_rows.append(row)
+                if not (row['name'] or '').strip():
+                    blank_lines.append(reader.line_num)
+                for field in ('id', 'level', 'parent_id'):
+                    raw = (row.get(field) or '').strip()
+                    if field == 'parent_id' and not raw:
+                        continue  # a top-level org unit has no parent
+                    try:
+                        self._parse_whole_number(field, raw)
+                    except ValueError as e:
+                        problems[str(e)].append(reader.line_num)
+
+        messages = []
+        if blank_lines:
+            messages.append(
+                f'orgunit.csv has {len(blank_lines)} org unit(s) with an empty name '
+                f'(line {format_lines(blank_lines)}); every org unit needs a name'
+            )
+        if problems:
+            messages.append(self._describe_problems('orgunit.csv', problems))
+        if messages:
+            raise ValueError('; '.join(messages))
+        self._orgunit_rows = self._build_orgunit_rows(csv_rows)
+        return self._orgunit_rows
+
+    @staticmethod
+    def _find_file(directory: str, filename: str) -> str:
+        """Path of ``filename`` in ``directory``, matched case-insensitively."""
+        for name in os.listdir(directory):
+            if name.lower() == filename:
+                return os.path.join(directory, name)
+        raise FileNotFoundError(f'{filename} not found in zip')
+
+    def _indicator_catalog(
+        self, table_columns: dict[str, list[str]]
+    ) -> tuple[dict[str, tuple[str, str]], dict[str, list[str]]]:
+        """Map each accepted indicator_key to its (table, column).
+
+        Every column is reachable as ``<table>.<column>``; a column found in a
+        single table also by its bare name.  Also returns the bare names that
+        several tables share, with the qualified keys to use instead.
+        """
+        catalog: dict[str, tuple[str, str]] = {}
+        qualified_by_column: dict[str, list[str]] = defaultdict(list)
+        for table, columns in table_columns.items():
+            dataset = table.removeprefix(self.TABLE_PREFIX)
+            for column in columns:
+                if column in AGGREGATE_KEY:
+                    continue
+                key = f'{dataset}.{column}'
+                catalog[key] = (table, column)
+                qualified_by_column[column].append(key)
+
+        shared = {}
+        for column, keys in qualified_by_column.items():
+            if len(keys) == 1:
+                catalog[column] = catalog[keys[0]]
+            else:
+                shared[column] = keys
+        return catalog, shared
+
+    def _resolve_indicator(
+        self,
+        key: str,
+        catalog: dict[str, tuple[str, str]],
+        shared: dict[str, list[str]],
+    ) -> tuple[str, str]:
+        dataset, dot, column = key.rpartition('.')
+        if dot:
+            key = f'{dataset.removeprefix(self.TABLE_PREFIX)}.{column}'
+        if key in catalog:
+            return catalog[key]
+        if key in shared:
+            raise ValueError(
+                f'indicator_key {key!r} is in several datasets, use one of: '
+                + ', '.join(shared[key])
+            )
+        raise ValueError(f'unknown indicator_key {key!r}')
+
+    def _read_indicators(
+        self,
+        csv_path: str,
+        table_columns: dict[str, list[str]],
+        org_ids: set[int],
+    ) -> dict[str, TableRows]:
+        """Validate the indicators file and pivot it into rows per v1 table.
+
+        Rows without an org_unit_id or value are skipped, as v1 imports those
+        as nothing.  Every other problem, including a value given more than
+        once, is collected and raised together so the sender can fix the file
+        in one go.
+        """
+        filename = os.path.basename(csv_path)
+        catalog, shared = self._indicator_catalog(table_columns)
+        tables: dict[str, TableRows] = defaultdict(lambda: defaultdict(dict))
+        problems: dict[str, list[int]] = defaultdict(list)
+        # Line each (table, cell, column) was first given on, to point at repeats.
+        first_lines: dict[tuple[str, tuple[date, int], str], int] = {}
+        imported = skipped = 0
+
+        with open(csv_path, 'r', encoding='utf-8-sig', newline='') as csv_file:
+            reader = csv.DictReader(csv_file, skipinitialspace=True)
+            reader.fieldnames = [name.strip().lower() for name in reader.fieldnames or []]
+            missing = [c for c in self.INDICATOR_COLUMNS if c not in reader.fieldnames]
+            if missing:
+                raise ValueError(f'{filename} is missing column(s): {", ".join(missing)}')
+
+            for line_no, row in enumerate(reader, start=2):
+                ref_month, org_unit_id, key, value = (
+                    (row.get(column) or '').strip() for column in self.INDICATOR_COLUMNS
+                )
+                if not org_unit_id or not value:
+                    skipped += 1
+                    continue
+                try:
+                    table, column = self._resolve_indicator(key.lower(), catalog, shared)
+                    cell = (
+                        self._parse_month(ref_month),
+                        self._parse_org_unit(org_unit_id, org_ids),
+                    )
+                    count = self._parse_value(value)
+                except ValueError as e:
+                    problems[str(e)].append(line_no)
+                    continue
+
+                first_line = first_lines.setdefault((table, cell, column), line_no)
+                if first_line != line_no:
+                    # A repeat is rejected even with the same value, so a file
+                    # sent twice over is caught instead of imported quietly.
+                    previous = tables[table][cell][column]
+                    where = f'{key} for org unit {cell[1]} in {cell[0]:%Y-%m}'
+                    lines = problems[
+                        f'{where} is repeated' if previous == count
+                        else f'{where} has values {previous} and {count}'
+                    ]
+                    if not lines:
+                        lines.append(first_line)
+                    lines.append(line_no)
+                    continue
+                tables[table][cell][column] = count
+                imported += 1
+
+        if problems:
+            raise ValueError(self._describe_problems(filename, problems))
+        if not imported:
+            # The org units still import; the sender is told the numbers are missing.
+            self.warnings.append(
+                f'No indicator data in {filename}: org units were imported but no '
+                f'numbers ({skipped} row(s) without org unit or value skipped)'
+            )
+
+        log.info(
+            '  Read %d indicator value(s) from %s (%d row(s) without org unit or value skipped)',
+            imported,
+            filename,
+            skipped,
+        )
+        return tables
+
+    @staticmethod
+    def _parse_month(raw: str) -> date:
+        # fromisoformat alone also takes forms such as 20261001 and 2026-W40-4.
+        try:
+            if not ISO_DATE.fullmatch(raw):
+                raise ValueError
+            month = date.fromisoformat(raw)
+        except ValueError:
+            raise ValueError(f'ref_month {raw!r} must be a valid YYYY-MM-DD date') from None
+        if month.day != 1:
+            raise ValueError(f'ref_month {raw!r} must be the first day of the month')
+        return month
+
+    @staticmethod
+    def _parse_whole_number(field: str, raw: str) -> int:
+        try:
+            return int(raw)
+        except ValueError:
+            raise ValueError(f'{field} {raw!r} is not a whole number') from None
+
+    @classmethod
+    def _parse_org_unit(cls, raw: str, org_ids: set[int]) -> int:
+        org_unit_id = cls._parse_whole_number('org_unit_id', raw)
+        if org_unit_id not in org_ids:
+            raise ValueError(f'org_unit_id {org_unit_id} is not in orgunit.csv')
+        return org_unit_id
+
+    @classmethod
+    def _parse_value(cls, raw: str) -> int:
+        value = cls._parse_whole_number('value', raw)
+        if value < 0:
+            raise ValueError(f'value {value} is negative')
+        return value
+
+    @staticmethod
+    def _describe_problems(filename: str, problems: dict[str, list[int]]) -> str:
+        """One message listing each distinct problem with the lines it occurs on."""
+        listed = []
+        for message, lines in list(problems.items())[:MAX_REPORTED_PROBLEMS]:
+            listed.append(f'{message} (line {format_lines(lines)})')
+        more = len(problems) - len(listed)
+        return (
+            f'{filename} has {len(problems)} problem(s): ' + '; '.join(listed)
+            + (f'; and {more} more' if more else '')
+        )
+
+    @staticmethod
+    def _write_table_csv(path: str, columns: list[str], rows: TableRows) -> None:
+        """Write rows in the table's own column order, which the v1 COPY relies on.
+
+        Columns the sender did not provide stay empty and load as NULL.
+        """
+        with open(path, 'w', encoding='utf-8', newline='') as csv_file:
+            writer = csv.writer(csv_file)
+            writer.writerow(columns)
+            for (ref_month, org_unit_id), values in sorted(rows.items()):
+                record = {'ref_month': ref_month.isoformat(), 'org_unit_id': org_unit_id, **values}
+                writer.writerow(record.get(column, '') for column in columns)
