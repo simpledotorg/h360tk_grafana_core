@@ -26,3 +26,11 @@ services:
     build:
       context: ..
       dockerfile: docker_build/heart360.importer.docker
+  proxy:
+    build:
+      context: ..
+      dockerfile: docker_build/heart360.proxy.docker
+  filebrowser:
+    build:
+      context: ..
+      dockerfile: docker_build/heart360.filebrowser.docker

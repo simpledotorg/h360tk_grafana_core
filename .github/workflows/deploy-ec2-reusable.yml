@@ -58,7 +58,7 @@ jobs:
           script: |
             cd "${{ inputs.ec2_deploy_path }}" && docker compose down || true
             # Force remove the specific conflicting grafana container
-            docker rm -f grafana postgres filebrowser-quantum || true
+            docker rm -f grafana postgres filebrowser-quantum h360tk-proxy || true
 
       - name: Copy project files to EC2
         uses: appleboy/scp-action@v0.1.7
@@ -79,6 +79,6 @@ jobs:
           script: |
             set -eu
             cd "${{ inputs.ec2_deploy_path }}"
-            docker rm -f grafana postgres filebrowser-quantum file-upload-trigger || true
+            docker rm -f grafana postgres filebrowser-quantum file-upload-trigger h360tk-proxy || true
             docker compose up -d --remove-orphans
             docker image prune -f

@@ -66,7 +66,12 @@ services:
       - postgres
 
   filebrowser:
-    image: gtstef/filebrowser:1.5.8-stable-slim
+    # Was gtstef/filebrowser:1.5.8-stable-slim. The image below pins 2.0.2,
+    # which is what the country instances' floating `stable-slim` tag already
+    # resolves to, so this makes the dev stack match them.
+    build:
+      context: .
+      dockerfile: docker_build/heart360.filebrowser.docker
     container_name: filebrowser-quantum
     restart: unless-stopped
     ports:
@@ -75,7 +80,28 @@ services:
       - ./data/upload:/srv:rw
     environment:
       - FILEBROWSER_ADMIN_PASSWORD=admin
-      - FILEBROWSER_BASEURL=/
+      # The entrypoint generates config.yaml from this. Empty = served at the
+      # root; country instances set their prefix, e.g. /demo.
+      - H360TK_BASE_PATH=${H360TK_BASE_PATH:-}
+
+  # Same proxy image the country instances run, so path routing can be
+  # exercised locally: http://localhost:8000/ and http://localhost:8000/upload/.
+  # Set H360TK_BASE_PATH to try a prefix (Grafana then also needs
+  # GF_SERVER_ROOT_URL / GF_SERVER_SERVE_FROM_SUB_PATH).
+  proxy:
+    build:
+      context: .
+      dockerfile: docker_build/heart360.proxy.docker
+    container_name: h360tk-proxy
+    restart: unless-stopped
+    depends_on:
+      - grafana
+      - filebrowser
+    ports:
+      - "${H360TK_PROXY_PORT:-8000}:80"
+    environment:
+      - H360TK_BASE_PATH=${H360TK_BASE_PATH:-}
+      - H360TK_ROUTES=upload=filebrowser:80
 
   file-processor:
     image: devodev/inotify
