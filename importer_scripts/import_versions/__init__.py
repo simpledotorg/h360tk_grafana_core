@@ -1,8 +1,10 @@
 from import_versions.base import BaseImportVersion
 from import_versions.v1 import ImportVersion1
+from import_versions.v2 import ImportVersion2
 
 VERSION_REGISTRY: dict[int, type[BaseImportVersion]] = {
     1: ImportVersion1,
+    2: ImportVersion2,
 }
 
 
@@ -11,6 +13,15 @@ def get_importer(version: int) -> BaseImportVersion:
     if importer_cls is None:
         raise ValueError(f'Unsupported import_export_version: {version}')
     return importer_cls()
+
+
+def check_zip_files(version: int, names: list[str]) -> str | None:
+    """Why the zip's files do not suit its version, or None.
+
+    An unsupported version passes here and is reported by get_importer.
+    """
+    importer_cls = VERSION_REGISTRY.get(version)
+    return importer_cls.check_files(names) if importer_cls else None
 
 
 def all_reporting_tables() -> list[str]:
