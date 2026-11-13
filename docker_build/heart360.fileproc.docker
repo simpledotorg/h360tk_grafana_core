@@ -12,4 +12,5 @@ COPY ./inotify_scripts/fileproc.sh /scripts/fileproc.sh
 # Sets environement variables
 ENV INOTIFY_TARGET=/data
 ENV INOTIFY_SCRIPT=/scripts/fileproc.sh
+ENV INOTIFY_CFG_EVENTS="modify moved_to"
 ENV H360TK_DATA_LOAD_SCRIPT=__CHANGE_THIS__
