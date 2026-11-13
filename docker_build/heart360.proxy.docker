@@ -1,0 +1,38 @@
+# ---------------------------------------------------------------------------
+# heart360tk-proxy - serves one H360 instance under a URL path prefix.
+#
+# Each instance (country) box runs one of these on port 80. It owns the whole
+# prefix for that instance and routes to the services behind it, so the shared
+# edge for toolkit.hearts360.org only has to forward - one rule per instance,
+# never touched again when an instance gains or loses a service.
+#
+# The config is generated at container start from H360TK_* environment
+# variables, so a country repo sets variables in .env and ships no nginx files.
+# See docker_build/proxy/h360tk-render-conf.sh and
+# deploy/path-routing/README.md.
+# ---------------------------------------------------------------------------
+FROM nginx:1.27-alpine
+
+# Runs from the stock nginx entrypoint before nginx starts. The 30- prefix puts
+# it after the image's own 10-/20- scripts.
+COPY docker_build/proxy/h360tk-render-conf.sh /docker-entrypoint.d/30-h360tk-render-conf.sh
+
+RUN chmod +x /docker-entrypoint.d/30-h360tk-render-conf.sh \
+    # The stock welcome-page config would otherwise be the default server for
+    # any Host the edge forwards that we do not match.
+    && rm -f /etc/nginx/conf.d/default.conf
+
+# Defaults suit a single-instance box served at the domain root. Instances
+# override H360TK_BASE_PATH and H360TK_ROUTES in their .env.
+ENV H360TK_BASE_PATH="" \
+    H360TK_UPSTREAM_DASHBOARD="grafana:3000" \
+    H360TK_ROUTES="" \
+    H360TK_MAX_BODY_SIZE="2g" \
+    H360TK_RESOLVER="127.0.0.11"
+
+EXPOSE 80
+
+# /healthz is served outside the instance prefix, so this stays valid whatever
+# H360TK_BASE_PATH is set to.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget -q -O /dev/null http://127.0.0.1/healthz || exit 1

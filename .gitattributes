@@ -1,0 +1,11 @@
+# Shell scripts are COPYed into Docker images and run by /bin/sh. With
+# core.autocrlf=true a Windows checkout would give them CRLF endings, and the
+# resulting image fails at startup with "not found" on the shebang line.
+# Keep them LF in the working tree on every platform.
+*.sh text eol=lf
+
+# Entrypoint and config files read inside containers, same reasoning.
+*.yaml text eol=lf
+*.yml text eol=lf
+Dockerfile text eol=lf
+*.docker text eol=lf

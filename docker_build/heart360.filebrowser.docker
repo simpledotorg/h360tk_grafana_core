@@ -1,4 +1,44 @@
-FROM gtstef/filebrowser:stable-slim
+# ---------------------------------------------------------------------------
+# heart360tk-filebrowser - the upload UI, able to be served under a URL path.
+#
+# Replaces the earlier stub of this file, which tried to set the sub-path with
+# FILEBROWSER_BASEURL. That is not a FileBrowser environment variable, so the
+# setting never took effect and the UI could only ever be served from the root
+# of a (sub)domain - the reason each H360 instance needed its own subdomain.
+# The base URL lives in a config file, which the entrypoint now generates from
+# H360TK_BASE_PATH. See deploy/path-routing/README.md.
+#
+# The tag is pinned deliberately: the key moved from server.baseURL to
+# http.baseURL in FileBrowser Quantum v2.0.0, so a floating tag could silently
+# invalidate the generated config.
+# ---------------------------------------------------------------------------
+FROM gtstef/filebrowser:2.0.2-stable-slim
 
-ENV FILEBROWSER_ADMIN_PASSWORD=admin
-ENV FILEBROWSER_BASEURL=/
+USER root
+
+COPY docker_build/filebrowser/h360tk-filebrowser-entrypoint.sh \
+     /usr/local/bin/h360tk-filebrowser-entrypoint.sh
+
+RUN chmod +x /usr/local/bin/h360tk-filebrowser-entrypoint.sh \
+    && mkdir -p /home/filebrowser/data \
+    && chown -R filebrowser:filebrowser /home/filebrowser/data
+
+# Back to the base image's non-root user (uid 1000), which is also what the
+# .upload bind mount on the host is owned by.
+USER filebrowser
+WORKDIR /home/filebrowser
+
+ENV H360TK_BASE_PATH="" \
+    H360TK_UPLOAD_SEGMENT="upload" \
+    H360TK_FILEBROWSER_SOURCE="/srv" \
+    FILEBROWSER_CONFIG="/home/filebrowser/data/config.yaml"
+
+EXPOSE 80
+
+# The base image's healthcheck hits /health at the root, which moves under the
+# base URL once one is set. Shell form so the variables expand at run time.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD url="http://localhost:80${H360TK_BASE_PATH}/${H360TK_UPLOAD_SEGMENT}/health"; \
+        curl -fsS "$url" >/dev/null 2>&1 || wget -q -O /dev/null "$url" || exit 1
+
+ENTRYPOINT ["/usr/local/bin/h360tk-filebrowser-entrypoint.sh"]

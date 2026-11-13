@@ -4,6 +4,13 @@
 export DOCKER_REPO="simpledotorg"
 
 ###
+# Images built from docker_build/docker-compose.yml. Each name must match a
+# service there: compose builds them as heart360tk-<service> under the
+# heart360tk project name, and dockertag.sh / dockerpush.sh iterate this list.
+###
+export COMPONENTS="grafana postgresql fileprocessor pgadmin exporter importer proxy filebrowser"
+
+###
 #Gets BRANCH_NAME
 ###
 export BRANCH_NAME=$(echo "${GITHUB_REF##refs/heads/}")

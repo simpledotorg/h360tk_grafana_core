@@ -206,3 +206,12 @@ Only admins can refresh the dashboard data. Non-admin users will see an "Access 
 4. Wait for the status on the dashboard to finish (it moves through **Queued → Refreshing… → All Good**).
 5. Once it shows the refresh is complete, open any dashboard (Hypertension, Diabetes, Overdue, etc.) and the newly uploaded data will now be visible.
 
+
+## Path-based routing for instances
+
+Each H360 instance is served under its own URL path on one domain
+(`https://toolkit.hearts360.org/demo/`, `/india/`, ...) rather than its own
+subdomain. The reference configuration for the per-instance proxy, the shared
+edge, and the FileBrowser/Grafana sub-path settings lives in
+[`deploy/path-routing/`](deploy/path-routing/README.md), along with a writeup of
+what used to block it.
