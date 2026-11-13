@@ -64,11 +64,12 @@ built `http://` absolute URLs for redirects and share links.
 
 ### 1.3 There was no routing layer in version control
 
-Nothing in any repo described how `toolkit.hearts360.org` reaches an instance.
-Each box exposed Grafana on `:3000` and FileBrowser on `:8080` directly, and the
-only reverse proxy mentioned anywhere is a hand-run `certbot --nginx` in the
-ADINKES guide that proxies `/` to a single Grafana. Adding a second service to
-an instance meant hand-editing an edge config that no one could review.
+Nothing in any repo describes how `toolkit.hearts360.org` reaches an instance.
+Each box exposes Grafana on `:3000` and FileBrowser on `:8080` directly, and the
+shared ALB that fronts them is managed in the console - there is no load
+balancer, listener or target group in `iac-infra/` or in any of these repos. So
+the one piece that decides which instance a request reaches is the piece nobody
+can review in a pull request. See [`edge-alb.md`](edge-alb.md).
 
 ---
 
@@ -77,7 +78,7 @@ an instance meant hand-editing an edge config that no one could review.
 Two layers, with a clean split of responsibility.
 
 ```
-                      toolkit.hearts360.org  (shared edge: TLS + one rule per instance)
+                      toolkit.hearts360.org  (shared ALB: TLS + one rule per instance)
                                  |
             /demo/*              |              /india/*
                  +---------------+---------------+
@@ -97,7 +98,7 @@ that stripped `/demo` would break every asset request on the next hop.
 
 **The edge forwards, the instance routes.** Because each box owns its own
 prefix, adding a service to an instance is a change to that instance's `.env`
-alone. The edge keeps one `location` per instance and never changes.
+alone. The ALB keeps one rule per instance and never changes.
 
 **Country repos ship no routing files.** Both new images read `H360TK_*`
 variables and generate their own config at container start, so a prefix cannot
@@ -161,9 +162,11 @@ one route returns 502 and the rest of the instance keeps serving.
    `docker-compose.yml` — copy a country repo that already has them. There are
    no config files to copy.
 
-3. On the shared edge, add one `upstream` and one `location` for the new
-   instance, then `nginx -t && systemctl reload nginx`. See
-   `edge-nginx.conf.example` and `edge-instance-snippet.conf.example`.
+3. On the shared ALB, add a target group on the proxy's port with health check
+   path `/healthz`, and one listener rule matching `/<instance>` and
+   `/<instance>/*`. See [`edge-alb.md`](edge-alb.md) - there are three details
+   there that will otherwise bite, including that a target group left pointing
+   at Grafana on 3000 routes straight past the proxy.
 
 4. Verify:
 
