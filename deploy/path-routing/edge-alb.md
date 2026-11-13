@@ -6,8 +6,8 @@ needs in order to route by path.
 
 > **None of this is tracked.** The ALB is managed in the console — there is no
 > load balancer, listener or target group anywhere in `iac-infra/` or in these
-> repos. The Terraform below is a template to adopt it, not a description of
-> what exists. Check the console before relying on any of it.
+> repos. This file says what the routing needs, not what is currently
+> configured. Check the console before relying on any of it.
 
 ---
 
@@ -81,67 +81,6 @@ only for requests that reach it.
 * **`X-Forwarded-Proto`.** The ALB sets it to `https` and the proxy passes it
   through, which is what lets Grafana and FileBrowser build `https://` links
   while speaking plain HTTP to the target.
-
----
-
-## Terraform template
-
-Placeholders in `CHANGE_ME` form. Adopting the existing ALB means importing it
-and its listener first (`terraform import`), not creating a new one.
-
-```hcl
-variable "instances" {
-  description = "URL prefix -> EC2 instance id for each H360 instance."
-  type        = map(string)
-  default = {
-    demo        = "i-CHANGE_ME"
-    india       = "i-CHANGE_ME"
-    philippines = "i-CHANGE_ME"
-  }
-}
-
-resource "aws_lb_target_group" "instance" {
-  for_each = var.instances
-
-  name     = "tg-h360tk-${each.key}"
-  port     = 80 # the instance proxy, NOT Grafana on 3000
-  protocol = "HTTP"
-  vpc_id   = "vpc-CHANGE_ME"
-
-  health_check {
-    path     = "/healthz" # "/" returns 302 and would read as unhealthy
-    protocol = "HTTP"
-    matcher  = "200"
-  }
-}
-
-resource "aws_lb_target_group_attachment" "instance" {
-  for_each = var.instances
-
-  target_group_arn = aws_lb_target_group.instance[each.key].arn
-  target_id        = each.value
-  port             = 80
-}
-
-resource "aws_lb_listener_rule" "instance" {
-  for_each = var.instances
-
-  listener_arn = "arn:aws:elasticloadbalancing:CHANGE_ME:listener/CHANGE_ME"
-  priority     = 10 + index(keys(var.instances), each.key)
-
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.instance[each.key].arn
-  }
-
-  condition {
-    path_pattern {
-      # Both: "/demo/*" alone does not match a bare "/demo".
-      values = ["/${each.key}", "/${each.key}/*"]
-    }
-  }
-}
-```
 
 ---
 
