@@ -132,11 +132,11 @@ docker compose logs proxy filebrowser | grep h360tk-
 
 ## 4. Caveats
 
-* **SFTPGo's web UI is unverified.** `httpd.web_root` maps to
-  `SFTPGO_HTTPD__WEB_ROOT` by SFTPGo's documented naming rule, but the docs give
-  no example for this key and there is no upstream reverse-proxy guide to check
-  against. Confirm `/<instance>/sftp/` on the demo box. SFTP and FTP ingress are
-  unaffected — they are not HTTP.
+* **SFTPGo needs `SFTPGO_HTTPD__WEB_ROOT`** set to the same `<prefix>/sftp`
+  the proxy routes there, or its web UI serves from the domain root. The docs
+  describe `web_root` with no example and publish no reverse-proxy guide, so it
+  was worth checking: confirmed on a real instance, URLs and assets all come
+  back under the prefix. SFTP and FTP ingress do not go through here at all.
 * **Direct host ports are still published.** `3000`, `8080` and `8090` remain
   open for debugging. Close them once routing is confirmed: FileBrowser trusts
   `X-Forwarded-*` now, so anything reaching `:8080` directly can spoof a client
