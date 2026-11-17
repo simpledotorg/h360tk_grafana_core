@@ -1,8 +1,21 @@
 FROM grafana/grafana:latest
 
-USER root
+RUN grafana cli plugins install volkovlabs-table-panel && \
+    grafana cli plugins install yesoreyeram-infinity-datasource && \
+    grafana cli plugins install marcusolsson-dynamictext-panel && \
+    grafana cli plugins install volkovlabs-echarts-panel && \
+    grafana cli plugins install equansdatahub-tree-panel
 
-COPY ./grafana_provisioning /etc/grafana/provisioning
+ENV GF_SECURITY_ALLOW_EMBEDDING=true
+ENV GF_PANELS_DISABLE_SANITIZE_HTML=true
+ENV GF_AUTH_ANONYMOUS_ENABLED=false
+ENV GF_USERS_ALLOW_SIGN_UP=false
+ENV GF_USERS_HOME_PAGE=/d/heart360-home?orgId=1
+ENV GF_TIME_PICKER_QUICK_RANGES='[{"from":"now-6M","to":"now","display":"Last 6 months"},{"from":"now-1y","to":"now","display":"Last year"},{"from":"now-2y","to":"now","display":"Last 2 years"},{"from":"now-5y","to":"now","display":"Last 5 years"}]'
+ENV GF_DATE_FORMATS_INTERVAL_MONTH=MMM-YYYY
+ENV GF_USERS_DEFAULT_THEME=light
+
+USER root
 
 # Default logo (fallback) and favicon
 COPY ./grafana_provisioning/assets/grafana_icon.svg /usr/share/grafana/default_logo.svg
@@ -14,7 +27,7 @@ RUN set -eu; G=/usr/share/grafana; P=$G/public; \
     find $P -name "grafana_icon*.svg" -type f > $G/logo_files.txt; \
     test -s $G/title_files.txt; test -s $G/logo_files.txt; \
     echo "$P/views/index.html" >> $G/title_files.txt; \
-    while read f; do \
+    while read -r f; do \
       sed -i -e 's/Welcome to Grafana/HEARTS360 Dashboard/g' \
              -e 's/AppTitle="Grafana"/AppTitle="HEARTS360 Dashboard"/g' \
              -e 's|<title>\[\[\.AppTitle\]\]</title>|<title>HEARTS360 Dashboard</title>|' \
@@ -32,21 +45,8 @@ RUN set -eu; G=/usr/share/grafana; P=$G/public; \
 COPY ./grafana_provisioning/config/apply_branding.sh /apply_branding.sh
 RUN sed -i 's/\r$//' /apply_branding.sh && chmod +x /apply_branding.sh
 
+COPY ./grafana_provisioning /etc/grafana/provisioning
+
 USER grafana
-
-RUN grafana cli plugins install volkovlabs-table-panel
-RUN grafana cli plugins install yesoreyeram-infinity-datasource
-RUN grafana cli plugins install marcusolsson-dynamictext-panel
-RUN grafana cli plugins install volkovlabs-echarts-panel
-RUN grafana cli plugins install equansdatahub-tree-panel
-
-ENV GF_SECURITY_ALLOW_EMBEDDING=true
-ENV GF_PANELS_DISABLE_SANITIZE_HTML=true
-ENV GF_AUTH_ANONYMOUS_ENABLED=false
-ENV GF_USERS_ALLOW_SIGN_UP=false
-ENV GF_USERS_HOME_PAGE=/d/heart360-home?orgId=1
-ENV GF_TIME_PICKER_QUICK_RANGES='[{"from":"now-6M","to":"now","display":"Last 6 months"},{"from":"now-1y","to":"now","display":"Last year"},{"from":"now-2y","to":"now","display":"Last 2 years"},{"from":"now-5y","to":"now","display":"Last 5 years"}]'
-ENV GF_DATE_FORMATS_INTERVAL_MONTH=MMM-YYYY
-ENV GF_USERS_DEFAULT_THEME=light
 
 ENTRYPOINT ["/apply_branding.sh"]
