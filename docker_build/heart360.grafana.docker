@@ -1,17 +1,38 @@
 FROM grafana/grafana:latest
 
+USER root
+
 COPY ./grafana_provisioning /etc/grafana/provisioning
 
-# Copy custom logo and favicon to standard grafana location
-COPY ./grafana_provisioning/assets/grafana_icon.svg /usr/share/grafana/public/img/grafana_icon.svg
-COPY ./grafana_provisioning/assets/fav32.png /usr/share/grafana/public/img/fav32.png
+# Default logo (fallback) and favicon
+COPY ./grafana_provisioning/assets/grafana_icon.svg /usr/share/grafana/default_logo.svg
+COPY ./grafana_provisioning/assets/fav32.png /usr/share/grafana/default_fav32.png
 
-# Copy logo to build directory (where browser actually requests it)
-# Find the hashed filename and replace it with our custom logo
-RUN find /usr/share/grafana/public/build/static/img -name "grafana_icon.*.svg" -type f -exec cp /usr/share/grafana/public/img/grafana_icon.svg {} \;
+# Bake in the default logo and title, and keep a template copy for runtime overrides
+RUN set -eu; G=/usr/share/grafana; P=$G/public; \
+    grep -rlF "Welcome to Grafana" $P/build $P/locales > $G/title_files.txt 2>/dev/null || true; \
+    find $P -name "grafana_icon*.svg" -type f > $G/logo_files.txt; \
+    test -s $G/title_files.txt; test -s $G/logo_files.txt; \
+    echo "$P/views/index.html" >> $G/title_files.txt; \
+    while read f; do \
+      sed -i -e 's/Welcome to Grafana/HEARTS360 Dashboard/g' \
+             -e 's/AppTitle="Grafana"/AppTitle="HEARTS360 Dashboard"/g' \
+             -e 's|<title>\[\[\.AppTitle\]\]</title>|<title>HEARTS360 Dashboard</title>|' \
+             "$f"; \
+      chown grafana:root "$f"; \
+    done < $G/title_files.txt; \
+    echo "HEARTS360 Dashboard" > $G/title_applied; chown grafana:root $G/title_applied; \
+    tee $(cat $G/logo_files.txt) < $G/default_logo.svg > /dev/null; \
+    xargs chown grafana:root < $G/logo_files.txt; \
+    find $P -name "fav32*.png" -type f > $G/favicon_files.txt; \
+    test -s $G/favicon_files.txt; \
+    tee $(cat $G/favicon_files.txt) < $G/default_fav32.png > /dev/null; \
+    xargs chown grafana:root < $G/favicon_files.txt
 
-# Replace "Welcome to Grafana" text in built JavaScript files
-RUN find /usr/share/grafana/public/build -name "*.js" -type f -exec sed -i 's/Welcome to Grafana/HEARTS360 Dashboard/g' {} \; || true
+COPY ./grafana_provisioning/config/apply_branding.sh /apply_branding.sh
+RUN sed -i 's/\r$//' /apply_branding.sh && chmod +x /apply_branding.sh
+
+USER grafana
 
 RUN grafana cli plugins install volkovlabs-table-panel
 RUN grafana cli plugins install yesoreyeram-infinity-datasource
@@ -27,3 +48,5 @@ ENV GF_USERS_HOME_PAGE=/d/heart360-home?orgId=1
 ENV GF_TIME_PICKER_QUICK_RANGES='[{"from":"now-6M","to":"now","display":"Last 6 months"},{"from":"now-1y","to":"now","display":"Last year"},{"from":"now-2y","to":"now","display":"Last 2 years"},{"from":"now-5y","to":"now","display":"Last 5 years"}]'
 ENV GF_DATE_FORMATS_INTERVAL_MONTH=MMM-YYYY
 ENV GF_USERS_DEFAULT_THEME=light
+
+ENTRYPOINT ["/apply_branding.sh"]
