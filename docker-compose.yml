@@ -10,6 +10,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./grafana_provisioning:/etc/grafana/provisioning:ro
+      - ./branding:/var/lib/grafana/branding:ro  
     environment:
       - GF_DATABASE_URL=postgres://grafana:ZDI5MGE3YmYyMTRlNGNmYThkMTYyZjk3@postgres:5432/heart360tk_database
       - GF_SECURITY_ALLOW_EMBEDDING=true
