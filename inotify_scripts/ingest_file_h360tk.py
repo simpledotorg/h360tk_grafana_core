@@ -28,6 +28,9 @@ COL_SHC = 'Sub Facility'
 COL_REGISTRATION_DATE = 'Registration Date'
 COL_VISIT_TIME = 'Visit Time'
 
+# Single-column org unit code (encodes full hierarchy in one value)
+COL_ORG_UNIT_CODE = 'Org Unit Code'
+
 # HTN columns
 COL_SYSTOLIC = 'Systolic'
 COL_DIASTOLIC = 'Diastolic'
@@ -152,6 +155,7 @@ def build_hierarchy_from_row(row):
             hierarchy.append((value, hlvl['level']))
     return hierarchy
 
+
 def sync_hierarchy_config(cur):
     """Upsert hierarchy_config from HIERARCHY_LEVELS when the table exists.
 
@@ -216,10 +220,10 @@ def to_sql_literal(value, target_type=None):
 
 # --- DATABASE EXECUTION FUNCTIONS (matching reference pattern) ---
 
-def execute_upsert_org_unit_chain(cur, hierarchy):
+def execute_upsert_org_unit_chain(cur, hierarchy, org_unit_codes=None):
     """Upsert org_unit hierarchy chain and return leaf org_unit_id.
     hierarchy: list of (name, level) tuples from top to bottom.
-    Skips entries with None names.
+    org_unit_codes: optional list of codes (one per hierarchy entry) stored in org_units.org_unit_code.
     """
     names = [h[0] for h in hierarchy if h[0] is not None]
     levels = [h[1] for h in hierarchy if h[0] is not None]
@@ -227,7 +231,11 @@ def execute_upsert_org_unit_chain(cur, hierarchy):
         return None
     names_literal = "ARRAY[" + ",".join(to_sql_literal(n) for n in names) + "]"
     levels_literal = "ARRAY[" + ",".join(str(l) for l in levels) + "]"
-    sql = f"SELECT upsert_org_unit_chain({names_literal}::VARCHAR[], {levels_literal}::INTEGER[]);"
+    if org_unit_codes:
+        codes_literal = "ARRAY[" + ",".join(to_sql_literal(c) for c in org_unit_codes) + "]"
+        sql = f"SELECT upsert_org_unit_chain({names_literal}::VARCHAR[], {levels_literal}::INTEGER[], {codes_literal}::VARCHAR[]);"
+    else:
+        sql = f"SELECT upsert_org_unit_chain({names_literal}::VARCHAR[], {levels_literal}::INTEGER[]);"
     cur.execute(sql)
     return cur.fetchone()[0]
 
@@ -436,6 +444,8 @@ def ingest_and_execute(file_path: str) -> None:
 
             phc = safe_str(row.get(COL_PHC)) or 'UNKNOWN'
             hierarchy = build_hierarchy_from_row(row)
+            org_unit_code_val = safe_str(row.get(COL_ORG_UNIT_CODE))
+            org_unit_codes = ([None] * (len(hierarchy) - 1) + [org_unit_code_val]) if org_unit_code_val and hierarchy else None
 
             # Determine if we have BP and/or BS data
             has_bp = not pd.isna(systolic) if systolic is not None else False
@@ -464,7 +474,7 @@ def ingest_and_execute(file_path: str) -> None:
                     continue
 
                 # 0. Upsert org_unit hierarchy chain (returns leaf org_unit_id)
-                org_unit_id = execute_upsert_org_unit_chain(cur, hierarchy)
+                org_unit_id = execute_upsert_org_unit_chain(cur, hierarchy, org_unit_codes)
 
                 # 1. Upsert patient
                 execute_upsert_patient(cur, patient_id_sql, patient_name, gender, phone_number, registration_date, birth_date, org_unit_id)
