@@ -30,6 +30,9 @@ COL_VISIT_TIME = 'Visit Time'
 
 # Single-column org unit code (encodes full hierarchy in one value)
 COL_ORG_UNIT_CODE = 'Org Unit Code'
+# Segment lengths per coded level, excluding the top level (level 1).
+# Indonesia: segments 2,2,2,4 → code '3403142006' gives '34' (l2), '3403' (l3), '340314' (l4), '3403142006' (l5)
+ORG_UNIT_CODE_SEGMENTS: list[int] = [2, 2, 2, 2]
 
 # HTN columns
 COL_SYSTOLIC = 'Systolic'
@@ -154,6 +157,36 @@ def build_hierarchy_from_row(row):
         if value:
             hierarchy.append((value, hlvl['level']))
     return hierarchy
+
+def build_org_unit_codes(code: str, hierarchy_len: int) -> list | None:
+    """Build one org_unit_code per hierarchy level from a single leaf code.
+
+    Segments define the prefix length for each level below the top.
+    The level right after the last segment gets the full code.
+    Levels deeper than the segments can cover get None.
+
+    Example: code='3403142006', segments=[2,2,2,4], 6-level hierarchy
+      Indonesia    → None          (top, no code)
+      Province     → '34'          (first 2 chars)
+      District     → '3403'        (first 2+2 chars)
+      City         → '340314'      (first 2+2+2 chars)
+      Facility     → '3403142006'  (full code — level after last segment)
+      Sub Facility → None          (no segment defined for this level)
+    """
+    if not ORG_UNIT_CODE_SEGMENTS:
+        return None
+    # Build fixed sequence: None, seg1, seg2, ..., full_code
+    sequence = [None]
+    cumulative = 0
+    for seg in ORG_UNIT_CODE_SEGMENTS:
+        cumulative += seg
+        sequence.append(code[:cumulative])
+    if sequence[-1] != code:
+        sequence.append(code)  # level after last segment gets the full code
+    # Truncate if hierarchy is shallower; pad with None if deeper
+    if len(sequence) >= hierarchy_len:
+        return sequence[:hierarchy_len]
+    return sequence + [None] * (hierarchy_len - len(sequence))
 
 
 def sync_hierarchy_config(cur):
@@ -445,7 +478,7 @@ def ingest_and_execute(file_path: str) -> None:
             phc = safe_str(row.get(COL_PHC)) or 'UNKNOWN'
             hierarchy = build_hierarchy_from_row(row)
             org_unit_code_val = safe_str(row.get(COL_ORG_UNIT_CODE))
-            org_unit_codes = ([None] * (len(hierarchy) - 1) + [org_unit_code_val]) if org_unit_code_val and hierarchy else None
+            org_unit_codes = build_org_unit_codes(org_unit_code_val, len(hierarchy)) if org_unit_code_val and hierarchy else None
 
             # Determine if we have BP and/or BS data
             has_bp = not pd.isna(systolic) if systolic is not None else False
