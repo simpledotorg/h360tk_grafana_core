@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS org_units (
     id          SERIAL PRIMARY KEY,
     name        VARCHAR(255) NOT NULL,
     level       INTEGER NOT NULL,
-    parent_id   INTEGER REFERENCES org_units(id)
+    parent_id   INTEGER REFERENCES org_units(id),
+    org_unit_code VARCHAR(255) UNIQUE
 );
 
 -- Unique constraints: handle NULL parent_id (root nodes) separately
@@ -21,6 +22,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS org_units_unique_child
 CREATE INDEX IF NOT EXISTS idx_org_units_parent_id ON org_units(parent_id);
 CREATE INDEX IF NOT EXISTS idx_org_units_level ON org_units(level);
 CREATE INDEX IF NOT EXISTS idx_org_units_name ON org_units(name);
+CREATE INDEX IF NOT EXISTS idx_org_units_code ON org_units(org_unit_code);
 
 -- ============================================================================
 -- CORE DATA TABLES
@@ -161,7 +163,8 @@ AS $$
 $$;
 
 -- Upsert a single org_unit and return its ID
-CREATE OR REPLACE FUNCTION upsert_org_unit(p_name VARCHAR, p_level INTEGER, p_parent_id INTEGER)
+-- p_org_unit_code is optional; if provided it is stored and updated on subsequent calls.
+CREATE OR REPLACE FUNCTION upsert_org_unit(p_name VARCHAR, p_level INTEGER, p_parent_id INTEGER, p_org_unit_code VARCHAR DEFAULT NULL)
 RETURNS INTEGER
 LANGUAGE plpgsql
 AS $$
@@ -169,18 +172,18 @@ DECLARE
     v_id INTEGER;
 BEGIN
     IF p_parent_id IS NULL THEN
-        INSERT INTO heart360tk_schema.org_units (name, level, parent_id)
-        VALUES (p_name, p_level, NULL)
+        INSERT INTO heart360tk_schema.org_units (name, level, parent_id, org_unit_code)
+        VALUES (p_name, p_level, NULL, p_org_unit_code)
         ON CONFLICT (name, level) WHERE parent_id IS NULL
-        DO NOTHING;
+        DO UPDATE SET org_unit_code = COALESCE(EXCLUDED.org_unit_code, heart360tk_schema.org_units.org_unit_code);
 
         SELECT ou.id INTO v_id FROM heart360tk_schema.org_units ou
         WHERE ou.name = p_name AND ou.level = p_level AND ou.parent_id IS NULL;
     ELSE
-        INSERT INTO heart360tk_schema.org_units (name, level, parent_id)
-        VALUES (p_name, p_level, p_parent_id)
+        INSERT INTO heart360tk_schema.org_units (name, level, parent_id, org_unit_code)
+        VALUES (p_name, p_level, p_parent_id, p_org_unit_code)
         ON CONFLICT (name, level, parent_id) WHERE parent_id IS NOT NULL
-        DO NOTHING;
+        DO UPDATE SET org_unit_code = COALESCE(EXCLUDED.org_unit_code, heart360tk_schema.org_units.org_unit_code);
 
         SELECT ou.id INTO v_id FROM heart360tk_schema.org_units ou
         WHERE ou.name = p_name AND ou.level = p_level AND ou.parent_id = p_parent_id;
@@ -193,17 +196,20 @@ $$;
 -- Upsert an entire hierarchy chain and return the leaf org_unit ID
 -- p_names: array of org_unit names from top to bottom
 -- p_levels: array of corresponding levels
-CREATE OR REPLACE FUNCTION upsert_org_unit_chain(p_names VARCHAR[], p_levels INTEGER[])
+-- p_org_unit_codes:  optional array of org_unit codes (same length as p_names, NULL entries allowed)
+CREATE OR REPLACE FUNCTION upsert_org_unit_chain(p_names VARCHAR[], p_levels INTEGER[], p_org_unit_codes VARCHAR[] DEFAULT NULL)
 RETURNS INTEGER
 LANGUAGE plpgsql
 AS $$
 DECLARE
     v_parent_id INTEGER := NULL;
     v_id INTEGER;
+    v_org_unit_code VARCHAR;
     i INTEGER;
 BEGIN
     FOR i IN 1..array_length(p_names, 1) LOOP
-        v_id := heart360tk_schema.upsert_org_unit(p_names[i], p_levels[i], v_parent_id);
+        v_org_unit_code := CASE WHEN p_org_unit_codes IS NOT NULL AND i <= array_length(p_org_unit_codes, 1) THEN p_org_unit_codes[i] ELSE NULL END;
+        v_id := heart360tk_schema.upsert_org_unit(p_names[i], p_levels[i], v_parent_id, v_org_unit_code);
         v_parent_id := v_id;
     END LOOP;
     RETURN v_id;

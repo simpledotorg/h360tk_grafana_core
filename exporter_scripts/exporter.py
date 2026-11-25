@@ -24,31 +24,22 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 # export_run_log.log_type values (enforced by a CHECK constraint).
-LOG_TYPE_LEAF_NODE = 'leaf_node'
+LOG_TYPE_LEAF_NODE      = 'leaf_node'
 LOG_TYPE_INFRASTRUCTURE = 'infrastructure'
 
-# export_run_log.source_key for exporter configuration failures, which are not
-# an export attempt by this leaf node.
+LOG_STATUS_SUCCESS = 'success'
+LOG_STATUS_FAILED  = 'failed'
+
+# export_run_log.source_key for exporter configuration failures.
 SOURCE_EXPORTER = 'Exporter'
 
-VERSION_DATA_FORMAT_MAP: dict[str, int] = {
-    '0.5.0': 1,
-}
+# Max characters stored in export_run_log.error_message to stay within column limits.
+_MAX_ERROR_MSG = 1000
 
-def _resolve_import_export_version(source_version: str) -> int:
-    if source_version in VERSION_DATA_FORMAT_MAP:
-        return VERSION_DATA_FORMAT_MAP[source_version]
+EXPORT_FORMAT_VERSION = 3  # increment when the zip structure changes
 
-    log.warning(
-        "SOURCE_VERSION '%s' is not in VERSION_DATA_FORMAT_MAP — "
-        "defaulting to import_export_version=1.",
-        source_version,
-    )
-    return 1
-
-SOURCE_KEY       = os.getenv('SOURCE_KEY', '').strip()
-SOURCE_VERSION   = os.getenv('SOURCE_VERSION', '').strip()
-IMPORT_EXPORT_VERSION = _resolve_import_export_version(SOURCE_VERSION)
+SOURCE_KEY     = os.getenv('SOURCE_KEY', '').strip()
+SOURCE_VERSION = os.getenv('SOURCE_VERSION', '').strip()
 EXPORT_CRON      = os.getenv('EXPORT_CRON', '0 * * * *').strip()
 UPLOAD_PROTOCOL  = os.getenv('UPLOAD_PROTOCOL', 'file').strip().lower()
 UPLOAD_DEST_PATH = os.getenv('UPLOAD_DEST_PATH', '/export').strip()
@@ -76,9 +67,6 @@ DEFAULT_EXPORT_TABLES = [
     'heart360_blood_sugar_missed_visits',
     'heart360_dm_bp_control',
     'heart360_dm_patients_under_care',
-    'heart360_overdue_start_of_month',
-    'heart360_overdue_patients_called',
-    'heart360_overdue_returned_to_care',
     'heart360_dm_patients_catagory',
 ]
 
@@ -125,6 +113,11 @@ def validate_config():
             'S3_SECRET_KEY': S3_SECRET_KEY,
         })
 
+    if UPLOAD_PROTOCOL not in ('file', 'sftp', 's3'):
+        exit_with_exporter_error(
+            f"Unknown UPLOAD_PROTOCOL '{UPLOAD_PROTOCOL}'. Must be one of: file, sftp, s3."
+        )
+
     missing = [k for k, v in required.items() if not v]
     if missing:
         exit_with_exporter_error(
@@ -134,7 +127,7 @@ def validate_config():
     log.info("Config validated OK.")
     log.info("  SOURCE_KEY          : %s", SOURCE_KEY)
     log.info("  SOURCE_VERSION      : %s", SOURCE_VERSION)
-    log.info("  IMPORT_EXPORT_VERSION : %d", IMPORT_EXPORT_VERSION)
+    log.info("  EXPORT_FORMAT_VERSION : %d", EXPORT_FORMAT_VERSION)
     log.info("  EXPORT_CRON         : %s", EXPORT_CRON)
     log.info("  UPLOAD_PROTOCOL     : %s", UPLOAD_PROTOCOL)
     if UPLOAD_PROTOCOL == 'sftp':
@@ -152,6 +145,41 @@ def validate_config():
         log.info("  UPLOAD_DEST_PATH    : %s", UPLOAD_DEST_PATH)
     log.info("  EXPORT_TABLES       : %s", EXPORT_TABLES)
 
+_INDICATOR_KEY_COLUMNS = frozenset({'ref_month', 'org_unit_id', 'indicator_key', 'value'})
+
+# Registry of all indicator keys this exporter can produce.
+# Sourced from v2 import spec section 6 (22 base keys). Add new keys here as
+# the reporting schema grows — they will automatically appear in includeIndicators.
+INDICATOR_REGISTRY: frozenset[str] = frozenset({
+    # Hypertension (8)
+    'patients_registered.nb_new_patients',
+    'patients_under_care.nb_patients_under_care',
+    'patients_category.total_number_of_patients',
+    'patients_category.nb_patients_lost_to_follow_up',
+    'patients_category.nb_patients_newly_registered',
+    'patients_category.nb_patients_controlled',
+    'patients_category.nb_patients_uncontrolled',
+    'patients_category.nb_patients_no_visit',
+    # Diabetes (14)
+    'dm_patients_under_care.nb_new_dm_patients',
+    'dm_patients_under_care.nb_dm_patients_under_care',
+    'dm_patients_catagory.total_number_of_patients',
+    'dm_patients_catagory.nb_patients_lost_to_follow_up',
+    'blood_sugar_controlled.diabetes_patients_under_care',
+    'blood_sugar_controlled.diabetes_controlled',
+    'blood_sugar_severity.diabetes_patients_under_care',
+    'blood_sugar_severity.uncontrolled_moderate',
+    'blood_sugar_severity.uncontrolled_high',
+    'blood_sugar_missed_visits.diabetes_patients_under_care',
+    'blood_sugar_missed_visits.missed_visit',
+    'dm_bp_control.dm_patients_under_care',
+    'dm_bp_control.bp_controlled_130_80',
+    'dm_bp_control.bp_controlled_140_90',
+})
+
+_FETCH_BATCH_SIZE = 2000
+
+
 def generate_csvs(conn):
     tmp_dir = tempfile.mkdtemp(prefix='h360tk_export_')
     log.info("Writing CSVs to temp dir: %s", tmp_dir)
@@ -160,34 +188,84 @@ def generate_csvs(conn):
         'facility_count': 0,
         'patient_count':  0,
     }
+    indicator_keys = set()
 
     cur = conn.cursor()
     try:
-        for table_name in EXPORT_TABLES:
-            csv_path = os.path.join(tmp_dir, f'{table_name.upper()}.csv')
-            try:
-                cur.execute(
-                    sql.SQL('SELECT * FROM heart360tk_reporting.{}').format(
-                        sql.Identifier(table_name)
+        csv_path = os.path.join(tmp_dir, 'heart360_merged_indicators.csv')
+        with open(csv_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(['ref_month', 'org_unit_id', 'indicator_key', 'value'])
+            total_indicator_rows = 0
+
+            for table_name in EXPORT_TABLES:
+                indicator_prefix = table_name.removeprefix('heart360_')
+                try:
+                    cur.execute(
+                        sql.SQL('SELECT * FROM heart360tk_reporting.{}').format(
+                            sql.Identifier(table_name)
+                        )
                     )
-                )
-                rows = cur.fetchall()
-                col_names = [desc[0] for desc in cur.description]
+                    col_names = [desc[0] for desc in cur.description]
 
-                with open(csv_path, 'w', newline='', encoding='utf-8') as f:
-                    writer = csv.writer(f)
-                    writer.writerow(col_names)
-                    writer.writerows(rows)
+                    if 'ref_month' not in col_names or 'org_unit_id' not in col_names:
+                        log.warning("Table '%s' missing ref_month or org_unit_id — skipping.", table_name)
+                        continue
 
-                log.info("  Written %s — %d rows", f'{table_name.upper()}.csv', len(rows))
+                    ref_month_idx   = col_names.index('ref_month')
+                    org_unit_id_idx = col_names.index('org_unit_id')
+                    value_cols = [
+                        (i, col) for i, col in enumerate(col_names)
+                        if col not in _INDICATOR_KEY_COLUMNS
+                        and f'{indicator_prefix}.{col}' in INDICATOR_REGISTRY
+                    ]
 
-            except Exception as e:
-                log.error("  Failed to export table '%s': %s", table_name, e)
-                raise
+                    if not value_cols:
+                        log.warning("  Table '%s' has no columns matching INDICATOR_REGISTRY — "
+                                    "table is queried but produces nothing.", table_name)
+                        continue
+
+                    # Collect indicator keys from column metadata — once per table, not per row
+                    for _, col_name in value_cols:
+                        indicator_keys.add(f'{indicator_prefix}.{col_name}')
+
+                    table_source_rows = 0
+                    while True:
+                        batch = cur.fetchmany(_FETCH_BATCH_SIZE)
+                        if not batch:
+                            break
+                        for row in batch:
+                            ref_month   = row[ref_month_idx]
+                            org_unit_id = row[org_unit_id_idx]
+                            for col_idx, col_name in value_cols:
+                                writer.writerow([
+                                    ref_month,
+                                    org_unit_id,
+                                    f'{indicator_prefix}.{col_name}',
+                                    row[col_idx],
+                                ])
+                        table_source_rows      += len(batch)
+                        total_indicator_rows   += len(batch) * len(value_cols)
+
+                    if table_source_rows == 0:
+                        log.warning("  Table '%s' has 0 rows — reporting refresh may not have run yet.",
+                                    table_name)
+                    else:
+                        log.info("  Merged %s — %d source rows × %d value columns",
+                                 table_name, table_source_rows, len(value_cols))
+
+                except Exception as e:
+                    log.error("  Failed to export table '%s': %s", table_name, e)
+                    raise
+
+        missing = INDICATOR_REGISTRY - indicator_keys
+        if missing:
+            log.warning("  %d validated indicator(s) not found in export tables: %s",
+                        len(missing), sorted(missing))
 
         orgunit_path = os.path.join(tmp_dir, 'orgunit.csv')
         cur.execute(
-            'SELECT id, name, level, parent_id FROM heart360tk_schema.org_units ORDER BY level, id'
+            'SELECT id, name, level, parent_id, org_unit_code FROM heart360tk_schema.org_units ORDER BY level, id'
         )
         rows = cur.fetchall()
         col_names = [desc[0] for desc in cur.description]
@@ -241,16 +319,16 @@ def generate_csvs(conn):
     log.info("CSV generation complete. Facilities: %d, Patients: %d",
              stats['facility_count'], stats['patient_count'])
 
-    return tmp_dir, stats
+    return tmp_dir, stats, indicator_keys
 
 
-def generate_metadata(tmp_dir, stats, generation_start_epoch):
+def generate_metadata(tmp_dir, stats, indicator_keys, generation_start_epoch):
     now_epoch = time.time()
     now_human = datetime.fromtimestamp(now_epoch, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
     generation_duration = round(now_epoch - generation_start_epoch, 2)
 
     metadata = {
-        'import_export_version':       IMPORT_EXPORT_VERSION,
+        'import_export_version':       EXPORT_FORMAT_VERSION,
         'source_key':                  SOURCE_KEY,
         'source_h360tk_version':       SOURCE_VERSION,
         'generated_at':                now_human,
@@ -258,22 +336,24 @@ def generate_metadata(tmp_dir, stats, generation_start_epoch):
         'generation_duration_seconds': generation_duration,
         'facility_count':              stats['facility_count'],
         'patient_count':               stats['patient_count'],
+        'includeIndicators':           sorted(indicator_keys & INDICATOR_REGISTRY),
     }
 
     metadata_path = os.path.join(tmp_dir, 'metadata.json')
     with open(metadata_path, 'w', encoding='utf-8') as f:
         json.dump(metadata, f, indent=2)
 
-    log.info("  Written metadata.json — source_key=%s, version=%s, facilities=%d, patients=%d",
+    log.info("  Written metadata.json — source_key=%s, version=%s, facilities=%d, patients=%d, indicators=%d",
              SOURCE_KEY, SOURCE_VERSION,
-             stats['facility_count'], stats['patient_count'])
+             stats['facility_count'], stats['patient_count'],
+             len(indicator_keys & INDICATOR_REGISTRY))
 
     return metadata_path
 
 
 def package_zip(tmp_dir):
     zip_filename = f'{SOURCE_KEY}.zip'
-    zip_path = os.path.join('/tmp', zip_filename)
+    zip_path = os.path.join(tempfile.gettempdir(), zip_filename)
     zip_tmp_path = zip_path + '.tmp'
 
     try:
@@ -305,10 +385,9 @@ def upload_file(zip_path):
     dest = os.path.join(UPLOAD_DEST_PATH, os.path.basename(zip_path))
 
     if os.path.abspath(zip_path) != os.path.abspath(dest):
-        shutil.copy2(zip_path, dest)
-        os.remove(zip_path)
+        shutil.move(zip_path, dest)
 
-    log.info("  Zip uploaded to: %s", dest)
+    log.info("  Zip copied to: %s", dest)
     return dest
 
 
@@ -416,6 +495,9 @@ def log_export_run(started_at, status, duration_seconds=None,
         with psycopg2.connect(**DB_CONNECTION_PARAMS) as conn:
             conn.autocommit = True
             with conn.cursor() as cur:
+                if error_message and len(error_message) > _MAX_ERROR_MSG:
+                    error_message = error_message[:_MAX_ERROR_MSG - 3] + '...'
+
                 cur.execute(
                     '''
                     INSERT INTO heart360tk_reporting.export_run_log
@@ -444,7 +526,7 @@ def exit_with_exporter_error(error):
     log.error("Exporter configuration error: %s", error)
     log_export_run(
         started_at           = time.time(),
-        status               = 'failed',
+        status               = LOG_STATUS_FAILED,
         error_message        = str(error),
         infrastructure_layer = SOURCE_EXPORTER,
     )
@@ -456,21 +538,31 @@ def run_export():
     job_start = time.time()
 
     conn        = None
+    tmp_dir     = None
+    zip_path    = None
     destination = None
+    phase       = 'connect'
 
     try:
         conn = psycopg2.connect(**DB_CONNECTION_PARAMS)
         conn.autocommit = True
 
-        tmp_dir, stats = generate_csvs(conn)
-        generate_metadata(tmp_dir, stats, generation_start_epoch=job_start)
-        zip_path    = package_zip(tmp_dir)
+        phase = 'generate'
+        tmp_dir, stats, indicator_keys = generate_csvs(conn)
+        generate_metadata(tmp_dir, stats, indicator_keys, generation_start_epoch=job_start)
+
+        phase = 'package'
+        zip_path = package_zip(tmp_dir)
+        tmp_dir = None  # package_zip cleans the temp dir on success
+
+        phase = 'upload'
         destination = upload(zip_path)
+        zip_path = None  # upload removes the zip on success
 
         duration = round(time.time() - job_start, 2)
         log_export_run(
             started_at       = job_start,
-            status           = 'success',
+            status           = LOG_STATUS_SUCCESS,
             duration_seconds = duration,
             destination      = destination,
         )
@@ -479,15 +571,24 @@ def run_export():
 
     except Exception as e:
         duration = round(time.time() - job_start, 2)
-        log.error("Export job failed: %s", e, exc_info=True)
+        log.error("Export job failed at phase '%s': %s", phase, e, exc_info=True)
         log_export_run(
             started_at       = job_start,
-            status           = 'failed',
+            status           = LOG_STATUS_FAILED,
             duration_seconds = duration,
-            error_message    = str(e),
+            error_message    = f'[{phase}] {e}',
         )
 
     finally:
+        if tmp_dir:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            log.info("  Cleaned up temp dir after failure: %s", tmp_dir)
+        if zip_path and os.path.exists(zip_path):
+            try:
+                os.remove(zip_path)
+                log.info("  Cleaned up zip after upload failure: %s", zip_path)
+            except Exception:
+                pass
         if conn:
             conn.close()
 
